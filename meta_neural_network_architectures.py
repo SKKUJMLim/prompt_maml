@@ -6,6 +6,7 @@ import torch.nn.functional as F
 import torch
 import numpy as np
 
+import prompters
 
 
 def extract_top_level_dict(current_dict):
@@ -878,6 +879,9 @@ class VGGReLUNormNetwork(nn.Module):
             self.conv_stride = 2
         self.meta_classifier = meta_classifier
 
+        if self.args.prompter:
+            self.prompt = prompters.__dict__[args.prompt_engineering](args).to(device)
+
         self.build_network()
         print("meta network params")
         # for name, param in self.named_parameters():
@@ -1025,6 +1029,8 @@ class ResNet12(nn.Module):
             print("Using strided convolutions")
             self.conv_stride = 2
         self.meta_classifier = meta_classifier
+
+
 
         self.build_network()
         print("meta network params")

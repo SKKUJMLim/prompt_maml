@@ -1,3 +1,12 @@
+# This source code is based on "Exploring Visual Prompts for Adapting Large-Scale Models".
+# --------------------------------------------------------
+# References:
+# Paper: https://arxiv.org/abs/2203.17274
+# Project: https://hjbahng.github.io/visual_prompting/
+# Code: https://github.com/hjbahng/visual_prompting
+# --------------------------------------------------------
+
+
 import torch
 import torch.nn as nn
 import numpy as np
