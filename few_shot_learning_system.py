@@ -166,12 +166,16 @@ class MAMLFewShotClassifier(nn.Module):
             prompted_grads_copy = dict(zip(prompted_weights_copy.keys(), prompt_grads))
             prompted_weights_copy = {key: value[0] for key, value in prompted_weights_copy.items()}
 
-
-
         for key, grad in names_grads_copy.items():
             if grad is None:
                 print('Grads not found for inner loop parameter', key)
             names_grads_copy[key] = names_grads_copy[key].sum(dim=0)
+
+
+        for key, prompt_grad in prompted_grads_copy.items():
+            if prompt_grad is None:
+                print('Prompt Grads not found for inner loop parameter', key)
+            prompted_grads_copy[key] = prompted_grads_copy[key].sum(dim=0)
 
 
         names_weights_copy, prompted_weights_copy = self.inner_loop_optimizer.update_params(names_weights_dict=names_weights_copy,
