@@ -245,6 +245,8 @@ class MAMLFewShotClassifier(nn.Module):
 
             num_devices = torch.cuda.device_count() if torch.cuda.is_available() else 1
 
+            print("names_weights_copy=== ", names_weights_copy.keys())
+
             names_weights_copy = {
                 name.replace('module.', ''): value.unsqueeze(0).repeat(
                     [num_devices] + [1 for i in range(len(value.shape))]) for
