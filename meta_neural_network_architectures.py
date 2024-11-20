@@ -953,7 +953,8 @@ class VGGReLUNormNetwork(nn.Module):
 
         out = x
 
-        out = self.prompt(x=out, prompted_params=prompted_params)
+        if self.args.prompter:
+            out = self.prompt(x=out, prompted_params=prompted_params)
 
         for i in range(self.num_stages):
             out = self.layer_dict['conv{}'.format(i)](out, params=param_dict['conv{}'.format(i)], training=training,

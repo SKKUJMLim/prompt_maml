@@ -52,5 +52,9 @@
   "num_target_samples": 15,
 
   "second_order": true,
-  "use_multi_step_loss_optimization":false
+  "use_multi_step_loss_optimization":false,
+  "prompter": false,
+  "prompt_engineering": "not",
+  "prompt_size" : 0,
+  "image_size" : 0
 }

@@ -159,10 +159,12 @@ class MAMLFewShotClassifier(nn.Module):
         names_weights_copy = {key: value[0] for key, value in names_weights_copy.items()}
 
         ## 각 prompt에 대한 gradient 구하기
-        prompt_grads = torch.autograd.grad(loss, prompted_weights_copy.values(),
-                                    create_graph=use_second_order, allow_unused=True)
-        prompted_grads_copy = dict(zip(prompted_weights_copy.keys(), prompt_grads))
-        prompted_weights_copy = {key: value[0] for key, value in prompted_weights_copy.items()}
+        prompted_grads_copy={}
+        if self.args.prompter:
+            prompt_grads = torch.autograd.grad(loss, prompted_weights_copy.values(),
+                                        create_graph=use_second_order, allow_unused=True)
+            prompted_grads_copy = dict(zip(prompted_weights_copy.keys(), prompt_grads))
+            prompted_weights_copy = {key: value[0] for key, value in prompted_weights_copy.items()}
 
 
 
@@ -187,7 +189,7 @@ class MAMLFewShotClassifier(nn.Module):
             name, value in names_weights_copy.items()}
 
 
-        return names_weights_copy
+        return names_weights_copy, prompted_weights_copy
 
     def get_across_task_loss_metrics(self, total_losses, total_accuracies):
         losses = dict()
@@ -244,7 +246,10 @@ class MAMLFewShotClassifier(nn.Module):
                     [num_devices] + [1 for i in range(len(value.shape))]) for
                 name, value in names_weights_copy.items()}
 
-            prompted_weights_copy = {key: value for key, value in names_weights_copy.items() if 'prompt' in key}
+            prompted_weights_copy = {}
+            if self.args.prompter:
+                prompted_weights_copy = {key: value for key, value in names_weights_copy.items() if 'prompt' in key}
+
             names_weights_copy = {key: value for key, value in names_weights_copy.items() if 'layer_dict' in key}
 
             # print("names_weights_copy === ", names_weights_copy.keys())
@@ -270,7 +275,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                training_phase=training_phase,
                                                                epoch=epoch)
 
-                names_weights_copy = self.apply_inner_loop_update(loss=support_loss,
+                names_weights_copy, prompted_weights_copy = self.apply_inner_loop_update(loss=support_loss,
                                                                   names_weights_copy=names_weights_copy,
                                                                   prompted_weights_copy=prompted_weights_copy,
                                                                   use_second_order=use_second_order,
@@ -322,7 +327,7 @@ class MAMLFewShotClassifier(nn.Module):
 
         return losses, per_task_target_preds
 
-    def net_forward(self, x, y, weights, prompted_weights, backup_running_statistics, training, num_step, training_phase, epoch):
+    def net_forward(self, x, y, weights, backup_running_statistics, training, num_step, training_phase, epoch, prompted_weights=None):
         """
         A base model forward pass on some data points x. Using the parameters in the weights dictionary. Also requires
         boolean flags indicating whether to reset the running statistics at the end of the run (if at evaluation phase).
