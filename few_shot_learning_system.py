@@ -270,8 +270,6 @@ class MAMLFewShotClassifier(nn.Module):
                                                                training_phase=training_phase,
                                                                epoch=epoch)
 
-                print("before apply_inner_loop_update")
-
                 names_weights_copy = self.apply_inner_loop_update(loss=support_loss,
                                                                   names_weights_copy=names_weights_copy,
                                                                   prompted_weights_copy=prompted_weights_copy,
