@@ -39,7 +39,7 @@ class GradientDescentLearningRule(nn.Module):
         # self.learning_rate.to(device)
         self.args = args
 
-    def update_params(self, names_weights_dict, names_grads_wrt_params_dict, num_step, current_iter, training_phase):
+    def update_params(self, names_weights_dict, names_grads_wrt_params_dict, prompted_weights_dict, prompted_grads_wrt_params_dict, num_step, current_iter, training_phase):
         """Applies a single gradient descent update to all parameters.
         All parameter updates are performed using in-place operations and so
         nothing is returned.
@@ -52,7 +52,11 @@ class GradientDescentLearningRule(nn.Module):
         for key in names_weights_dict.keys():
             updated_names_weights_dict[key] = names_weights_dict[key] - self.learning_rate * names_grads_wrt_params_dict[key]
 
-        return updated_names_weights_dict
+        updated_prompt_weights_dict = dict()
+        for key in prompted_weights_dict.keys():
+            updated_prompt_weights_dict[key] = prompted_weights_dict[key] - self.learning_rate * prompted_grads_wrt_params_dict[key]
+
+        return updated_names_weights_dict, updated_prompt_weights_dict
 
 
 class LSLRGradientDescentLearningRule(nn.Module):

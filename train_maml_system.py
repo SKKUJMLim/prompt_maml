@@ -16,7 +16,8 @@ from multiprocessing import freeze_support
 ## python train_maml_system.py --name_of_args_json_file experiment_config/MAML/MAML_5way_5shot_filter64_FC100.json --gpu_to_use 0
 
 '''MAML+MAML+Prompt experiment'''
-## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_fixed_patch_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
 
 if __name__ == '__main__':
     freeze_support()

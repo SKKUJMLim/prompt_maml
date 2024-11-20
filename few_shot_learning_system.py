@@ -134,7 +134,7 @@ class MAMLFewShotClassifier(nn.Module):
 
         return param_dict
 
-    def apply_inner_loop_update(self, loss, names_weights_copy, use_second_order, current_step_idx, current_iter, training_phase):
+    def apply_inner_loop_update(self, loss, names_weights_copy, prompted_weights_copy, use_second_order, current_step_idx, current_iter, training_phase):
         """
         Applies an inner loop update given current step's loss, the weights to update, a flag indicating whether to use
         second order derivatives and the current step's index.
@@ -147,14 +147,24 @@ class MAMLFewShotClassifier(nn.Module):
         num_gpus = torch.cuda.device_count()
         if num_gpus > 1:
             self.classifier.module.zero_grad(params=names_weights_copy)
+            self.classifier.module.zero_grad(params=prompted_weights_copy)
         else:
             self.classifier.zero_grad(params=names_weights_copy)
+            self.classifier.zero_grad(params=prompted_weights_copy)
 
+        ## 각 layer의 weight에 대한 gradient 구하기
         grads = torch.autograd.grad(loss, names_weights_copy.values(),
                                     create_graph=use_second_order, allow_unused=True)
         names_grads_copy = dict(zip(names_weights_copy.keys(), grads))
-
         names_weights_copy = {key: value[0] for key, value in names_weights_copy.items()}
+
+        ## 각 prompt에 대한 gradient 구하기
+        prompt_grads = torch.autograd.grad(loss, prompted_weights_copy.values(),
+                                    create_graph=use_second_order, allow_unused=True)
+        prompted_grads_copy = dict(zip(prompted_weights_copy.keys(), prompt_grads))
+        prompted_weights_copy = {key: value[0] for key, value in prompted_weights_copy.items()}
+
+
 
         for key, grad in names_grads_copy.items():
             if grad is None:
@@ -162,8 +172,10 @@ class MAMLFewShotClassifier(nn.Module):
             names_grads_copy[key] = names_grads_copy[key].sum(dim=0)
 
 
-        names_weights_copy = self.inner_loop_optimizer.update_params(names_weights_dict=names_weights_copy,
+        names_weights_copy, prompted_weights_copy = self.inner_loop_optimizer.update_params(names_weights_dict=names_weights_copy,
                                                                      names_grads_wrt_params_dict=names_grads_copy,
+                                                                     prompted_weights_dict=prompted_weights_copy,
+                                                                     prompted_grads_wrt_params_dict=prompted_grads_copy,
                                                                      num_step=current_step_idx,
                                                                      current_iter=current_iter,
                                                                      training_phase=training_phase)
@@ -232,6 +244,11 @@ class MAMLFewShotClassifier(nn.Module):
                     [num_devices] + [1 for i in range(len(value.shape))]) for
                 name, value in names_weights_copy.items()}
 
+            prompted_weights_copy = {key: value for key, value in names_weights_copy.items() if 'prompt' in key}
+            names_weights_copy = {key: value for key, value in names_weights_copy.items() if 'layer_dict' in key}
+
+            print("names_weights_copy === ", names_weights_copy.keys())
+            print("prompted_weight_dict === ", prompted_weights_copy.keys())
 
             n, s, c, h, w = x_target_set_task.shape
 
@@ -246,14 +263,18 @@ class MAMLFewShotClassifier(nn.Module):
                 support_loss, support_preds = self.net_forward(x=x_support_set_task,
                                                                y=y_support_set_task,
                                                                weights=names_weights_copy,
+                                                               prompted_weights=prompted_weights_copy,
                                                                backup_running_statistics=num_step == 0,
                                                                training=True,
                                                                num_step=num_step,
                                                                training_phase=training_phase,
                                                                epoch=epoch)
 
+                print("before apply_inner_loop_update")
+
                 names_weights_copy = self.apply_inner_loop_update(loss=support_loss,
                                                                   names_weights_copy=names_weights_copy,
+                                                                  prompted_weights_copy=prompted_weights_copy,
                                                                   use_second_order=use_second_order,
                                                                   current_step_idx=num_step,
                                                                   current_iter=current_iter,
@@ -261,7 +282,9 @@ class MAMLFewShotClassifier(nn.Module):
 
                 if use_multi_step_loss_optimization and training_phase and epoch < self.args.multi_step_loss_num_epochs:
                     target_loss, target_preds = self.net_forward(x=x_target_set_task,
-                                                                 y=y_target_set_task, weights=names_weights_copy,
+                                                                 y=y_target_set_task,
+                                                                 weights=names_weights_copy,
+                                                                 prompted_weights=prompted_weights_copy,
                                                                  backup_running_statistics=False, training=True,
                                                                  num_step=num_step, training_phase=training_phase,
                                                                  epoch=epoch)
@@ -271,7 +294,9 @@ class MAMLFewShotClassifier(nn.Module):
                 else:
                     if num_step == (self.args.number_of_training_steps_per_iter - 1):
                         target_loss, target_preds = self.net_forward(x=x_target_set_task,
-                                                                     y=y_target_set_task, weights=names_weights_copy,
+                                                                     y=y_target_set_task,
+                                                                     weights=names_weights_copy,
+                                                                     prompted_weights=prompted_weights_copy,
                                                                      backup_running_statistics=False, training=True,
                                                                      num_step=num_step, training_phase=training_phase,
                                                                      epoch=epoch)
@@ -299,7 +324,7 @@ class MAMLFewShotClassifier(nn.Module):
 
         return losses, per_task_target_preds
 
-    def net_forward(self, x, y, weights, backup_running_statistics, training, num_step, training_phase, epoch):
+    def net_forward(self, x, y, weights, prompted_weights, backup_running_statistics, training, num_step, training_phase, epoch):
         """
         A base model forward pass on some data points x. Using the parameters in the weights dictionary. Also requires
         boolean flags indicating whether to reset the running statistics at the end of the run (if at evaluation phase).
@@ -314,7 +339,7 @@ class MAMLFewShotClassifier(nn.Module):
         :param num_step: An integer indicating the number of the step in the inner loop.
         :return: the crossentropy losses with respect to the given y, the predictions of the base model.
         """
-        preds = self.classifier.forward(x=x, params=weights,
+        preds = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
                                         training=training,
                                         backup_running_statistics=backup_running_statistics, num_step=num_step)
 
