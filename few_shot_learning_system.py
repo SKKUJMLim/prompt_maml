@@ -247,8 +247,8 @@ class MAMLFewShotClassifier(nn.Module):
             prompted_weights_copy = {key: value for key, value in names_weights_copy.items() if 'prompt' in key}
             names_weights_copy = {key: value for key, value in names_weights_copy.items() if 'layer_dict' in key}
 
-            print("names_weights_copy === ", names_weights_copy.keys())
-            print("prompted_weight_dict === ", prompted_weights_copy.keys())
+            # print("names_weights_copy === ", names_weights_copy.keys())
+            # print("prompted_weight_dict === ", prompted_weights_copy.keys())
 
             n, s, c, h, w = x_target_set_task.shape
 
