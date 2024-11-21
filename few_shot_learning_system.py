@@ -61,7 +61,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                         total_num_inner_loop_steps=self.args.number_of_training_steps_per_iter,
                                                                         use_learnable_learning_rates=True)
         else:
-            self.inner_loop_optimizer = GradientDescentLearningRule(device=device, args=self.args, learning_rate=self.task_learning_rate, names_weights_dict=names_weights_copy)
+            self.inner_loop_optimizer = GradientDescentLearningRule(device=device, args=self.args, learning_rate=self.task_learning_rate)
 
 
 
@@ -154,7 +154,7 @@ class MAMLFewShotClassifier(nn.Module):
 
         ## 각 layer의 weight에 대한 gradient 구하기
         grads = torch.autograd.grad(loss, names_weights_copy.values(),
-                                    create_graph=use_second_order, allow_unused=True)
+                                    create_graph=use_second_order, allow_unused=True, retain_graph=True)   ###### retrain_graph 추가
         names_grads_copy = dict(zip(names_weights_copy.keys(), grads))
         names_weights_copy = {key: value[0] for key, value in names_weights_copy.items()}
 
@@ -187,10 +187,16 @@ class MAMLFewShotClassifier(nn.Module):
                                                                      training_phase=training_phase)
 
         num_devices = torch.cuda.device_count() if torch.cuda.is_available() else 1
+
         names_weights_copy = {
             name.replace('module.', ''): value.unsqueeze(0).repeat(
                 [num_devices] + [1 for i in range(len(value.shape))]) for
             name, value in names_weights_copy.items()}
+
+        prompted_weights_copy = {
+            name.replace('module.', ''): value.unsqueeze(0).repeat(
+                [num_devices] + [1 for i in range(len(value.shape))]) for
+            name, value in prompted_weights_copy.items()}
 
 
         return names_weights_copy, prompted_weights_copy
@@ -244,8 +250,6 @@ class MAMLFewShotClassifier(nn.Module):
             names_weights_copy = self.get_inner_loop_parameter_dict(self.classifier.named_parameters())
 
             num_devices = torch.cuda.device_count() if torch.cuda.is_available() else 1
-
-            print("names_weights_copy=== ", names_weights_copy.keys())
 
             names_weights_copy = {
                 name.replace('module.', ''): value.unsqueeze(0).repeat(
@@ -403,7 +407,7 @@ class MAMLFewShotClassifier(nn.Module):
 
         # 가중치 업데이트 확인용 변수
         # prev_weights = {}
-        # for name, param in self.step_arbiter.named_parameters():
+        # for name, param in self.classifier.named_parameters():
         #     prev_weights[name] = param.data.clone()
 
 
@@ -419,7 +423,7 @@ class MAMLFewShotClassifier(nn.Module):
         self.optimizer.step()
 
         # 가중치 업데이트 확인
-        # for name, param in self.step_arbiter.named_parameters():
+        # for name, param in self.classifier.named_parameters():
         #     if not torch.equal(prev_weights[name], param.data):
         #         print(f"{name} 가중치가 업데이트되었습니다.")
         #         prev_weights[name] = param.data.clone()

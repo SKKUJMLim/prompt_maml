@@ -68,11 +68,10 @@ class PadPrompter(nn.Module):
             pad_left = self.prompt_dict['pad_left'].unsqueeze(0)
             pad_right = self.prompt_dict['pad_right'].unsqueeze(0)
 
-
-        print("pad_up == ", pad_up.shape)
-        print("pad_down == ", pad_down.shape)
-        print("pad_left == ", pad_left.shape)
-        print("pad_right == ", pad_right.shape)
+        # print("pad_up == ", pad_up.shape)
+        # print("pad_down == ", pad_down.shape)
+        # print("pad_left == ", pad_left.shape)
+        # print("pad_right == ", pad_right.shape)
 
         base = torch.zeros(1, 3, self.base_size, self.base_size).cuda()
         prompt = torch.cat([pad_left, base, pad_right], dim=3)
