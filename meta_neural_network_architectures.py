@@ -36,12 +36,14 @@ def extract_top_level_dict(current_dict):
             new_item[sub_level] = current_dict[key]
             output_dict[top_level] = new_item
 
-    #print(current_dict.keys(), output_dict.keys())
+    # print(current_dict.keys(), output_dict.keys())
     return output_dict
+
 
 class MetaMaxResLayerReLU(nn.Module):
     def __init__(self, input_shape, num_filters, kernel_size, stride, padding, use_bias, args, normalization=True,
-                 meta_layer=True, no_bn_learnable_params=False, device=None, downsample=None, max_padding=0, maxpool=True):
+                 meta_layer=True, no_bn_learnable_params=False, device=None, downsample=None, max_padding=0,
+                 maxpool=True):
         """
            Initializes a BatchNorm->Conv->ReLU layer which applies those operation in that order.
            :param args: A named tuple containing the system's hyperparameters.
@@ -83,52 +85,52 @@ class MetaMaxResLayerReLU(nn.Module):
         out = x
 
         self.conv1 = MetaConvNormLayerSwish(input_shape=out.shape,
-                                                                        num_filters=self.num_filters,
-                                                                        kernel_size=3, stride=self.stride,
-                                                                        padding=1,
-                                                                        use_bias=self.use_bias, args=self.args,
-                                                                        normalization=True,
-                                                                        meta_layer=self.meta_layer,
-                                                                        no_bn_learnable_params=False,
-                                                                        device=self.device)
+                                            num_filters=self.num_filters,
+                                            kernel_size=3, stride=self.stride,
+                                            padding=1,
+                                            use_bias=self.use_bias, args=self.args,
+                                            normalization=True,
+                                            meta_layer=self.meta_layer,
+                                            no_bn_learnable_params=False,
+                                            device=self.device)
         out = self.conv1(out, training=True, num_step=0)
 
         self.conv2 = MetaConvNormLayerSwish(input_shape=out.shape,
-                                                                        num_filters=self.num_filters,
-                                                                        kernel_size=3, stride=self.stride,
-                                                                        padding=1,
-                                                                        use_bias=self.use_bias, args=self.args,
-                                                                        normalization=True,
-                                                                        meta_layer=self.meta_layer,
-                                                                        no_bn_learnable_params=False,
-                                                                        device=self.device)
+                                            num_filters=self.num_filters,
+                                            kernel_size=3, stride=self.stride,
+                                            padding=1,
+                                            use_bias=self.use_bias, args=self.args,
+                                            normalization=True,
+                                            meta_layer=self.meta_layer,
+                                            no_bn_learnable_params=False,
+                                            device=self.device)
         out = self.conv2(out, training=True, num_step=0)
 
         self.conv3 = MetaConv2dLayer(in_channels=out.shape[1], out_channels=out.shape[1],
-                                    kernel_size=3,
-                                    stride=1, padding=self.padding, use_bias=self.use_bias)
+                                     kernel_size=3,
+                                     stride=1, padding=self.padding, use_bias=self.use_bias)
 
         out = self.conv3(out)
 
         self.norm_layer = MetaBatchNormLayer(out.shape[1], track_running_stats=True,
-                                                     meta_batch_norm=self.meta_layer,
-                                                     no_learnable_params=self.no_bn_learnable_params,
-                                                     device=self.device,
-                                                     use_per_step_bn_statistics=self.use_per_step_bn_statistics,
-                                                     args=self.args)
+                                             meta_batch_norm=self.meta_layer,
+                                             no_learnable_params=self.no_bn_learnable_params,
+                                             device=self.device,
+                                             use_per_step_bn_statistics=self.use_per_step_bn_statistics,
+                                             args=self.args)
 
         out = self.norm_layer(out, num_step=0)
 
         self.shortcut_conv = MetaConv2dLayer(in_channels=identity.shape[1], out_channels=out.shape[1],
-                                kernel_size=1,
-                                stride=1, padding=0, use_bias=self.use_bias)
+                                             kernel_size=1,
+                                             stride=1, padding=0, use_bias=self.use_bias)
 
         self.shortcut_norm_layer = MetaBatchNormLayer(out.shape[1], track_running_stats=True,
-                                                     meta_batch_norm=self.meta_layer,
-                                                     no_learnable_params=self.no_bn_learnable_params,
-                                                     device=self.device,
-                                                     use_per_step_bn_statistics=self.use_per_step_bn_statistics,
-                                                     args=self.args)
+                                                      meta_batch_norm=self.meta_layer,
+                                                      no_learnable_params=self.no_bn_learnable_params,
+                                                      device=self.device,
+                                                      use_per_step_bn_statistics=self.use_per_step_bn_statistics,
+                                                      args=self.args)
 
         identity = self.shortcut_conv(identity)
         identity = self.shortcut_norm_layer(identity, num_step=0)
@@ -139,7 +141,6 @@ class MetaMaxResLayerReLU(nn.Module):
 
         if self.maxpool:
             out = F.max_pool2d(input=out, kernel_size=(2, 2), stride=2, padding=self.max_padding)
-
 
         # print(out.shape)
 
@@ -184,32 +185,29 @@ class MetaMaxResLayerReLU(nn.Module):
         identity = x
 
         out = self.conv1(out, params=conv_params_1, training=training,
-                                                      backup_running_statistics=backup_running_statistics,
-                                                      num_step=num_step)
+                         backup_running_statistics=backup_running_statistics,
+                         num_step=num_step)
 
         out = self.conv2(out, params=conv_params_2, training=training,
-                                                      backup_running_statistics=backup_running_statistics,
-                                                      num_step=num_step)
+                         backup_running_statistics=backup_running_statistics,
+                         num_step=num_step)
 
         out = self.conv3(out, params=conv_params_3)
 
         out = self.norm_layer.forward(out, num_step=num_step,
-                                          params=norm_params, training=training,
-                                          backup_running_statistics=backup_running_statistics)
-
-
+                                      params=norm_params, training=training,
+                                      backup_running_statistics=backup_running_statistics)
 
         identity = self.shortcut_conv(identity, params=conv_params_shortcut)
         identity = self.shortcut_norm_layer.forward(identity, num_step=num_step,
-                                          params=norm_params_shortcut, training=training,
-                                          backup_running_statistics=backup_running_statistics)
+                                                    params=norm_params_shortcut, training=training,
+                                                    backup_running_statistics=backup_running_statistics)
         out += identity
 
         out = F.relu(out)
 
         if self.maxpool:
             out = F.max_pool2d(input=out, kernel_size=(2, 2), stride=2, padding=self.max_padding)
-
 
         return out
 
@@ -221,7 +219,7 @@ class MetaMaxResLayerReLU(nn.Module):
         self.conv2.restore_backup_stats()
         self.norm_layer.restore_backup_stats()
         self.shortcut_norm_layer.restore_backup_stats()
-        
+
 
 class MetaConvNormLayerSwish(nn.Module):
     def __init__(self, input_shape, num_filters, kernel_size, stride, padding, use_bias, args, normalization=True,
@@ -265,8 +263,6 @@ class MetaConvNormLayerSwish(nn.Module):
         self.conv = MetaConv2dLayer(in_channels=out.shape[1], out_channels=self.num_filters,
                                     kernel_size=self.kernel_size,
                                     stride=self.stride, padding=self.padding, use_bias=self.use_bias)
-
-
 
         out = self.conv(out)
 
@@ -318,7 +314,6 @@ class MetaConvNormLayerSwish(nn.Module):
             conv_params = params['conv']
 
         out = x
-
 
         out = self.conv(out, params=conv_params)
 
@@ -382,7 +377,7 @@ class MetaConv2dLayer(nn.Module):
                 (weight) = params["weight"]
                 bias = None
         else:
-            #print("No inner loop params")
+            # print("No inner loop params")
             if self.use_bias:
                 weight, bias = self.weight, self.bias
             else:
@@ -432,7 +427,7 @@ class MetaLinearLayer(nn.Module):
                 bias = None
         else:
             pass
-            #print('no inner loop params', self)
+            # print('no inner loop params', self)
 
             if self.use_bias:
                 weight, bias = self.weights, self.bias
@@ -522,9 +517,9 @@ class MetaBatchNormLayer(nn.Module):
         if params is not None:
             params = extract_top_level_dict(current_dict=params)
             (weight, bias) = params["weight"], params["bias"]
-            #print(num_step, params['weight'])
+            # print(num_step, params['weight'])
         else:
-            #print(num_step, "no params")
+            # print(num_step, "no params")
             weight, bias = self.weight, self.bias
 
         if self.use_per_step_bn_statistics:
@@ -537,7 +532,6 @@ class MetaBatchNormLayer(nn.Module):
         else:
             running_mean = None
             running_var = None
-
 
         if backup_running_statistics and self.use_per_step_bn_statistics:
             self.backup_running_mean.data = copy(self.running_mean.data)
@@ -614,7 +608,7 @@ class MetaLayerNormLayer(nn.Module):
             bias = params["bias"]
         else:
             bias = self.bias
-            #print('no inner loop params', self)
+            # print('no inner loop params', self)
 
         return F.layer_norm(
             input, self.normalized_shape, self.weight, bias, self.eps)
@@ -720,7 +714,6 @@ class MetaConvNormLayerReLU(nn.Module):
 
         out = x
 
-
         out = self.conv(out, params=conv_params)
 
         if self.normalization:
@@ -794,9 +787,7 @@ class MetaNormLayerConvReLU(nn.Module):
                                     kernel_size=self.kernel_size,
                                     stride=self.stride, padding=self.padding, use_bias=self.use_bias)
 
-
         self.layer_dict['activation_function_pre'] = nn.LeakyReLU()
-
 
         out = self.layer_dict['activation_function_pre'].forward(self.conv.forward(out))
         # print(out.shape)
@@ -826,7 +817,7 @@ class MetaNormLayerConvReLU(nn.Module):
             conv_params = params['conv']
         else:
             conv_params = None
-            #print('no inner loop params', self)
+            # print('no inner loop params', self)
 
         out = x
 
@@ -913,7 +904,6 @@ class VGGReLUNormNetwork(nn.Module):
             if self.args.max_pooling:
                 out = F.max_pool2d(input=out, kernel_size=(2, 2), stride=2, padding=0)
 
-
         if not self.args.max_pooling:
             out = F.avg_pool2d(out, out.shape[2])
 
@@ -926,7 +916,7 @@ class VGGReLUNormNetwork(nn.Module):
         out = self.layer_dict['linear'](out)
         # print("VGGNetwork build", out.shape)
 
-    def forward(self, x, num_step, params=None, prompted_params=None ,training=False, backup_running_statistics=False):
+    def forward(self, x, num_step, params=None, prompted_params=None, training=False, backup_running_statistics=False):
         """
         Forward propages through the network. If any params are passed then they are used instead of stored params.
         :param x: Input image batch.
@@ -972,7 +962,7 @@ class VGGReLUNormNetwork(nn.Module):
         return out
 
     def re_init(self):
-        #for param in self.parameters():
+        # for param in self.parameters():
         for name, param in self.named_parameters():
             if param.requires_grad and 'weight' in name and 'norm' not in name:
                 nn.init.xavier_uniform_(param)
@@ -1033,8 +1023,6 @@ class ResNet12(nn.Module):
             self.conv_stride = 2
         self.meta_classifier = meta_classifier
 
-
-
         self.build_network()
         print("meta network params")
         for name, param in self.named_parameters():
@@ -1053,24 +1041,24 @@ class ResNet12(nn.Module):
 
         num_chn = [64, 128, 256, 512]
         max_padding = [0, 0, 1, 1]
-        maxpool = [True,True,True,False]
+        maxpool = [True, True, True, False]
         for i in range(len(num_chn)):
             self.layer_dict['layer{}'.format(i)] = MetaMaxResLayerReLU(input_shape=out.shape,
-                                                                    num_filters=num_chn[i],
-                                                                    kernel_size=3, stride=1,
-                                                                    padding=1,
-                                                                    use_bias=False, args=self.args,
-                                                                    #use_bias=True, args=self.args,
-                                                                    normalization=True,
-                                                                    meta_layer=self.meta_classifier,
-                                                                    no_bn_learnable_params=False,
-                                                                    device=self.device,
-                                                                    downsample=False,
-                                                                    max_padding=max_padding[i],
-                                                                    maxpool=maxpool[i])
+                                                                       num_filters=num_chn[i],
+                                                                       kernel_size=3, stride=1,
+                                                                       padding=1,
+                                                                       use_bias=False, args=self.args,
+                                                                       # use_bias=True, args=self.args,
+                                                                       normalization=True,
+                                                                       meta_layer=self.meta_classifier,
+                                                                       no_bn_learnable_params=False,
+                                                                       device=self.device,
+                                                                       downsample=False,
+                                                                       max_padding=max_padding[i],
+                                                                       maxpool=maxpool[i])
             out = self.layer_dict['layer{}'.format(i)](out, training=True, num_step=0)
 
-        out = F.adaptive_avg_pool2d(out, (1,1))
+        out = F.adaptive_avg_pool2d(out, (1, 1))
 
         out = out.view(out.shape[0], -1)
 
@@ -1095,7 +1083,7 @@ class ResNet12(nn.Module):
         param_dict = dict()
 
         if params is not None:
-            #param_dict = parallel_extract_top_level_dict(current_dict=params)
+            # param_dict = parallel_extract_top_level_dict(current_dict=params)
 
             params = {key: value[0] for key, value in params.items()}
             param_dict = extract_top_level_dict(current_dict=params)
@@ -1111,10 +1099,10 @@ class ResNet12(nn.Module):
 
         for i in range(self.num_stages):
             out = self.layer_dict['layer{}'.format(i)](out, params=param_dict['layer{}'.format(i)], training=training,
-                                                  backup_running_statistics=backup_running_statistics,
-                                                  num_step=num_step)
+                                                       backup_running_statistics=backup_running_statistics,
+                                                       num_step=num_step)
 
-        out = F.adaptive_avg_pool2d(out, (1,1))
+        out = F.adaptive_avg_pool2d(out, (1, 1))
         out = out.view(out.size(0), -1)
         out = self.layer_dict['linear'](out, param_dict['linear'])
 
@@ -1141,10 +1129,9 @@ class ResNet12(nn.Module):
         """
         Reset stored batch statistics from the stored backup.
         """
-        #self.layer_dict['conv0'].restore_backup_stats()
+        # self.layer_dict['conv0'].restore_backup_stats()
         for i in range(self.num_stages):
             self.layer_dict['layer{}'.format(i)].restore_backup_stats()
-
 
 
 class Arbiter(nn.Module):
@@ -1164,7 +1151,6 @@ class Arbiter(nn.Module):
         #     print(name, param.shape)
 
     def forward(self, task_state):
-
         out = self.linear1(task_state)
         out = self.activation1(out)
         out = self.linear2(out)
@@ -1192,7 +1178,6 @@ class LSTMArbiter(nn.Module):
         self.activation = nn.Softplus()
 
     def forward(self, task_state):
-
         h0 = torch.zeros(self.num_layers, task_state.size(0), self.hidden_size).to(self.device)
         c0 = torch.zeros(self.num_layers, task_state.size(0), self.hidden_size).to(self.device)
 
