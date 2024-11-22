@@ -240,7 +240,7 @@ class MAMLFewShotClassifier(nn.Module):
             y_target_set_task = y_target_set_task.view(-1)
 
 
-            x_support_set_task = self.arbiter(x_target_set_task)
+            x_support_set_task = self.arbiter(x_support_set_task)
 
             for num_step in range(num_steps):
 
