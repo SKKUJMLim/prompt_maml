@@ -54,7 +54,7 @@ class MAMLFewShotClassifier(nn.Module):
         self.task_learning_rate = args.init_inner_loop_learning_rate
         names_weights_copy = self.get_inner_loop_parameter_dict(self.classifier.named_parameters())
 
-        self.arbiter = Arbiter.VAE(input_dim=3 * 32 * 32, hidden_dim=400, latent_dim=20).to(device)
+        self.arbiter = Arbiter.VAE(input_dim=3 * 84 * 84, hidden_dim=400, latent_dim=50).to(device)
 
         if self.args.learnable_per_layer_per_step_inner_loop_learning_rate:
             self.inner_loop_optimizer = LSLRGradientDescentLearningRule(device=device,
