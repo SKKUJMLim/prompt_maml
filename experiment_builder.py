@@ -187,7 +187,7 @@ class ExperimentBuilder(object):
         data_batch = (
             x_support_set, x_target_set, y_support_set, y_target_set)
 
-        losses, per_task_preds = self.model.run_validation_iter(data_batch=data_batch)
+        losses, per_task_preds = self.model.run_validation_iter(data_batch=data_batch, current_iter='test')
 
         per_model_per_batch_preds[model_idx].extend(list(per_task_preds))
 
