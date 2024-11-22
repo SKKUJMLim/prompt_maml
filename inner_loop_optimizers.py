@@ -56,12 +56,12 @@ class GradientDescentLearningRule(nn.Module):
             for key in names_weights_dict.keys():
                 if key in 'linear':
                     # classifier의 learning rate를 0.0으로 하여 freeze한다
-                    updated_names_weights_dict[key] = names_weights_dict[key] - self.learning_rate * names_grads_wrt_params_dict[key]
+                    updated_names_weights_dict[key] = names_weights_dict[key] - freeze_layer_step_size * names_grads_wrt_params_dict[key]
                 else:
                     updated_names_weights_dict[key] = names_weights_dict[key] - freeze_layer_step_size * names_grads_wrt_params_dict[key]
 
             for key in prompted_weights_dict.keys():
-                updated_prompt_weights_dict[key] = prompted_weights_dict[key] - self.learning_rate * prompted_grads_wrt_params_dict[key]
+                updated_prompt_weights_dict[key] = prompted_weights_dict[key] - 50.0 * prompted_grads_wrt_params_dict[key]
         else:
             ## MAML
             for key in names_weights_dict.keys():
