@@ -39,7 +39,7 @@ class GradientDescentLearningRule(nn.Module):
         # self.learning_rate.to(device)
         self.args = args
 
-    def update_params(self, names_weights_dict, names_grads_wrt_params_dict, prompted_weights_dict, prompted_grads_wrt_params_dict, num_step, current_iter, training_phase, classifier_step_size=0.0):
+    def update_params(self, names_weights_dict, names_grads_wrt_params_dict, prompted_weights_dict, prompted_grads_wrt_params_dict, num_step, current_iter, training_phase, freeze_layer_step_size=0.0):
         """Applies a single gradient descent update to all parameters.
         All parameter updates are performed using in-place operations and so
         nothing is returned.
@@ -56,9 +56,9 @@ class GradientDescentLearningRule(nn.Module):
             for key in names_weights_dict.keys():
                 if key in 'linear':
                     # classifier의 learning rate를 0.0으로 하여 freeze한다
-                    updated_names_weights_dict[key] = names_weights_dict[key] - classifier_step_size * names_grads_wrt_params_dict[key]
-                else:
                     updated_names_weights_dict[key] = names_weights_dict[key] - self.learning_rate * names_grads_wrt_params_dict[key]
+                else:
+                    updated_names_weights_dict[key] = names_weights_dict[key] - freeze_layer_step_size * names_grads_wrt_params_dict[key]
 
             for key in prompted_weights_dict.keys():
                 updated_prompt_weights_dict[key] = prompted_weights_dict[key] - self.learning_rate * prompted_grads_wrt_params_dict[key]
