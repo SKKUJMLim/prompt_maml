@@ -39,7 +39,8 @@ class GradientDescentLearningRule(nn.Module):
         # self.learning_rate.to(device)
         self.args = args
 
-    def update_params(self, names_weights_dict, names_grads_wrt_params_dict, num_step, current_iter, training_phase, freeze_layer_step_size=0.0, prompted_weights_dict=None, prompted_grads_wrt_params_dict=None):
+    def update_params(self, names_weights_dict, names_grads_wrt_params_dict, num_step, current_iter, training_phase,
+                      freeze_layer_step_size=0.0, prompted_weights_dict=None, prompted_grads_wrt_params_dict=None):
         """Applies a single gradient descent update to all parameters.
         All parameter updates are performed using in-place operations and so
         nothing is returned.
@@ -51,17 +52,19 @@ class GradientDescentLearningRule(nn.Module):
         updated_names_weights_dict = dict()
         updated_prompt_weights_dict = dict()
 
-
         if self.args.prompter:
             for key in names_weights_dict.keys():
                 if key in 'linear':
                     # classifier의 learning rate를 0.0으로 하여 freeze한다
-                    updated_names_weights_dict[key] = names_weights_dict[key] - freeze_layer_step_size * names_grads_wrt_params_dict[key]
+                    updated_names_weights_dict[key] = names_weights_dict[key] - freeze_layer_step_size * \
+                                                      names_grads_wrt_params_dict[key]
                 else:
-                    updated_names_weights_dict[key] = names_weights_dict[key] - freeze_layer_step_size * names_grads_wrt_params_dict[key]
+                    updated_names_weights_dict[key] = names_weights_dict[key] - freeze_layer_step_size * \
+                                                      names_grads_wrt_params_dict[key]
 
             for key in prompted_weights_dict.keys():
-                updated_prompt_weights_dict[key] = prompted_weights_dict[key] - 50.0 * prompted_grads_wrt_params_dict[key]
+                updated_prompt_weights_dict[key] = prompted_weights_dict[key] - 50.0 * prompted_grads_wrt_params_dict[
+                    key]
         else:
             ## MAML
             for key in names_weights_dict.keys():
@@ -90,7 +93,8 @@ class LSLRGradientDescentLearningRule(nn.Module):
     will correspond to a stochastic gradient descent learning rule.
     """
 
-    def __init__(self, device, total_num_inner_loop_steps, use_learnable_learning_rates, use_learnable_weight_decay, alfa, random_init, init_learning_rate=1e-3, init_weight_decay=5e-4):
+    def __init__(self, device, total_num_inner_loop_steps, use_learnable_learning_rates, use_learnable_weight_decay,
+                 alfa, random_init, init_learning_rate=1e-3, init_weight_decay=5e-4):
         """Creates a new learning rule object.
         Args:
             init_learning_rate: A postive scalar to scale gradient updates to the
@@ -117,7 +121,7 @@ class LSLRGradientDescentLearningRule(nn.Module):
         self.use_learnable_learning_rates = use_learnable_learning_rates
         self.use_learnable_weight_decay = use_learnable_weight_decay
         self.init_weight_decay = torch.ones(1) * init_weight_decay
-        self.init_bias_decay = torch.ones(1) 
+        self.init_bias_decay = torch.ones(1)
 
     def initialise(self, names_weights_dict):
         if self.alfa:
@@ -130,7 +134,7 @@ class LSLRGradientDescentLearningRule(nn.Module):
             for idx, (key, param) in enumerate(names_weights_dict.items()):
 
                 if self.random_init:
-                # per-param weight decay for random init
+                    # per-param weight decay for random init
                     self.names_beta_dict_per_param[key.replace(".", "-")] = nn.Parameter(
                         data=torch.ones(param.shape) * self.init_weight_decay * self.init_learning_rate,
                         requires_grad=self.use_learnable_learning_rates)
@@ -141,15 +145,17 @@ class LSLRGradientDescentLearningRule(nn.Module):
                 else:
                     # per-step per-layer meta-learnable weight decay bias term (for more stable training and better performance by 2~3%)
                     self.names_beta_dict[key.replace(".", "-")] = nn.Parameter(
-                        data=torch.ones(self.total_num_inner_loop_steps + 1) * self.init_weight_decay * self.init_learning_rate,
+                        data=torch.ones(
+                            self.total_num_inner_loop_steps + 1) * self.init_weight_decay * self.init_learning_rate,
                         requires_grad=self.use_learnable_learning_rates)
 
                 # per-step per-layer meta-learnable learning rate bias term (for more stable training and better performance by 2~3%)
                 self.names_alpha_dict[key.replace(".", "-")] = nn.Parameter(
                     data=torch.ones(self.total_num_inner_loop_steps + 1) * self.init_learning_rate,
                     requires_grad=self.use_learnable_learning_rates)
- 
-    def update_params(self, names_weights_dict, names_grads_wrt_params_dict, generated_alpha_params, generated_beta_params, num_step, tau=0.1):
+
+    def update_params(self, names_weights_dict, names_grads_wrt_params_dict, generated_alpha_params,
+                      generated_beta_params, num_step, tau=0.1):
         """Applies a single gradient descent update to all parameters.
         All parameter updates are performed using in-place operations and so
         nothing is returned.
@@ -165,11 +171,21 @@ class LSLRGradientDescentLearningRule(nn.Module):
             # alpha = generated_alpha * meta-learned per-step-per-layer bias term)
             if self.alfa:
                 if self.random_init:
-                    updated_names_weights_dict[key] = (1 - self.names_beta_dict_per_param[key.replace(".", "-")] * generated_beta_params[key] * self.names_beta_dict[key.replace(".", "-")][num_step]) * names_weights_dict[key] - generated_alpha_params[key] * self.names_alpha_dict[key.replace(".", "-")][num_step] * names_grads_wrt_params_dict[key]
+                    updated_names_weights_dict[key] = (1 - self.names_beta_dict_per_param[key.replace(".", "-")] *
+                                                       generated_beta_params[key] *
+                                                       self.names_beta_dict[key.replace(".", "-")][num_step]) * \
+                                                      names_weights_dict[key] - generated_alpha_params[key] * \
+                                                      self.names_alpha_dict[key.replace(".", "-")][num_step] * \
+                                                      names_grads_wrt_params_dict[key]
                 else:
-                    updated_names_weights_dict[key] = (1 - generated_beta_params[key] * self.names_beta_dict[key.replace(".", "-")][num_step]) * names_weights_dict[key] - generated_alpha_params[key] * self.names_alpha_dict[key.replace(".", "-")][num_step] * names_grads_wrt_params_dict[key]
+                    updated_names_weights_dict[key] = (1 - generated_beta_params[key] *
+                                                       self.names_beta_dict[key.replace(".", "-")][num_step]) * \
+                                                      names_weights_dict[key] - generated_alpha_params[key] * \
+                                                      self.names_alpha_dict[key.replace(".", "-")][num_step] * \
+                                                      names_grads_wrt_params_dict[key]
             else:
-                updated_names_weights_dict[key] = names_weights_dict[key] - self.init_lr_val * names_grads_wrt_params_dict[key]
+                updated_names_weights_dict[key] = names_weights_dict[key] - self.init_lr_val * \
+                                                  names_grads_wrt_params_dict[key]
 
         return updated_names_weights_dict
 
