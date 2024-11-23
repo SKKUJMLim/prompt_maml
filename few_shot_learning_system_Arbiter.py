@@ -54,7 +54,7 @@ class MAMLFewShotClassifier(nn.Module):
         self.task_learning_rate = args.init_inner_loop_learning_rate
         names_weights_copy = self.get_inner_loop_parameter_dict(self.classifier.named_parameters())
 
-        self.arbiter = Arbiter.VAE(input_dim=3 * 84 * 84, hidden_dim=400, latent_dim=50).to(device)
+        self.arbiter = Arbiter.ConvAutoEncoder().to(device)
 
         if self.args.learnable_per_layer_per_step_inner_loop_learning_rate:
             self.inner_loop_optimizer = LSLRGradientDescentLearningRule(device=device,
@@ -162,7 +162,7 @@ class MAMLFewShotClassifier(nn.Module):
                 print('Grads not found for inner loop parameter', key)
             names_grads_copy[key] = names_grads_copy[key].sum(dim=0)
 
-        names_weights_copy = self.inner_loop_optimizer.update_params(names_weights_dict=names_weights_copy,
+        names_weights_copy, updated_prompt_weights_dict = self.inner_loop_optimizer.update_params(names_weights_dict=names_weights_copy,
                                                                      names_grads_wrt_params_dict=names_grads_copy,
                                                                      num_step=current_step_idx,
                                                                      current_iter=current_iter,
@@ -240,10 +240,11 @@ class MAMLFewShotClassifier(nn.Module):
             y_target_set_task = y_target_set_task.view(-1)
 
 
-            init_prompt, mu, logvar = self.arbiter(x_support_set_task)
-            init_prompt = init_prompt.view(-1, 3, 84, 84)
+            init_prompt = self.arbiter(x_support_set_task)
 
             for num_step in range(num_steps):
+
+                x_support_set_task = init_prompt + x_support_set_task
 
                 support_loss, support_preds = self.net_forward(x=x_support_set_task,
                                                                y=y_support_set_task,
@@ -370,9 +371,9 @@ class MAMLFewShotClassifier(nn.Module):
         """
 
         # 가중치 업데이트 확인용 변수
-        # prev_weights = {}
-        # for name, param in self.step_arbiter.named_parameters():
-        #     prev_weights[name] = param.data.clone()
+        prev_weights = {}
+        for name, param in self.arbiter.named_parameters():
+            prev_weights[name] = param.data.clone()
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -386,10 +387,10 @@ class MAMLFewShotClassifier(nn.Module):
         self.optimizer.step()
 
         # 가중치 업데이트 확인
-        # for name, param in self.step_arbiter.named_parameters():
-        #     if not torch.equal(prev_weights[name], param.data):
-        #         print(f"{name} 가중치가 업데이트되었습니다.")
-        #         prev_weights[name] = param.data.clone()
+        for name, param in self.arbiter.named_parameters():
+            if not torch.equal(prev_weights[name], param.data):
+                print(f"{name} 가중치가 업데이트되었습니다.")
+                prev_weights[name] = param.data.clone()
 
     def run_train_iter(self, data_batch, epoch, current_iter):
         """

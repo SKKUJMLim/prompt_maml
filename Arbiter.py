@@ -3,30 +3,38 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-# VAE 모델 정의
-class VAE(nn.Module):
-    def __init__(self, input_dim=3*84*84, hidden_dim=400, latent_dim=20):
-        super(VAE, self).__init__()
-        self.fc1 = nn.Linear(input_dim, hidden_dim)
-        self.fc21 = nn.Linear(hidden_dim, latent_dim)  # Mean
-        self.fc22 = nn.Linear(hidden_dim, latent_dim)  # Log variance
-        self.fc3 = nn.Linear(latent_dim, hidden_dim)
-        self.fc4 = nn.Linear(hidden_dim, input_dim)
+# Convolutional AutoEncoder 모델 정의
+class ConvAutoEncoder(nn.Module):
+    def __init__(self):
+        super(ConvAutoEncoder, self).__init__()
 
-    def encode(self, x):
-        h1 = torch.relu(self.fc1(x))
-        return self.fc21(h1), self.fc22(h1)
+        # Encoder
+        self.encoder = nn.Sequential(
+            nn.Conv2d(3, 32, kernel_size=3, stride=2, padding=1),  # 84x84 -> 42x42
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),  # 42x42 -> 21x21
+            nn.ReLU(),
+            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),  # 21x21 -> 11x11
+            nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(128 * 11 * 11, 256),  # 잠재 공간 (256차원)
+            nn.ReLU()
+        )
 
-    def reparameterize(self, mu, logvar):
-        std = torch.exp(0.5 * logvar)
-        eps = torch.randn_like(std)
-        return mu + eps * std
-
-    def decode(self, z):
-        h3 = torch.relu(self.fc3(z))
-        return torch.sigmoid(self.fc4(h3))
+        # Decoder
+        self.decoder = nn.Sequential(
+            nn.Linear(256, 128 * 11 * 11),
+            nn.ReLU(),
+            nn.Unflatten(1, (128, 11, 11)),  # 256 -> 11x11 크기 복원
+            nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=0),  # 11x11 -> 21x21
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 32, kernel_size=3, stride=2, padding=1, output_padding=1),  # 21x21 -> 42x42
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 3, kernel_size=3, stride=2, padding=1, output_padding=1),  # 42x42 -> 84x84
+            nn.Sigmoid()  # 출력 범위를 [0, 1]로 제한
+        )
 
     def forward(self, x):
-        mu, logvar = self.encode(x.view(-1, 3*84*84))
-        z = self.reparameterize(mu, logvar)
-        return self.decode(z), mu, logvar
+        latent = self.encoder(x)
+        reconstructed = self.decoder(latent)
+        return reconstructed
