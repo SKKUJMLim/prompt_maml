@@ -67,7 +67,6 @@ class GradientDescentLearningRule(nn.Module):
                     key]
         else:
             ## MAML
-            # print("names_weights_dict.keys() == ", names_weights_dict.keys())
             for key in names_weights_dict.keys():
                 updated_names_weights_dict[key] = names_weights_dict[key] - freeze_layer_step_size * \
                                                   names_grads_wrt_params_dict[key]
