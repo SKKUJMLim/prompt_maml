@@ -54,7 +54,7 @@ class GradientDescentLearningRule(nn.Module):
 
         if self.args.prompter:
             for key in names_weights_dict.keys():
-                if key in 'linear':
+                if 'linear' in key:
                     # classifier의 learning rate를 0.0으로 하여 freeze한다
                     updated_names_weights_dict[key] = names_weights_dict[key] - freeze_layer_step_size * \
                                                       names_grads_wrt_params_dict[key]
@@ -67,14 +67,10 @@ class GradientDescentLearningRule(nn.Module):
                     key]
         else:
             ## MAML
+            # print("names_weights_dict.keys() == ", names_weights_dict.keys())
             for key in names_weights_dict.keys():
-                if key in 'linear':
-                    # classifier의 learning rate를 0.0으로 하여 freeze한다
-                    updated_names_weights_dict[key] = names_weights_dict[key] - self.learning_rate * \
-                                                      names_grads_wrt_params_dict[key]
-                else:
-                    updated_names_weights_dict[key] = names_weights_dict[key] - freeze_layer_step_size * \
-                                                      names_grads_wrt_params_dict[key]
+                updated_names_weights_dict[key] = names_weights_dict[key] - freeze_layer_step_size * \
+                                                  names_grads_wrt_params_dict[key]
 
         return updated_names_weights_dict, updated_prompt_weights_dict
 
