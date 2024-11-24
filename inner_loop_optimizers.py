@@ -70,12 +70,10 @@ class GradientDescentLearningRule(nn.Module):
             # print("names_weights_dict.keys() == ", names_weights_dict.keys())
             for key in names_weights_dict.keys():
                 if 'linear' in key:
-                    # print("key == ", key)
                     # classifier의 learning rate를 0.0으로 하여 freeze한다
                     updated_names_weights_dict[key] = names_weights_dict[key] - self.learning_rate * \
                                                       names_grads_wrt_params_dict[key]
                 else:
-                    print("key == ", key)
                     updated_names_weights_dict[key] = names_weights_dict[key] - freeze_layer_step_size * \
                                                       names_grads_wrt_params_dict[key]
 
