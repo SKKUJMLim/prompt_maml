@@ -63,8 +63,7 @@ class GradientDescentLearningRule(nn.Module):
                                                       names_grads_wrt_params_dict[key]
 
             for key in prompted_weights_dict.keys():
-                updated_prompt_weights_dict[key] = prompted_weights_dict[key] - 50.0 * prompted_grads_wrt_params_dict[
-                    key]
+                updated_prompt_weights_dict[key] = prompted_weights_dict[key] - self.learning_rate * prompted_grads_wrt_params_dict[key]
         else:
             ## MAML
             for key in names_weights_dict.keys():
