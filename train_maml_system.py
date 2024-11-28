@@ -2,7 +2,6 @@ from data import MetaLearningSystemDataLoader
 
 from experiment_builder import ExperimentBuilder
 from few_shot_learning_system import MAMLFewShotClassifier
-# from few_shot_learning_system_Arbiter import MAMLFewShotClassifier
 
 from utils.parser_utils import get_args
 from utils.dataset_tools import maybe_unzip_dataset
@@ -20,6 +19,7 @@ from multiprocessing import freeze_support
 ## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
 ## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_fixed_patch_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
 ## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_random_patch_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_arbiter_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
 
 if __name__ == '__main__':
     freeze_support()

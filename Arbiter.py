@@ -3,6 +3,41 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+class Autoencoder(nn.Module):
+    def __init__(self, latent_dim=10):
+        super(Autoencoder, self).__init__()
+
+        # Encoder: Reduce input to latent space of size latent_dim
+        self.encoder = nn.Sequential(
+            nn.Linear(latent_dim, 128),
+            nn.ReLU(),
+            nn.Linear(128, 256),
+            nn.ReLU(),
+            nn.Linear(256, 512),
+            nn.ReLU(),
+        )
+
+        # Decoder: Map latent space back to image dimensions (3, 84, 84)
+        self.decoder = nn.Sequential(
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Linear(256, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 3 * 84 * 84),  # Output flattened image
+            nn.Sigmoid()  # Normalize output to [0, 1] for image data
+        )
+
+    def forward(self, x):
+        # Encoder
+        x = self.encoder(x)
+
+        # Decoder
+        x = self.decoder(x)
+
+        # Reshape output to (batch_size, 3, 84, 84)
+        x = x.view(-1, 3, 84, 84)
+        return x
+
 # Convolutional AutoEncoder 모델 정의
 class ConvAutoEncoder(nn.Module):
     def __init__(self):

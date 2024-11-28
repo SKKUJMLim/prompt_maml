@@ -10,7 +10,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-
+import Arbiter
 
 def extract_top_level_dict(current_dict):
 
@@ -31,7 +31,6 @@ def extract_top_level_dict(current_dict):
             new_item[sub_level] = current_dict[key]
             output_dict[top_level] = new_item
 
-    #print(current_dict.keys(), output_dict.keys())
     return output_dict
 
 class PadPrompter(nn.Module):
@@ -80,7 +79,6 @@ class PadPrompter(nn.Module):
 
         return x + prompt
 
-
 class FixedPatchPrompter(nn.Module):
     def __init__(self, args):
         super(FixedPatchPrompter, self).__init__()
@@ -106,7 +104,6 @@ class FixedPatchPrompter(nn.Module):
         prompt[:, :, :self.psize, :self.psize] = patch
 
         return x + prompt
-
 
 class RandomPatchPrompter(nn.Module):
     def __init__(self, args):
@@ -136,14 +133,38 @@ class RandomPatchPrompter(nn.Module):
 
         return x + prompt
 
+class PromptArbiter(nn.Module):
+    def __init__(self, args):
+        super(PromptArbiter, self).__init__()
+
+        self.isize = args.image_size
+        self.prompt_dict = nn.ParameterDict()
+        self.build_prompt()
+
+    def build_prompt(self):
+        self.prompt_dict['arbiter'] = nn.Parameter(torch.randn([3, self.isize, self.isize]))
+
+    def forward(self, x, prompted_params=None):
+        if prompted_params is not None:
+            param_dict = extract_top_level_dict(current_dict=prompted_params)
+            patch = param_dict['arbiter']
+        else:
+            patch = self.prompt_dict['arbiter'].unsqueeze(0)
+
+        prompt = torch.zeros([1, 3, self.isize, self.isize]).cuda()
+        prompt[:, :, :self.isize, :self.isize] = patch
+
+        return x + prompt
+
 
 def padding(args):
     return PadPrompter(args)
 
-
 def fixed_patch(args):
     return FixedPatchPrompter(args)
 
-
 def random_patch(args):
     return RandomPatchPrompter(args)
+
+def arbiter(args):
+    return PromptArbiter(args)

@@ -8,6 +8,7 @@ import torch.optim as optim
 
 from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
+import Arbiter
 
 
 def set_torch_seed(seed):
@@ -64,6 +65,9 @@ class MAMLFewShotClassifier(nn.Module):
             self.inner_loop_optimizer = GradientDescentLearningRule(device=device, args=self.args, learning_rate=self.task_learning_rate)
 
 
+        if self.args.prompter and self.args.prompt_engineering == 'arbiter':
+            latent_dim = 10
+            self.arbiter = Arbiter.Autoencoder(latent_dim=latent_dim)
 
         print("Inner Loop parameters")
         for key, value in self.inner_loop_optimizer.named_parameters():
@@ -209,6 +213,31 @@ class MAMLFewShotClassifier(nn.Module):
 
         return losses
 
+    def get_task_embeddings(self, x_support_set_task, y_support_set_task, names_weights_copy):
+        # Use gradients as task embeddings
+        support_loss, support_preds = self.net_forward(x=x_support_set_task,
+                                                       y=y_support_set_task,
+                                                       weights=names_weights_copy,
+                                                       backup_running_statistics=True,
+                                                       training=True, num_step=0,
+                                                       training_phase=True,
+                                                       epoch=0)
+
+        if torch.cuda.device_count() > 1:
+            self.classifier.module.zero_grad(names_weights_copy)
+        else:
+            self.classifier.zero_grad(names_weights_copy)
+        grads = torch.autograd.grad(support_loss, names_weights_copy.values(), create_graph=True)
+
+        layerwise_mean_grads = []
+
+        for i in range(len(grads)):
+            layerwise_mean_grads.append(grads[i].mean())
+
+        layerwise_mean_grads = torch.stack(layerwise_mean_grads)
+
+        return layerwise_mean_grads
+
     def forward(self, data_batch, epoch, use_second_order, use_multi_step_loss_optimization, num_steps, training_phase, current_iter):
         """
         Runs a forward outer loop pass on the batch of tasks using the MAML/++ framework.
@@ -272,6 +301,14 @@ class MAMLFewShotClassifier(nn.Module):
             x_target_set_task = x_target_set_task.view(-1, c, h, w)
             y_target_set_task = y_target_set_task.view(-1)
 
+            if self.args.prompter and self.args.prompt_engineering == 'arbiter':
+                # Obtain gradients from support set for task embedding
+                task_embeddings = self.get_task_embeddings(x_support_set_task=x_support_set_task,
+                                                           y_support_set_task=y_support_set_task,
+                                                           names_weights_copy=names_weights_copy)
+
+                init_prompt = self.arbiter(task_embeddings)
+                prompted_weights_copy['prompt.prompt_dict.arbiter'] = init_prompt
 
             for num_step in range(num_steps):
 
