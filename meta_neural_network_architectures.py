@@ -957,10 +957,12 @@ class VGGReLUNormNetwork(nn.Module):
         if not self.args.max_pooling:
             out = F.avg_pool2d(out, out.shape[2])
 
+        feature_map = out.detach().clone() # detach를 해줘야하나?
+
         out = out.view(out.size(0), -1)
         out = self.layer_dict['linear'](out, param_dict['linear'])
 
-        return out
+        return out, feature_map
 
     def re_init(self):
         # for param in self.parameters():

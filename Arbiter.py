@@ -39,34 +39,38 @@ class Autoencoder(nn.Module):
         return x
 
 # Convolutional AutoEncoder 모델 정의
-class ConvAutoEncoder(nn.Module):
+class ConvAutoencoder(nn.Module):
     def __init__(self):
-        super(ConvAutoEncoder, self).__init__()
+        super(ConvAutoencoder, self).__init__()
 
-        # Encoder
+        # Encoder: [64, 5, 5] -> Latent representation
         self.encoder = nn.Sequential(
-            nn.Conv2d(3, 32, kernel_size=3, stride=2, padding=1),  # 84x84 -> 42x42
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),  # [128, 5, 5]
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),  # 42x42 -> 21x21
+            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),  # [256, 5, 5]
             nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),  # 21x21 -> 11x11
+            nn.Flatten(),  # Flatten for fully connected layers
+            nn.Linear(256 * 5 * 5, 1024),  # [1024]
             nn.ReLU(),
-            nn.Flatten(),
-            nn.Linear(128 * 11 * 11, 256),  # 잠재 공간 (256차원)
-            nn.ReLU()
+            nn.Linear(1024, 512)  # Latent representation: [512]
         )
 
-        # Decoder
+        # Decoder: Latent representation -> [3, 84, 84]
         self.decoder = nn.Sequential(
-            nn.Linear(256, 128 * 11 * 11),
+            nn.Linear(512, 1024),  # [1024]
             nn.ReLU(),
-            nn.Unflatten(1, (128, 11, 11)),  # 256 -> 11x11 크기 복원
-            nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=0),  # 11x11 -> 21x21
+            nn.Linear(1024, 256 * 5 * 5),  # Map back to feature map size
             nn.ReLU(),
-            nn.ConvTranspose2d(64, 32, kernel_size=3, stride=2, padding=1, output_padding=1),  # 21x21 -> 42x42
+            nn.Unflatten(1, (256, 5, 5)),  # [256, 5, 5]
+            nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1),  # [128, 10, 10]
             nn.ReLU(),
-            nn.ConvTranspose2d(32, 3, kernel_size=3, stride=2, padding=1, output_padding=1),  # 42x42 -> 84x84
-            nn.Sigmoid()  # 출력 범위를 [0, 1]로 제한
+            nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1),  # [64, 20, 20]
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 32, kernel_size=3, stride=2, padding=1, output_padding=1),  # [32, 40, 40]
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 3, kernel_size=3, stride=2, padding=1, output_padding=1),  # [3, 84, 84]
+            nn.Upsample(size=(84, 84), mode='bilinear', align_corners=True),  # [3, 84, 84]
+            nn.Tanh()  # Normalize output to [-1, 1]
         )
 
     def forward(self, x):
