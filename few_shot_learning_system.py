@@ -309,9 +309,7 @@ class MAMLFewShotClassifier(nn.Module):
                 task_embeddings = self.get_task_embeddings(x_support_set_task=x_support_set_task,
                                                            y_support_set_task=y_support_set_task,
                                                            names_weights_copy=names_weights_copy)
-                print("task_embeddings == ", task_embeddings.shape)
                 init_prompt = self.arbiter(task_embeddings)
-                print("init_prompt == ", init_prompt.shape)
                 prompted_weights_copy['prompt.prompt_dict.arbiter'] = init_prompt
 
             for num_step in range(num_steps):
