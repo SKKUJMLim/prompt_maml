@@ -916,7 +916,7 @@ class VGGReLUNormNetwork(nn.Module):
         out = self.layer_dict['linear'](out)
         # print("VGGNetwork build", out.shape)
 
-    def forward(self, x, num_step, params=None, prompted_params=None, training=False, backup_running_statistics=False):
+    def forward(self, x, num_step, params=None, prompted_params=None, training=False, backup_running_statistics=False, prepend_prompt=True):
         """
         Forward propages through the network. If any params are passed then they are used instead of stored params.
         :param x: Input image batch.
@@ -943,7 +943,7 @@ class VGGReLUNormNetwork(nn.Module):
 
         out = x
 
-        if self.args.prompter:
+        if self.args.prompter and prepend_prompt:
             out = self.prompt(x=out, prompted_params=prompted_params)
 
         for i in range(self.num_stages):

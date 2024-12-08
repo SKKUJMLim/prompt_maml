@@ -221,7 +221,8 @@ class MAMLFewShotClassifier(nn.Module):
                                                        backup_running_statistics=True,
                                                        training=True, num_step=0,
                                                        training_phase=True,
-                                                       epoch=0)
+                                                       epoch=0,
+                                                       prepend_prompt=False)
 
         if torch.cuda.device_count() > 1:
             self.classifier.module.zero_grad(names_weights_copy)
@@ -374,7 +375,7 @@ class MAMLFewShotClassifier(nn.Module):
 
         return losses, per_task_target_preds
 
-    def net_forward(self, x, y, weights, backup_running_statistics, training, num_step, training_phase, epoch, prompted_weights=None):
+    def net_forward(self, x, y, weights, backup_running_statistics, training, num_step, training_phase, epoch, prompted_weights=None, prepend_prompt=True):
         """
         A base model forward pass on some data points x. Using the parameters in the weights dictionary. Also requires
         boolean flags indicating whether to reset the running statistics at the end of the run (if at evaluation phase).
@@ -391,7 +392,7 @@ class MAMLFewShotClassifier(nn.Module):
         """
         preds = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
                                         training=training,
-                                        backup_running_statistics=backup_running_statistics, num_step=num_step)
+                                        backup_running_statistics=backup_running_statistics, num_step=num_step, prepend_prompt=prepend_prompt)
 
         loss = F.cross_entropy(input=preds, target=y)
 
