@@ -944,6 +944,7 @@ class VGGReLUNormNetwork(nn.Module):
         out = x
 
         if self.args.prompter and prepend_prompt:
+            # get_task_embeddings을 통해 호출될때는 prompt를 추가하지 않는다
             out = self.prompt(x=out, prompted_params=prompted_params)
 
         for i in range(self.num_stages):
