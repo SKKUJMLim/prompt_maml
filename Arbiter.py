@@ -24,7 +24,7 @@ class Autoencoder(nn.Module):
             nn.Linear(256, 1024),
             nn.ReLU(),
             nn.Linear(1024, 3 * 84 * 84),  # Output flattened image
-            nn.Sigmoid()  # Normalize output to [0, 1] for image data
+            nn.Tanh()  # Normalize output to [0, 1] for image data
         )
 
     def forward(self, x):

@@ -224,22 +224,22 @@ class MAMLFewShotClassifier(nn.Module):
                                                        epoch=0,
                                                        prepend_prompt=False)
 
-        pooled_feature_map = feature_map.mean(dim=0).unsqueeze(0)
+        # task_embeddings = feature_map.mean(dim=0).unsqueeze(0)
 
-        # if torch.cuda.device_count() > 1:
-        #     self.classifier.module.zero_grad(names_weights_copy)
-        # else:
-        #     self.classifier.zero_grad(names_weights_copy)
-        # grads = torch.autograd.grad(support_loss, names_weights_copy.values(), create_graph=True)
-        #
-        # layerwise_mean_grads = []
-        #
-        # for i in range(len(grads)):
-        #     layerwise_mean_grads.append(grads[i].mean())
-        #
-        # layerwise_mean_grads = torch.stack(layerwise_mean_grads)
+        if torch.cuda.device_count() > 1:
+            self.classifier.module.zero_grad(names_weights_copy)
+        else:
+            self.classifier.zero_grad(names_weights_copy)
+        grads = torch.autograd.grad(support_loss, names_weights_copy.values(), create_graph=True)
 
-        return pooled_feature_map
+        layerwise_mean_grads = []
+
+        for i in range(len(grads)):
+            layerwise_mean_grads.append(grads[i].mean())
+
+        task_embeddings = torch.stack(layerwise_mean_grads)
+
+        return task_embeddings
 
     def forward(self, data_batch, epoch, use_second_order, use_multi_step_loss_optimization, num_steps, training_phase, current_iter):
         """
