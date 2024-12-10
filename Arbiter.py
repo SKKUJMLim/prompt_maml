@@ -70,7 +70,7 @@ class ConvAutoencoder(nn.Module):
             nn.ReLU(),
             nn.ConvTranspose2d(32, 3, kernel_size=3, stride=2, padding=1, output_padding=1),  # [3, 84, 84]
             nn.Upsample(size=(84, 84), mode='bilinear', align_corners=True),  # [3, 84, 84]
-            # nn.Tanh()  # Normalize output to [-1, 1]
+            nn.Tanh()  # Normalize output to [-1, 1]
         )
 
     def forward(self, x):
