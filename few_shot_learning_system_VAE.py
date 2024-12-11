@@ -8,7 +8,7 @@ import torch.optim as optim
 
 from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
-import Arbiter
+import arbiter
 
 
 def set_torch_seed(seed):

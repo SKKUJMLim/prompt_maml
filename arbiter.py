@@ -43,34 +43,28 @@ class ConvAutoencoder(nn.Module):
     def __init__(self):
         super(ConvAutoencoder, self).__init__()
 
-        # Encoder: [64, 5, 5] -> Latent representation
+        # Encoder: Reduce the input size from [64, 5, 5] to a latent representation
         self.encoder = nn.Sequential(
             nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),  # [128, 5, 5]
             nn.ReLU(),
             nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),  # [256, 5, 5]
             nn.ReLU(),
-            nn.Flatten(),  # Flatten for fully connected layers
-            nn.Linear(256 * 5 * 5, 1024),  # [1024]
-            nn.ReLU(),
-            nn.Linear(1024, 512)  # Latent representation: [512]
+            nn.Flatten(),  # Flatten to [256 * 5 * 5]
+            nn.Linear(256 * 5 * 5, 1024),  # Latent representation
+            nn.ReLU()
         )
 
-        # Decoder: Latent representation -> [3, 84, 84]
+        # Decoder: Expand the latent representation to [3, 84, 84]
         self.decoder = nn.Sequential(
-            nn.Linear(512, 1024),  # [1024]
+            nn.Linear(1024, 256 * 21 * 21),
             nn.ReLU(),
-            nn.Linear(1024, 256 * 5 * 5),  # Map back to feature map size
+            nn.Unflatten(1, (256, 21, 21)),  # Reshape to [256, 21, 21]
+            nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1),  # [128, 42, 42]
             nn.ReLU(),
-            nn.Unflatten(1, (256, 5, 5)),  # [256, 5, 5]
-            nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1),  # [128, 10, 10]
+            nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1),  # [64, 84, 84]
             nn.ReLU(),
-            nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1),  # [64, 20, 20]
-            nn.ReLU(),
-            nn.ConvTranspose2d(64, 32, kernel_size=3, stride=2, padding=1, output_padding=1),  # [32, 40, 40]
-            nn.ReLU(),
-            nn.ConvTranspose2d(32, 3, kernel_size=3, stride=2, padding=1, output_padding=1),  # [3, 84, 84]
-            nn.Upsample(size=(84, 84), mode='bilinear', align_corners=True),  # [3, 84, 84]
-            nn.Tanh()  # Normalize output to [-1, 1]
+            nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1),  # [3, 84, 84]
+            # nn.Tanh()  # Output values in range [0, 1]
         )
 
     def forward(self, x):

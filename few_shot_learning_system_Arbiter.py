@@ -9,7 +9,7 @@ import torch.optim as optim
 from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 
-import Arbiter
+import arbiter
 
 def set_torch_seed(seed):
     """
@@ -54,7 +54,7 @@ class MAMLFewShotClassifier(nn.Module):
         self.task_learning_rate = args.init_inner_loop_learning_rate
         names_weights_copy = self.get_inner_loop_parameter_dict(self.classifier.named_parameters())
 
-        self.arbiter = Arbiter.ConvAutoEncoder().to(device)
+        self.arbiter = arbiter.ConvAutoEncoder().to(device)
 
         if self.args.learnable_per_layer_per_step_inner_loop_learning_rate:
             self.inner_loop_optimizer = LSLRGradientDescentLearningRule(device=device,

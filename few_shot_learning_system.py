@@ -8,7 +8,7 @@ import torch.optim as optim
 
 from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
-import Arbiter
+import arbiter
 
 
 def set_torch_seed(seed):
@@ -67,7 +67,7 @@ class MAMLFewShotClassifier(nn.Module):
 
         if self.args.prompter and self.args.prompt_engineering == 'arbiter':
             latent_dim = 10
-            self.arbiter = Arbiter.ConvAutoencoder()
+            self.arbiter = arbiter.ConvAutoencoder()
 
         print("Inner Loop parameters")
         for key, value in self.inner_loop_optimizer.named_parameters():
@@ -224,20 +224,20 @@ class MAMLFewShotClassifier(nn.Module):
                                                        epoch=0,
                                                        prepend_prompt=False)
 
-        # task_embeddings = feature_map.mean(dim=0).unsqueeze(0)
+        task_embeddings = feature_map.mean(dim=0).unsqueeze(0)
 
-        if torch.cuda.device_count() > 1:
-            self.classifier.module.zero_grad(names_weights_copy)
-        else:
-            self.classifier.zero_grad(names_weights_copy)
-        grads = torch.autograd.grad(support_loss, names_weights_copy.values(), create_graph=True)
-
-        layerwise_mean_grads = []
-
-        for i in range(len(grads)):
-            layerwise_mean_grads.append(grads[i].mean())
-
-        task_embeddings = torch.stack(layerwise_mean_grads)
+        # if torch.cuda.device_count() > 1:
+        #     self.classifier.module.zero_grad(names_weights_copy)
+        # else:
+        #     self.classifier.zero_grad(names_weights_copy)
+        # grads = torch.autograd.grad(support_loss, names_weights_copy.values(), create_graph=True)
+        #
+        # layerwise_mean_grads = []
+        #
+        # for i in range(len(grads)):
+        #     layerwise_mean_grads.append(grads[i].mean())
+        #
+        # task_embeddings = torch.stack(layerwise_mean_grads)
 
         return task_embeddings
 

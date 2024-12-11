@@ -10,7 +10,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import Arbiter
+import arbiter
 
 def extract_top_level_dict(current_dict):
 
