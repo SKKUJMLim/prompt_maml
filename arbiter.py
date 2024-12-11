@@ -24,7 +24,8 @@ class Autoencoder(nn.Module):
             nn.Linear(256, 1024),
             nn.ReLU(),
             nn.Linear(1024, 3 * 84 * 84),  # Output flattened image
-            nn.Tanh()  # Normalize output to [0, 1] for image data
+            # nn.Tanh()  # Normalize output to [0, 1] for image data
+            # nn.Sigmoid()  # Output values in range [0, 1]
         )
 
     def forward(self, x):
@@ -98,7 +99,7 @@ class VariationalConvAutoencoder(nn.Module):
             nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1),  # [64, 84, 84]
             nn.ReLU(),
             nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1),  # [3, 84, 84]
-            nn.Sigmoid()  # Output values in range [0, 1]
+            # nn.Sigmoid()  # Output values in range [0, 1]
         )
 
     def reparameterize(self, mu, logvar):
@@ -144,7 +145,7 @@ class VariationalAutoencoder(nn.Module):
             nn.Linear(256, 1024),
             nn.ReLU(),
             nn.Linear(1024, 3 * 84 * 84),  # Flattened image output
-            nn.Sigmoid()  # Normalize to [0, 1] for image data
+            # nn.Sigmoid()  # Normalize to [0, 1] for image data
         )
 
     def reparameterize(self, mu, log_var):
