@@ -4,28 +4,26 @@ import torch.nn.functional as F
 
 
 class Autoencoder(nn.Module):
-    def __init__(self, latent_dim=10):
+    def __init__(self, input_dim, output_dim, latent_dim=10):
         super(Autoencoder, self).__init__()
 
         # Encoder: Reduce input to latent space of size latent_dim
         self.encoder = nn.Sequential(
-            nn.Linear(latent_dim, 128),
+            nn.Linear(input_dim, 512),
             nn.ReLU(),
-            nn.Linear(128, 256),
+            nn.Linear(512, 256),
             nn.ReLU(),
-            nn.Linear(256, 512),
-            nn.ReLU(),
+            nn.Linear(256, latent_dim),
         )
 
         # Decoder: Map latent space back to image dimensions (3, 84, 84)
         self.decoder = nn.Sequential(
-            nn.Linear(512, 256),
+            nn.Linear(latent_dim, 256),
             nn.ReLU(),
-            nn.Linear(256, 1024),
+            nn.Linear(256, 512),
             nn.ReLU(),
-            nn.Linear(1024, 3 * 84 * 84),  # Output flattened image
-            # nn.Tanh()  # Normalize output to [0, 1] for image data
-            # nn.Sigmoid()  # Output values in range [0, 1]
+            nn.Linear(512, output_dim)
+            # nn.Sigmoid()  # Normalize to [0, 1] for image data
         )
 
     def forward(self, x):
