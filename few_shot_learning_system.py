@@ -522,9 +522,9 @@ class MAMLFewShotClassifier(nn.Module):
 
         losses, per_task_target_preds = self.evaluation_forward_prop(data_batch=data_batch, epoch=self.current_epoch, current_iter=current_iter)
 
-        losses['loss'].backward() # uncomment if you get the weird memory error
-        self.zero_grad()
-        self.optimizer.zero_grad()
+        # losses['loss'].backward() # uncomment if you get the weird memory error
+        # self.zero_grad()
+        # self.optimizer.zero_grad()
 
         return losses, per_task_target_preds
 
