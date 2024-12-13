@@ -222,6 +222,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                     prepend_prompt=False)
 
         task_embeddings = feature_map.mean(dim=0).view(-1)
+        # torch.Size([25, 64, 5, 5]) -> torch.Size([64, 5, 5]) -> torch.Size([1600])
 
         # if torch.cuda.device_count() > 1:
         #     self.classifier.module.zero_grad(names_weights_copy)
