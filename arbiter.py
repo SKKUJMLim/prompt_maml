@@ -22,8 +22,8 @@ class Autoencoder(nn.Module):
             nn.ReLU(),
             nn.Linear(256, 512),
             nn.ReLU(),
-            nn.Linear(512, output_dim)
-            # nn.Sigmoid()  # Normalize to [0, 1] for image data
+            nn.Linear(512, output_dim),
+            nn.Sigmoid()  # Normalize to [0, 1] for image data
         )
 
     def forward(self, x):
@@ -63,7 +63,7 @@ class VariationalAutoencoder(nn.Module):
             nn.ReLU(),
             nn.Linear(256, 512),
             nn.Linear(512, output_dim),  # Flattened image output
-            # nn.Sigmoid()  # Normalize to [0, 1] for image data
+            nn.Sigmoid()  # Normalize to [0, 1] for image data
         )
 
     def reparameterize(self, mu, log_var):
@@ -169,3 +169,69 @@ class VariationalConvAutoencoder(nn.Module):
         # Decode
         decoded = self.decoder(z)
         return decoded, mu, logvar
+
+
+class ConditionalUNetVAE(nn.Module):
+
+    '''
+    Image를 Input으로 하고, Gradient vector를 조건정보로 활용하기 위한 함수
+    '''
+
+    def __init__(self, input_channels=3, conditional_dim=10, output_channels=3, latent_dim=128):
+        super(ConditionalUNetVAE, self).__init__()
+
+        self.conditional_dim = conditional_dim
+
+        # Encoder
+        self.enc_conv1 = nn.Conv2d(input_channels + conditional_dim, 64, kernel_size=3, stride=1, padding=1)
+        self.enc_conv2 = nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1)
+        self.enc_conv3 = nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1)
+
+        self.fc_mu = nn.Linear(256 * 21 * 21, latent_dim)
+        self.fc_logvar = nn.Linear(256 * 21 * 21, latent_dim)
+
+        # Decoder
+        self.fc_latent = nn.Linear(latent_dim + conditional_dim, 256 * 21 * 21)
+        self.dec_conv1 = nn.Conv2d(256, 128, kernel_size=3, stride=1, padding=1)
+        self.dec_conv2 = nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=1)
+        self.dec_conv3 = nn.Conv2d(64, output_channels, kernel_size=3, stride=1, padding=1)
+
+    def encode(self, x, c):
+        # Combine input image and conditional input
+        c = c.view(c.size(0), self.conditional_dim, 1, 1).expand(-1, -1, x.size(2), x.size(3))
+        x = torch.cat([x, c], dim=1)
+
+        x1 = F.relu(self.enc_conv1(x))
+        x2 = F.relu(self.enc_conv2(x1))
+        x3 = F.relu(self.enc_conv3(x2))
+
+        x3_flat = x3.view(x3.size(0), -1)
+        mu = self.fc_mu(x3_flat)
+        logvar = self.fc_logvar(x3_flat)
+        return mu, logvar, x3
+
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        return mu + eps * std
+
+    def decode(self, z, c):
+        # Combine latent variable and conditional input
+        z = torch.cat([z, c], dim=1)
+        x = self.fc_latent(z)
+        x = x.view(x.size(0), 256, 21, 21)
+
+        x = F.relu(self.dec_conv1(x))
+        x = F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=True)
+        x = F.relu(self.dec_conv2(x))
+        x = F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=True)
+        x = self.dec_conv3(x)
+        x = torch.sigmoid(x)
+
+        return x
+
+    def forward(self, x, c):
+        mu, logvar, _ = self.encode(x, c)
+        z = self.reparameterize(mu, logvar)
+        recon_x = self.decode(z, c)
+        return recon_x, mu, logvar

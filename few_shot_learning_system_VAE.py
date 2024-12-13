@@ -228,15 +228,12 @@ class MAMLFewShotClassifier(nn.Module):
         # else:
         #     self.classifier.zero_grad(names_weights_copy)
         # grads = torch.autograd.grad(support_loss, names_weights_copy.values(), create_graph=True)
-        #
-        # per_step_task_embedding = []
-        # for k, v in names_weights_copy.items():
-        #     per_step_task_embedding.append(v.mean())
+        # layerwise_mean_grads = []
         #
         # for i in range(len(grads)):
-        #     per_step_task_embedding.append(grads[i].mean())
+        #     layerwise_mean_grads.append(grads[i].mean())
         #
-        # task_embeddings = torch.stack(per_step_task_embedding)
+        # task_embeddings = torch.stack(layerwise_mean_grads)
 
         return task_embeddings
 

@@ -65,8 +65,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                     learning_rate=self.task_learning_rate)
 
         if self.args.prompter and self.args.prompt_engineering == 'arbiter':
-            latent_dim = 10
-            self.arbiter = arbiter.ConvAutoencoder()
+            self.arbiter = arbiter.Autoencoder(input_dim=3 * 84 * 84, output_dim=3 * 84 * 84, latent_dim=10)
 
         print("Inner Loop parameters")
         for key, value in self.inner_loop_optimizer.named_parameters():
@@ -222,7 +221,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                     epoch=0,
                                                                     prepend_prompt=False)
 
-        task_embeddings = feature_map.mean(dim=0).unsqueeze(0)
+        task_embeddings = feature_map.mean(dim=0).unsqueeze(0).view(-1)
 
         # if torch.cuda.device_count() > 1:
         #     self.classifier.module.zero_grad(names_weights_copy)
@@ -230,12 +229,14 @@ class MAMLFewShotClassifier(nn.Module):
         #     self.classifier.zero_grad(names_weights_copy)
         # grads = torch.autograd.grad(support_loss, names_weights_copy.values(), create_graph=True)
         #
-        # layerwise_mean_grads = []
+        # per_step_task_embedding = []
+        # for k, v in names_weights_copy.items():
+        #     per_step_task_embedding.append(v.mean())
         #
         # for i in range(len(grads)):
-        #     layerwise_mean_grads.append(grads[i].mean())
+        #     per_step_task_embedding.append(grads[i].mean())
         #
-        # task_embeddings = torch.stack(layerwise_mean_grads)
+        # task_embeddings = torch.stack(per_step_task_embedding)
 
         return task_embeddings
 
