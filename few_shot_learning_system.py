@@ -83,7 +83,19 @@ class MAMLFewShotClassifier(nn.Module):
             if param.requires_grad:
                 print(name, param.shape, param.device, param.requires_grad)
 
-        self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False)
+        if self.args.prompter:
+            if self.args.prompt_random_init:
+                self.optimizer = optim.Adam([
+                    {'params': self.trainable_parameters(), 'lr': args.meta_learning_rate},
+                ], amsgrad=False)
+            else:
+                self.optimizer = optim.Adam([
+                    {'params': self.trainable_parameters(), 'lr': args.meta_learning_rate},
+                    {'params': self.trainable_prompt_parameters(), 'lr': args.outer_prompt_learning_rate},
+                ], amsgrad=False)
+        else:
+            self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False)
+
         self.scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer=self.optimizer, T_max=self.args.total_epochs,
                                                               eta_min=self.args.min_learning_rate)
 
@@ -403,13 +415,24 @@ class MAMLFewShotClassifier(nn.Module):
 
         return loss, preds, feature_map
 
+
+    def trainable_prompt_parameters(self):
+        """
+        Returns an iterator over the trainable parameters of the model.
+        """
+        for name, param in self.named_parameters():
+            if param.requires_grad:
+                if 'prompt' in name:
+                    yield param
+
     def trainable_parameters(self):
         """
         Returns an iterator over the trainable parameters of the model.
         """
-        for param in self.parameters():
+        for name, param in self.named_parameters():
             if param.requires_grad:
-                yield param
+                if 'layer_dict' in name:
+                    yield param
 
     def train_forward_prop(self, data_batch, epoch, current_iter):
         """
@@ -449,9 +472,9 @@ class MAMLFewShotClassifier(nn.Module):
         """
 
         # 가중치 업데이트 확인용 변수
-        # prev_weights = {}
-        # for name, param in self.classifier.named_parameters():
-        #     prev_weights[name] = param.data.clone()
+        prev_weights = {}
+        for name, param in self.classifier.named_parameters():
+            prev_weights[name] = param.data.clone()
 
 
         self.optimizer.zero_grad()
@@ -466,10 +489,10 @@ class MAMLFewShotClassifier(nn.Module):
         self.optimizer.step()
 
         # 가중치 업데이트 확인
-        # for name, param in self.classifier.named_parameters():
-        #     if not torch.equal(prev_weights[name], param.data):
-        #         print(f"{name} 가중치가 업데이트되었습니다.")
-        #         prev_weights[name] = param.data.clone()
+        for name, param in self.classifier.named_parameters():
+            if not torch.equal(prev_weights[name], param.data):
+                print(f"{name} 가중치가 업데이트되었습니다.")
+                prev_weights[name] = param.data.clone()
 
     def run_train_iter(self, data_batch, epoch, current_iter):
         """

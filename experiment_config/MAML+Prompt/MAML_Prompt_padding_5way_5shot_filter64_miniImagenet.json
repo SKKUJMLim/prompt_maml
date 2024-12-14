@@ -41,7 +41,7 @@
   "weight_decay": 0.0,
 
   "norm_layer":"batch_norm",
-  "cnn_num_filters":64,
+  "cnn_num_filters":48,
   "num_stages":4,
   "conv_padding": true,
   "number_of_training_steps_per_iter":5,
@@ -56,5 +56,8 @@
   "prompter": true,
   "prompt_engineering": "padding",
   "prompt_size" : 10,
-  "image_size" : 84
+  "image_size" : 84,
+  "prompt_random_init": true,
+  "outer_prompt_learning_rate": 10,
+  "inner_prompt_learning_rate": 1
 }
