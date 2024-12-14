@@ -1,9 +1,9 @@
 from data import MetaLearningSystemDataLoader
 
 from experiment_builder import ExperimentBuilder
-# from few_shot_learning_system import MAMLFewShotClassifier
+from few_shot_learning_system import MAMLFewShotClassifier
 # from few_shot_learning_system_Arbiter import MAMLFewShotClassifier
-from few_shot_learning_system_VAE import MAMLFewShotClassifier
+# from few_shot_learning_system_VAE import MAMLFewShotClassifier
 
 from utils.parser_utils import get_args
 from utils.dataset_tools import maybe_unzip_dataset
