@@ -154,13 +154,6 @@ class MAMLFewShotClassifier(nn.Module):
             self.classifier.zero_grad(params=names_weights_copy)
             self.classifier.zero_grad(params=prompted_weights_copy)
 
-        ## 각 layer의 weight에 대한 gradient 구하기
-        grads = torch.autograd.grad(loss, names_weights_copy.values(),
-                                    create_graph=use_second_order, allow_unused=True,
-                                    retain_graph=True)  ###### retrain_graph 추가
-        names_grads_copy = dict(zip(names_weights_copy.keys(), grads))
-        names_weights_copy = {key: value[0] for key, value in names_weights_copy.items()}
-
         prompted_grads_copy = {}
         if self.args.prompter:
             grads = torch.autograd.grad(loss, names_weights_copy.values(),
