@@ -65,7 +65,10 @@ class MAMLFewShotClassifier(nn.Module):
                                                                     learning_rate=self.task_learning_rate)
 
         if self.args.prompter and self.args.prompt_engineering == 'arbiter':
-            self.arbiter = arbiter.Autoencoder(input_dim=3 * 84 * 84, output_dim=3 * 84 * 84, latent_dim=10)
+            nz = 10
+            img_size = 84
+            channel = 3
+            self.arbiter = arbiter.PromptGenerator(nz=nz, ngf=64, img_size=img_size, nc=channel)
 
         print("Inner Loop parameters")
         for key, value in self.inner_loop_optimizer.named_parameters():
@@ -224,22 +227,22 @@ class MAMLFewShotClassifier(nn.Module):
                                                                     epoch=0,
                                                                     prepend_prompt=False)
 
-        task_embeddings = feature_map.mean(dim=0).unsqueeze(0).view(-1)
+        # task_embeddings = feature_map.mean(dim=0).unsqueeze(0).view(-1)
 
-        # if torch.cuda.device_count() > 1:
-        #     self.classifier.module.zero_grad(names_weights_copy)
-        # else:
-        #     self.classifier.zero_grad(names_weights_copy)
-        # grads = torch.autograd.grad(support_loss, names_weights_copy.values(), create_graph=True)
-        #
-        # per_step_task_embedding = []
+        if torch.cuda.device_count() > 1:
+            self.classifier.module.zero_grad(names_weights_copy)
+        else:
+            self.classifier.zero_grad(names_weights_copy)
+        grads = torch.autograd.grad(support_loss, names_weights_copy.values(), create_graph=True)
+
+        per_step_task_embedding = []
         # for k, v in names_weights_copy.items():
         #     per_step_task_embedding.append(v.mean())
-        #
-        # for i in range(len(grads)):
-        #     per_step_task_embedding.append(grads[i].mean())
-        #
-        # task_embeddings = torch.stack(per_step_task_embedding)
+
+        for i in range(len(grads)):
+            per_step_task_embedding.append(grads[i].mean())
+
+        task_embeddings = torch.stack(per_step_task_embedding).unsqueeze(0)
 
         return task_embeddings
 
@@ -312,6 +315,9 @@ class MAMLFewShotClassifier(nn.Module):
                 task_embeddings = self.get_task_embeddings(x_support_set_task=x_support_set_task,
                                                            y_support_set_task=y_support_set_task,
                                                            names_weights_copy=names_weights_copy)
+
+                print("task_embeddings.. == ", task_embeddings.shape)
+
                 init_prompt = self.arbiter(task_embeddings)
                 prompted_weights_copy['prompt.prompt_dict.arbiter'] = init_prompt
 
