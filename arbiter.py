@@ -3,6 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class PromptGenerator(nn.Module):
+
+    # https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/ebgan/ebgan.py 참조
+
     def __init__(self, nz=100, ngf=64, img_size=84, nc=3):
         super(PromptGenerator, self).__init__()
 
