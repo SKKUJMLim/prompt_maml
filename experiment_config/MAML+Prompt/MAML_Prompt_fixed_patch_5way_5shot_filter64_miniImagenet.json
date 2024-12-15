@@ -55,7 +55,7 @@
   "use_multi_step_loss_optimization":false,
   "prompter": true,
   "prompt_engineering": "fixed_patch",
-  "prompt_size" : 10,
+  "prompt_size" : 84,
   "image_size" : 84,
   "prompt_random_init": false,
   "outer_prompt_learning_rate": 0.001,
