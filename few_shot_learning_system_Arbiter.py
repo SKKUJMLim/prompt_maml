@@ -8,6 +8,9 @@ import torch.optim as optim
 
 from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
+
+from utils.storage import save_statistics
+
 import arbiter
 
 
@@ -41,6 +44,7 @@ class MAMLFewShotClassifier(nn.Module):
         self.current_epoch = 0
 
         self.rng = set_torch_seed(seed=args.seed)
+        self.csv_exist = True
 
         if self.args.backbone == 'ResNet12':
             self.classifier = ResNet12(im_shape=self.im_shape, num_output_classes=self.args.
@@ -369,6 +373,29 @@ class MAMLFewShotClassifier(nn.Module):
             task_losses = torch.sum(torch.stack(task_losses))
             total_losses.append(task_losses)
             total_accuracies.extend(accuracy)
+
+            if current_iter == 'test':
+                information={}
+                information['phase'] = current_iter
+                information['task_idx'] = task_id
+                information['accuracy'] = accuracy.mean().item()
+                # .mean()은 True 값의 비율을 반환. 이는 정확도를 의미
+
+                if os.path.exists(self.args.experiment_name + '/' + self.args.experiment_name + "_per_task_acc.csv"):
+                    self.csv_exist = False
+
+                if self.csv_exist:
+                    save_statistics(experiment_name=self.args.experiment_name,
+                                    line_to_add=list(information.keys()),
+                                    filename=self.args.experiment_name + "_per_task_acc.csv", create=True)
+                    self.csv_exist = False
+                    save_statistics(experiment_name=self.args.experiment_name,
+                                    line_to_add=list(information.values()),
+                                    filename=self.args.experiment_name + "_per_task_acc.csv", create=False)
+                else:
+                    save_statistics(experiment_name=self.args.experiment_name,
+                                    line_to_add=list(information.values()),
+                                    filename=self.args.experiment_name + "_per_task_acc.csv", create=False)
 
             if not training_phase:
                 if torch.cuda.device_count() > 1:
