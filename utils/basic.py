@@ -2,7 +2,35 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import torch.nn.functional as F
+def compute_kl_loss(feature_map_1, feature_map_2, reduction='batchmean'):
+    """
+    Compute KL divergence loss between two feature maps.
 
+    Parameters:
+        feature_map_1 (torch.Tensor): Feature map from model 1 (B, C, H, W).
+        feature_map_2 (torch.Tensor): Feature map from model 2 (B, C, H, W).
+        reduction (str): Specifies the reduction type: 'none', 'batchmean', 'sum', 'mean'.
+
+    Returns:
+        torch.Tensor: KL divergence loss value.
+    """
+    # Flatten spatial dimensions to treat each pixel as an independent distribution
+    B, C, H, W = feature_map_1.size()
+    feature_map_1 = feature_map_1.view(B, C, -1)  # Shape: (B, C, H*W)
+    feature_map_2 = feature_map_2.view(B, C, -1)  # Shape: (B, C, H*W)
+
+    # Convert feature maps to probability distributions
+    p = F.softmax(feature_map_1, dim=1)  # Along the channel dimension
+    q = F.softmax(feature_map_2, dim=1)  # Along the channel dimension
+
+    # Compute log probabilities
+    log_q = torch.log(q + 1e-10)  # Add epsilon to avoid log(0)
+
+    # Compute KL divergence
+    kl_loss = F.kl_div(log_q, p, reduction=reduction)
+
+    return kl_loss
 
 def image_denormalization(image, datasets="mini_imagenet"):
     '''이미지를 역정규화하는 함수'''

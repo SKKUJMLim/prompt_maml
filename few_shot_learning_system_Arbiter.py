@@ -12,6 +12,7 @@ from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDesce
 from utils.storage import save_statistics
 
 import arbiter
+from utils.basic import compute_kl_loss
 
 
 def set_torch_seed(seed):
@@ -248,7 +249,7 @@ class MAMLFewShotClassifier(nn.Module):
 
         task_embeddings = torch.stack(per_step_task_embedding).unsqueeze(0)
 
-        return task_embeddings
+        return task_embeddings, feature_map
 
     def forward(self, data_batch, epoch, use_second_order, use_multi_step_loss_optimization, num_steps, training_phase,
                 current_iter):
@@ -316,7 +317,7 @@ class MAMLFewShotClassifier(nn.Module):
 
             if self.args.prompter and self.args.prompt_engineering == 'arbiter':
                 # Obtain gradients from support set for task embedding
-                task_embeddings = self.get_task_embeddings(x_support_set_task=x_support_set_task,
+                task_embeddings, feature_map = self.get_task_embeddings(x_support_set_task=x_support_set_task,
                                                            y_support_set_task=y_support_set_task,
                                                            names_weights_copy=names_weights_copy)
 
@@ -325,7 +326,7 @@ class MAMLFewShotClassifier(nn.Module):
 
             for num_step in range(num_steps):
 
-                support_loss, support_preds, _ = self.net_forward(x=x_support_set_task,
+                support_loss, support_preds, prompt_feature_map = self.net_forward(x=x_support_set_task,
                                                                   y=y_support_set_task,
                                                                   weights=names_weights_copy,
                                                                   prompted_weights=prompted_weights_copy,
@@ -364,7 +365,10 @@ class MAMLFewShotClassifier(nn.Module):
                                                                         num_step=num_step,
                                                                         training_phase=training_phase,
                                                                         epoch=epoch)
-                        task_losses.append(target_loss)
+
+                        kl_loss = compute_kl_loss(prompt_feature_map, feature_map, reduction='batchmean')
+                        # print(kl_loss)
+                        task_losses.append(target_loss - 0.1 * kl_loss)
 
             per_task_target_preds[task_id] = target_preds.detach().cpu().numpy()
             _, predicted = torch.max(target_preds.data, 1)
