@@ -12,7 +12,7 @@ from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDesce
 from utils.storage import save_statistics
 
 import arbiter
-from utils.basic import compute_kl_loss, compute_all_kl_losses
+from utils.basic import compute_all_kl_losses
 
 
 def set_torch_seed(seed):
