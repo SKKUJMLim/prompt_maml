@@ -45,8 +45,11 @@ def compute_all_kl_losses(feature_maps, reduction='batchmean'):
     Returns:
         dict: Dictionary with pairs of feature maps as keys and their KL loss as values.
     """
+
     kl_losses = {}
-    for i, j in itertools.permutations(range(len(feature_maps)), 2):  # All pair permutations
+
+    # for i, j in itertools.permutations(range(len(feature_maps)), 2):  # All pair permutations
+    for i, j in itertools.combinations(range(len(feature_maps)), 2):  # Unique combinations
         kl_loss = compute_kl_loss(feature_maps[i], feature_maps[j], reduction=reduction)
         kl_losses[(i, j)] = kl_loss.item()  # Store loss with index pair
 
@@ -71,6 +74,46 @@ def js_divergence(feature_map_1, feature_map_2, reduction='batchmean'):
     # Compute JS divergence
     js_div = 0.5 * (kl_pm + kl_qm)
     return js_div
+
+
+def compute_mse_loss(feature_map_1, feature_map_2, reduction='mean'):
+    """
+    Compute Mean Squared Error (MSE) loss between two feature maps.
+
+    Parameters:
+        feature_map_1 (torch.Tensor): Feature map from model 1 (B, C, H, W).
+        feature_map_2 (torch.Tensor): Feature map from model 2 (B, C, H, W).
+        reduction (str): Specifies the reduction type: 'none', 'mean', 'sum'.
+
+    Returns:
+        torch.Tensor: MSE loss value.
+    """
+    # Ensure the shapes are the same
+    assert feature_map_1.size() == feature_map_2.size(), "Feature maps must have the same shape"
+
+    # Compute MSE loss
+    mse_loss = F.mse_loss(feature_map_1, feature_map_2, reduction=reduction)
+    return mse_loss
+
+# Compute MSE for unique combinations of feature maps
+def compute_unique_mse_losses(feature_maps, reduction='mean'):
+    """
+    Compute MSE for unique combinations of feature maps.
+
+    Parameters:
+        feature_maps (list of torch.Tensor): List of feature maps (B, C, H, W).
+        reduction (str): Specifies the reduction type: 'none', 'mean', 'sum'.
+
+    Returns:
+        dict: Dictionary with unique pairs of feature maps as keys and their MSE loss as values.
+    """
+    mse_losses = {}
+    for i, j in itertools.combinations(range(len(feature_maps)), 2):  # Unique combinations
+        mse_loss = compute_mse_loss(feature_maps[i], feature_maps[j], reduction=reduction)
+        mse_losses[(i, j)] = mse_loss.item()  # Store loss with index pair
+
+    return mse_losses
+
 
 def image_denormalization(image, datasets="mini_imagenet"):
     '''이미지를 역정규화하는 함수'''

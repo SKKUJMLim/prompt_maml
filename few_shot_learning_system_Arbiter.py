@@ -12,7 +12,7 @@ from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDesce
 from utils.storage import save_statistics
 
 import arbiter
-from utils.basic import compute_all_kl_losses
+from utils.basic import compute_all_kl_losses, compute_unique_mse_losses
 
 
 def set_torch_seed(seed):
@@ -276,6 +276,8 @@ class MAMLFewShotClassifier(nn.Module):
         total_target_accuracies = [[] for i in range(num_steps)]
         per_task_target_preds = [[] for i in range(len(x_target_set))]
 
+        feature_map_list = []
+
         if torch.cuda.device_count() > 1:
             self.classifier.module.zero_grad()
         else:
@@ -290,8 +292,6 @@ class MAMLFewShotClassifier(nn.Module):
             per_step_support_accuracy = []
             per_step_target_accuracy = []
             per_step_loss_importance_vectors = self.get_per_step_loss_importance_vector()
-
-            feature_map_list = []
 
             names_weights_copy = self.get_inner_loop_parameter_dict(self.classifier.named_parameters())
 
@@ -380,14 +380,6 @@ class MAMLFewShotClassifier(nn.Module):
 
             accuracy = predicted.float().eq(y_target_set_task.data.float()).cpu().float()
             task_losses = torch.sum(torch.stack(task_losses))
-
-            print("task_losses == ", task_losses)
-
-            all_kl_losses  = compute_all_kl_losses(feature_maps=feature_map_list)
-            task_losses = task_losses + all_kl_losses
-
-            print("task_losses == ", task_losses)
-
             total_losses.append(task_losses)
             total_accuracies.extend(accuracy)
 
@@ -420,8 +412,18 @@ class MAMLFewShotClassifier(nn.Module):
                 else:
                     self.classifier.restore_backup_stats()
 
+        all_kl_losses = compute_all_kl_losses(feature_maps=feature_map_list)
+        total_kl_loss = sum(all_kl_losses.values())
+        print("total_kl_loss == ", total_kl_loss)
+
+        # unique_mse_losses = compute_unique_mse_losses(feature_maps=feature_map_list, reduction='mean')
+        # total_mse_loss  = sum(unique_mse_losses.values())
+        # print("total_mse_loss == ", total_mse_loss)
+
         losses = self.get_across_task_loss_metrics(total_losses=total_losses,
                                                    total_accuracies=total_accuracies)
+
+        losses['loss'] = losses['loss'] + 0.1 * total_kl_loss
 
         for idx, item in enumerate(per_step_loss_importance_vectors):
             losses['loss_importance_vector_{}'.format(idx)] = item.detach().cpu().numpy()
