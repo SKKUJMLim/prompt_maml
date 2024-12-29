@@ -12,7 +12,7 @@ from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDesce
 from utils.storage import save_statistics
 
 import arbiter
-from utils.basic import compute_kl_loss
+from utils.basic import compute_kl_loss, compute_all_kl_losses
 
 
 def set_torch_seed(seed):
@@ -290,6 +290,9 @@ class MAMLFewShotClassifier(nn.Module):
             per_step_support_accuracy = []
             per_step_target_accuracy = []
             per_step_loss_importance_vectors = self.get_per_step_loss_importance_vector()
+
+            feature_map_list = []
+
             names_weights_copy = self.get_inner_loop_parameter_dict(self.classifier.named_parameters())
 
             num_devices = torch.cuda.device_count() if torch.cuda.is_available() else 1
@@ -336,6 +339,10 @@ class MAMLFewShotClassifier(nn.Module):
                                                                   training_phase=training_phase,
                                                                   epoch=epoch)
 
+                if num_step == 0:
+                    feature_map_list.append(prompt_feature_map)
+
+
                 names_weights_copy, prompted_weights_copy = self.apply_inner_loop_update(loss=support_loss,
                                                                                          names_weights_copy=names_weights_copy,
                                                                                          prompted_weights_copy=prompted_weights_copy,
@@ -365,16 +372,22 @@ class MAMLFewShotClassifier(nn.Module):
                                                                         num_step=num_step,
                                                                         training_phase=training_phase,
                                                                         epoch=epoch)
-
-                        kl_loss = compute_kl_loss(prompt_feature_map, feature_map, reduction='batchmean')
                         # print(kl_loss)
-                        task_losses.append(target_loss - 0.1 * kl_loss)
+                        task_losses.append(target_loss)
 
             per_task_target_preds[task_id] = target_preds.detach().cpu().numpy()
             _, predicted = torch.max(target_preds.data, 1)
 
             accuracy = predicted.float().eq(y_target_set_task.data.float()).cpu().float()
             task_losses = torch.sum(torch.stack(task_losses))
+
+            print("task_losses == ", task_losses)
+
+            all_kl_losses  = compute_all_kl_losses(feature_maps=feature_map_list)
+            task_losses = task_losses + all_kl_losses
+
+            print("task_losses == ", task_losses)
+
             total_losses.append(task_losses)
             total_accuracies.extend(accuracy)
 

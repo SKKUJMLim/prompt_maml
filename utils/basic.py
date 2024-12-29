@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
+import itertools
+
 def compute_kl_loss(feature_map_1, feature_map_2, reduction='batchmean'):
     """
     Compute KL divergence loss between two feature maps.
@@ -31,6 +33,44 @@ def compute_kl_loss(feature_map_1, feature_map_2, reduction='batchmean'):
     kl_loss = F.kl_div(log_q, p, reduction=reduction)
 
     return kl_loss
+
+def compute_all_kl_losses(feature_maps, reduction='batchmean'):
+    """
+    Compute KL divergence for all combinations of feature maps.
+
+    Parameters:
+        feature_maps (list of torch.Tensor): List of feature maps (B, C, H, W).
+        reduction (str): Specifies the reduction type: 'none', 'batchmean', 'sum', 'mean'.
+
+    Returns:
+        dict: Dictionary with pairs of feature maps as keys and their KL loss as values.
+    """
+    kl_losses = {}
+    for i, j in itertools.permutations(range(len(feature_maps)), 2):  # All pair permutations
+        kl_loss = compute_kl_loss(feature_maps[i], feature_maps[j], reduction=reduction)
+        kl_losses[(i, j)] = kl_loss.item()  # Store loss with index pair
+
+    return kl_losses
+
+
+def js_divergence(feature_map_1, feature_map_2, reduction='batchmean'):
+
+    """Jensen-Shannon divergence"""
+
+    # Convert feature maps to probability distributions
+    p = F.softmax(feature_map_1, dim=1)
+    q = F.softmax(feature_map_2, dim=1)
+
+    # Compute the average distribution
+    m = 0.5 * (p + q)
+
+    # Compute KL divergence for both directions
+    kl_pm = F.kl_div(torch.log(m + 1e-10), p, reduction=reduction)
+    kl_qm = F.kl_div(torch.log(m + 1e-10), q, reduction=reduction)
+
+    # Compute JS divergence
+    js_div = 0.5 * (kl_pm + kl_qm)
+    return js_div
 
 def image_denormalization(image, datasets="mini_imagenet"):
     '''이미지를 역정규화하는 함수'''
