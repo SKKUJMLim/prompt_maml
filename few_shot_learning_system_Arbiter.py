@@ -329,7 +329,7 @@ class MAMLFewShotClassifier(nn.Module):
 
             for num_step in range(num_steps):
 
-                support_loss, support_preds, prompt_feature_map = self.net_forward(x=x_support_set_task,
+                support_loss, support_preds, _ = self.net_forward(x=x_support_set_task,
                                                                   y=y_support_set_task,
                                                                   weights=names_weights_copy,
                                                                   prompted_weights=prompted_weights_copy,
@@ -338,10 +338,6 @@ class MAMLFewShotClassifier(nn.Module):
                                                                   num_step=num_step,
                                                                   training_phase=training_phase,
                                                                   epoch=epoch)
-
-                if num_step == 0:
-                    feature_map_list.append(prompt_feature_map)
-
 
                 names_weights_copy, prompted_weights_copy = self.apply_inner_loop_update(loss=support_loss,
                                                                                          names_weights_copy=names_weights_copy,
@@ -364,7 +360,7 @@ class MAMLFewShotClassifier(nn.Module):
 
                 else:
                     if num_step == (self.args.number_of_training_steps_per_iter - 1):
-                        target_loss, target_preds, _ = self.net_forward(x=x_target_set_task,
+                        target_loss, target_preds, prompt_feature_map = self.net_forward(x=x_target_set_task,
                                                                         y=y_target_set_task,
                                                                         weights=names_weights_copy,
                                                                         prompted_weights=prompted_weights_copy,
@@ -372,7 +368,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                         num_step=num_step,
                                                                         training_phase=training_phase,
                                                                         epoch=epoch)
-                        # print(kl_loss)
+                        feature_map_list.append(prompt_feature_map)
                         task_losses.append(target_loss)
 
             per_task_target_preds[task_id] = target_preds.detach().cpu().numpy()
