@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 import itertools
 
-def compute_kl_loss(feature_map_1, feature_map_2, reduction='batchmean'):
+def compute_kl_loss(feature_map_1, feature_map_2, reduction='mean'):
     """
     Compute KL divergence loss between two feature maps.
 
@@ -23,18 +23,18 @@ def compute_kl_loss(feature_map_1, feature_map_2, reduction='batchmean'):
     feature_map_2 = feature_map_2.view(B, C, -1)  # Shape: (B, C, H*W)
 
     # Convert feature maps to probability distributions
-    p = F.softmax(feature_map_1, dim=1)  # Along the channel dimension
-    q = F.softmax(feature_map_2, dim=1)  # Along the channel dimension
+    p = F.softmax(feature_map_1, dim=-1)  # Along the last dimension (H*W)
+    q = F.softmax(feature_map_2, dim=-1)  # Along the last dimension (H*W)
 
     # Compute log probabilities
-    log_q = torch.log(q + 1e-10)  # Add epsilon to avoid log(0)
+    log_p = torch.log(p + 1e-10)  # Add epsilon to avoid log(0)
 
     # Compute KL divergence
-    kl_loss = F.kl_div(log_q, p, reduction=reduction)
+    kl_loss = F.kl_div(log_p, q, reduction=reduction, log_target=False)
 
     return kl_loss
 
-def compute_all_kl_losses(feature_maps, reduction='batchmean'):
+def compute_all_kl_losses(feature_maps, reduction='mean'):
     """
     Compute KL divergence for all combinations of feature maps.
 
