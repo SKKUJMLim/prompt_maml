@@ -958,7 +958,7 @@ class VGGReLUNormNetwork(nn.Module):
             out = F.avg_pool2d(out, out.shape[2])
 
         # feature_map = out.detach().clone()
-        feature_map = out.detach().clone()
+        feature_map = out
 
         out = out.view(out.size(0), -1)
         out = self.layer_dict['linear'](out, param_dict['linear'])
