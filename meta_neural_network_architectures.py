@@ -957,6 +957,7 @@ class VGGReLUNormNetwork(nn.Module):
         if not self.args.max_pooling:
             out = F.avg_pool2d(out, out.shape[2])
 
+        # feature_map = out.detach().clone()
         feature_map = out.detach().clone()
 
         out = out.view(out.size(0), -1)
