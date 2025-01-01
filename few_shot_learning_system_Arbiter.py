@@ -410,7 +410,6 @@ class MAMLFewShotClassifier(nn.Module):
 
         all_kl_losses = compute_all_kl_losses(feature_maps=feature_map_list)
         total_kl_loss = sum(all_kl_losses.values())
-        print("total_kl_loss == ", total_kl_loss)
 
         # unique_mse_losses = compute_unique_mse_losses(feature_maps=feature_map_list, reduction='mean')
         # total_mse_loss  = sum(unique_mse_losses.values())
