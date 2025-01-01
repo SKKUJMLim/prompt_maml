@@ -412,18 +412,18 @@ class MAMLFewShotClassifier(nn.Module):
                 else:
                     self.classifier.restore_backup_stats()
 
-        all_kl_losses = compute_all_kl_losses(feature_maps=feature_map_list)
-        total_kl_loss = sum(all_kl_losses.values())
+        # all_kl_losses = compute_all_kl_losses(feature_maps=feature_map_list)
+        # total_kl_loss = sum(all_kl_losses.values())
         # print("total_kl_loss == ", total_kl_loss)
 
-        # unique_mse_losses = compute_unique_mse_losses(feature_maps=feature_map_list, reduction='mean')
-        # total_mse_loss  = sum(unique_mse_losses.values())
+        unique_mse_losses = compute_unique_mse_losses(feature_maps=feature_map_list, reduction='mean')
+        total_mse_loss  = sum(unique_mse_losses.values())
         # print("total_mse_loss == ", total_mse_loss)
 
         losses = self.get_across_task_loss_metrics(total_losses=total_losses,
                                                    total_accuracies=total_accuracies)
 
-        losses['loss'] = losses['loss'] + 0.1 * total_kl_loss
+        losses['loss'] = losses['loss'] + total_mse_loss
 
         for idx, item in enumerate(per_step_loss_importance_vectors):
             losses['loss_importance_vector_{}'.format(idx)] = item.detach().cpu().numpy()
