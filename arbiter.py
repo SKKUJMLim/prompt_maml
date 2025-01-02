@@ -25,7 +25,7 @@ class PromptGenerator(nn.Module):
             nn.BatchNorm2d(ngf),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(ngf, nc, 3, stride=1, padding=1),
-            nn.Sigmoid(),
+            # nn.Sigmoid(),
         )
 
     def forward(self, z):
