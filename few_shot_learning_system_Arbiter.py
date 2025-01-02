@@ -413,7 +413,6 @@ class MAMLFewShotClassifier(nn.Module):
 
         # unique_mse_losses = compute_unique_mse_losses(feature_maps=feature_map_list, reduction='mean')
         # total_mse_loss  = sum(unique_mse_losses.values())
-        # print("total_mse_loss == ", total_mse_loss)
 
         losses = self.get_across_task_loss_metrics(total_losses=total_losses,
                                                    total_accuracies=total_accuracies)
@@ -497,7 +496,7 @@ class MAMLFewShotClassifier(nn.Module):
 
         # 가중치 업데이트 확인용 변수
         # prev_weights = {}
-        # for name, param in self.classifier.named_parameters():
+        # for name, param in self.named_parameters():
         #     prev_weights[name] = param.data.clone()
 
         self.optimizer.zero_grad()
@@ -512,7 +511,7 @@ class MAMLFewShotClassifier(nn.Module):
         self.optimizer.step()
 
         # 가중치 업데이트 확인
-        # for name, param in self.classifier.named_parameters():
+        # for name, param in self.named_parameters():
         #     if not torch.equal(prev_weights[name], param.data):
         #         print(f"{name} 가중치가 업데이트되었습니다.")
         #         prev_weights[name] = param.data.clone()

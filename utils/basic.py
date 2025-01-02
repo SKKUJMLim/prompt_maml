@@ -50,8 +50,7 @@ def compute_all_kl_losses(feature_maps, reduction='mean'):
 
     # for i, j in itertools.permutations(range(len(feature_maps)), 2):  # All pair permutations
     for i, j in itertools.combinations(range(len(feature_maps)), 2):  # Unique combinations
-        kl_loss = compute_kl_loss(feature_maps[i], feature_maps[j], reduction=reduction)
-        kl_losses[(i, j)] = kl_loss.item()  # Store loss with index pair
+        kl_losses[(i, j)] = compute_kl_loss(feature_maps[i], feature_maps[j], reduction=reduction)
 
     return kl_losses
 
@@ -109,8 +108,7 @@ def compute_unique_mse_losses(feature_maps, reduction='mean'):
     """
     mse_losses = {}
     for i, j in itertools.combinations(range(len(feature_maps)), 2):  # Unique combinations
-        mse_loss = compute_mse_loss(feature_maps[i], feature_maps[j], reduction=reduction)
-        mse_losses[(i, j)] = mse_loss.item()  # Store loss with index pair
+        mse_losses[(i, j)] = compute_mse_loss(feature_maps[i], feature_maps[j], reduction=reduction)
 
     return mse_losses
 
