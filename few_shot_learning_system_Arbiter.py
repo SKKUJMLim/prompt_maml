@@ -223,7 +223,7 @@ class MAMLFewShotClassifier(nn.Module):
 
     def get_task_embeddings(self, x_support_set_task, y_support_set_task, names_weights_copy):
         # Use gradients as task embeddings
-        support_loss, support_preds, _ = self.net_forward(x=x_support_set_task,
+        support_loss, support_preds, feature_map = self.net_forward(x=x_support_set_task,
                                                           y=y_support_set_task,
                                                           weights=names_weights_copy,
                                                           backup_running_statistics=True,
