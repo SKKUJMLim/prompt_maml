@@ -223,16 +223,18 @@ class MAMLFewShotClassifier(nn.Module):
 
     def get_task_embeddings(self, x_support_set_task, y_support_set_task, names_weights_copy):
         # Use gradients as task embeddings
-        support_loss, support_preds, feature_map = self.net_forward(x=x_support_set_task,
-                                                                    y=y_support_set_task,
-                                                                    weights=names_weights_copy,
-                                                                    backup_running_statistics=True,
-                                                                    training=True, num_step=0,
-                                                                    training_phase=True,
-                                                                    epoch=0,
-                                                                    prepend_prompt=False)
+        support_loss, support_preds, _ = self.net_forward(x=x_support_set_task,
+                                                          y=y_support_set_task,
+                                                          weights=names_weights_copy,
+                                                          backup_running_statistics=True,
+                                                          training=True, num_step=0,
+                                                          training_phase=True,
+                                                          epoch=0,
+                                                          prepend_prompt=False)
 
+        # task embedding vector를 Gradient만을 고집할 것이 아니라, Feature map도 고려하자
         # task_embeddings = feature_map.mean(dim=0).unsqueeze(0).view(-1)
+        # task_embeddings = feature_map.mean(dim=0).view(-1)
 
         if torch.cuda.device_count() > 1:
             self.classifier.module.zero_grad(names_weights_copy)
@@ -249,7 +251,7 @@ class MAMLFewShotClassifier(nn.Module):
 
         task_embeddings = torch.stack(per_step_task_embedding).unsqueeze(0)
 
-        return task_embeddings, feature_map
+        return task_embeddings
 
     def forward(self, data_batch, epoch, use_second_order, use_multi_step_loss_optimization, num_steps, training_phase,
                 current_iter):
@@ -320,7 +322,7 @@ class MAMLFewShotClassifier(nn.Module):
 
             if self.args.prompter and self.args.prompt_engineering == 'arbiter':
                 # Obtain gradients from support set for task embedding
-                task_embeddings, feature_map = self.get_task_embeddings(x_support_set_task=x_support_set_task,
+                task_embeddings = self.get_task_embeddings(x_support_set_task=x_support_set_task,
                                                            y_support_set_task=y_support_set_task,
                                                            names_weights_copy=names_weights_copy)
 
@@ -346,6 +348,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                                          current_step_idx=num_step,
                                                                                          current_iter=current_iter,
                                                                                          training_phase=training_phase)
+
 
                 if use_multi_step_loss_optimization and training_phase and epoch < self.args.multi_step_loss_num_epochs:
                     target_loss, target_preds, _ = self.net_forward(x=x_target_set_task,
@@ -408,16 +411,16 @@ class MAMLFewShotClassifier(nn.Module):
                 else:
                     self.classifier.restore_backup_stats()
 
-        all_kl_losses = compute_all_kl_losses(feature_maps=feature_map_list)
-        total_kl_loss = sum(all_kl_losses.values())
+        # all_kl_losses = compute_all_kl_losses(feature_maps=feature_map_list)
+        # total_kl_loss = sum(all_kl_losses.values())
 
-        # unique_mse_losses = compute_unique_mse_losses(feature_maps=feature_map_list, reduction='mean')
-        # total_mse_loss  = sum(unique_mse_losses.values())
+        unique_mse_losses = compute_unique_mse_losses(feature_maps=feature_map_list, reduction='mean')
+        total_mse_loss  = sum(unique_mse_losses.values())
 
         losses = self.get_across_task_loss_metrics(total_losses=total_losses,
                                                    total_accuracies=total_accuracies)
 
-        losses['loss'] = losses['loss'] + total_kl_loss
+        losses['loss'] = losses['loss'] + total_mse_loss
 
         for idx, item in enumerate(per_step_loss_importance_vectors):
             losses['loss_importance_vector_{}'.format(idx)] = item.detach().cpu().numpy()

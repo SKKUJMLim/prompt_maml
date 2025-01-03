@@ -26,6 +26,8 @@ def compute_kl_loss(feature_map_1, feature_map_2, reduction='mean'):
     p = F.softmax(feature_map_1, dim=-1)  # Along the last dimension (H*W)
     q = F.softmax(feature_map_2, dim=-1)  # Along the last dimension (H*W)
 
+    # dim=1로 하면 Channel 차원이다.
+
     # Compute log probabilities
     log_p = torch.log(p + 1e-10)  # Add epsilon to avoid log(0)
 

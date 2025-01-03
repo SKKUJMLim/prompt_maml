@@ -55,7 +55,7 @@ class Autoencoder(nn.Module):
             nn.Linear(256, 512),
             nn.ReLU(),
             nn.Linear(512, output_dim),
-            nn.Sigmoid()  # Normalize to [0, 1] for image data
+            # nn.Sigmoid()  # Normalize to [0, 1] for image data
         )
 
     def forward(self, x):
