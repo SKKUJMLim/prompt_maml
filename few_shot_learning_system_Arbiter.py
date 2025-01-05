@@ -249,7 +249,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                           epoch=0,
                                                           prepend_prompt=False)
 
-
+        ## feature_map.shape == torch.Size([25, 64, 5, 5])
 
         '''Conditional AE'''
         # mean_feature_map = feature_map.mean(dim=0).view(-1)
@@ -260,7 +260,6 @@ class MAMLFewShotClassifier(nn.Module):
         # condition = torch.stack(mean_weight).unsqueeze(0)
 
         '''Generator'''
-
         mean_feature_map = feature_map.mean(dim=0).view(-1)
 
         mean_weight = []
