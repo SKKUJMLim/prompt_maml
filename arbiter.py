@@ -69,6 +69,53 @@ class Autoencoder(nn.Module):
         x = x.view(-1, 3, 84, 84)
         return x
 
+
+class ConditionalAutoencoder(nn.Module):
+    def __init__(self, input_dim, output_dim, latent_dim=10, condition_dim=10):
+        super(ConditionalAutoencoder, self).__init__()
+
+        self.latent_dim = latent_dim
+
+        # Encoder: Reduce input + condition to latent space of size latent_dim
+        self.encoder = nn.Sequential(
+            nn.Linear(input_dim + condition_dim, 512),
+            nn.ReLU(),
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Linear(256, latent_dim),
+        )
+
+        # Decoder: Map latent space + condition back to image dimensions (3, 84, 84)
+        self.decoder = nn.Sequential(
+            nn.Linear(latent_dim + condition_dim, 256),
+            nn.ReLU(),
+            nn.Linear(256, 512),
+            nn.ReLU(),
+            nn.Linear(512, output_dim),
+            # nn.Sigmoid()  # Uncomment if the output should be normalized to [0, 1]
+        )
+
+    def forward(self, x, condition):
+        # Ensure condition is the same shape as x in the batch dimension
+        condition = condition.view(condition.size(0), -1)  # Flatten condition if needed
+
+        # Concatenate input and condition for encoding
+        x_cond = torch.cat([x, condition], dim=1)
+
+        # Encoder
+        z = self.encoder(x_cond)
+
+        # Concatenate latent representation and condition for decoding
+        z_cond = torch.cat([z, condition], dim=1)
+
+        # Decoder
+        x_reconstructed = self.decoder(z_cond)
+
+        # Reshape output to (batch_size, 3, 84, 84)
+        x_reconstructed = x_reconstructed.view(-1, 3, 84, 84)
+
+        return x_reconstructed
+
 class VariationalAutoencoder(nn.Module):
     def __init__(self, input_dim, output_dim, latent_dim=10):
         super(VariationalAutoencoder, self).__init__()
@@ -95,7 +142,7 @@ class VariationalAutoencoder(nn.Module):
             nn.ReLU(),
             nn.Linear(256, 512),
             nn.Linear(512, output_dim),  # Flattened image output
-            nn.Sigmoid()  # Normalize to [0, 1] for image data
+            # nn.Sigmoid()  # Normalize to [0, 1] for image data
         )
 
     def reparameterize(self, mu, log_var):
@@ -122,148 +169,59 @@ class VariationalAutoencoder(nn.Module):
         decoded = decoded.view(-1, 3, 84, 84)
         return decoded, mu, log_var
 
-# Convolutional AutoEncoder 모델 정의
-class ConvAutoencoder(nn.Module):
-    def __init__(self):
-        super(ConvAutoencoder, self).__init__()
 
-        # Encoder: Reduce the input size from [64, 5, 5] to a latent representation
+# Conditional Variational Autoencoder class
+class ConditionalVariationalAutoencoder(nn.Module):
+    def __init__(self, input_dim, output_dim, latent_dim=10, condition_dim=10):
+        super(ConditionalVariationalAutoencoder, self).__init__()
+
+        self.latent_dim = latent_dim
+
+        # Encoder: Maps input + condition to mean and log-variance of latent space
         self.encoder = nn.Sequential(
-            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),  # [128, 5, 5]
+            nn.Linear(input_dim + condition_dim, 512),
             nn.ReLU(),
-            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),  # [256, 5, 5]
-            nn.ReLU(),
-            nn.Flatten(),  # Flatten to [256 * 5 * 5]
-            nn.Linear(256 * 5 * 5, 1024),  # Latent representation
+            nn.Linear(512, 256),
             nn.ReLU()
         )
+        self.fc_mu = nn.Linear(256, latent_dim)  # Mean of the latent space
+        self.fc_logvar = nn.Linear(256, latent_dim)  # Log-variance of the latent space
 
-        # Decoder: Expand the latent representation to [3, 84, 84]
+        # Decoder: Maps latent space + condition back to output dimensions
         self.decoder = nn.Sequential(
-            nn.Linear(1024, 256 * 21 * 21),
+            nn.Linear(latent_dim + condition_dim, 256),
             nn.ReLU(),
-            nn.Unflatten(1, (256, 21, 21)),  # Reshape to [256, 21, 21]
-            nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1),  # [128, 42, 42]
+            nn.Linear(256, 512),
             nn.ReLU(),
-            nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1),  # [64, 84, 84]
-            nn.ReLU(),
-            nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1),  # [3, 84, 84]
-            # nn.Tanh()  # Output values in range [0, 1]
-        )
-
-    def forward(self, x):
-        latent = self.encoder(x)
-        reconstructed = self.decoder(latent)
-        return reconstructed
-
-
-class VariationalConvAutoencoder(nn.Module):
-    def __init__(self):
-        super(VariationalConvAutoencoder, self).__init__()
-        # Encoder: Reduce the input size from [64, 5, 5] to a latent representation
-        self.encoder = nn.Sequential(
-            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),  # [128, 5, 5]
-            nn.ReLU(),
-            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),  # [256, 5, 5]
-            nn.ReLU(),
-            nn.Flatten(),  # Flatten to [256 * 5 * 5]
-        )
-
-        self.fc_mu = nn.Linear(256 * 5 * 5, 1024)  # Mean of latent representation
-        self.fc_logvar = nn.Linear(256 * 5 * 5, 1024)  # Log variance of latent representation
-
-        # Decoder: Expand the latent representation to [3, 84, 84]
-        self.decoder = nn.Sequential(
-            nn.Linear(1024, 256 * 21 * 21),
-            nn.ReLU(),
-            nn.Unflatten(1, (256, 21, 21)),  # Reshape to [256, 21, 21]
-            nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1),  # [128, 42, 42]
-            nn.ReLU(),
-            nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1),  # [64, 84, 84]
-            nn.ReLU(),
-            nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1),  # [3, 84, 84]
-            # nn.Sigmoid()  # Output values in range [0, 1]
+            nn.Linear(512, output_dim),
+            # nn.Sigmoid()  # Output normalized to [0, 1]
         )
 
     def reparameterize(self, mu, logvar):
-        # Reparameterization trick: z = mu + std * epsilon
+        """Reparameterization trick to sample from N(mu, var) using N(0, 1)."""
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
         return mu + eps * std
 
-    def forward(self, x):
-        # Encode
-        encoded = self.encoder(x)
-        mu = self.fc_mu(encoded)
-        logvar = self.fc_logvar(encoded)
-        z = self.reparameterize(mu, logvar)
-
-        # Decode
-        decoded = self.decoder(z)
-        return decoded, mu, logvar
-
-
-class ConditionalUNetVAE(nn.Module):
-
-    '''
-    Image를 Input으로 하고, Gradient vector를 조건정보로 활용하기 위한 함수
-    '''
-
-    def __init__(self, input_channels=3, conditional_dim=10, output_channels=3, latent_dim=128):
-        super(ConditionalUNetVAE, self).__init__()
-
-        self.conditional_dim = conditional_dim
+    def forward(self, x, condition):
+        # Concatenate input and condition for encoding
+        x_cond = torch.cat([x, condition], dim=1)
 
         # Encoder
-        self.enc_conv1 = nn.Conv2d(input_channels + conditional_dim, 64, kernel_size=3, stride=1, padding=1)
-        self.enc_conv2 = nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1)
-        self.enc_conv3 = nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1)
+        h = self.encoder(x_cond)
+        mu = self.fc_mu(h)
+        logvar = self.fc_logvar(h)
 
-        self.fc_mu = nn.Linear(256 * 21 * 21, latent_dim)
-        self.fc_logvar = nn.Linear(256 * 21 * 21, latent_dim)
+        # Reparameterize to get latent variable z
+        z = self.reparameterize(mu, logvar)
+
+        # Concatenate latent variable and condition for decoding
+        z_cond = torch.cat([z, condition], dim=1)
 
         # Decoder
-        self.fc_latent = nn.Linear(latent_dim + conditional_dim, 256 * 21 * 21)
-        self.dec_conv1 = nn.Conv2d(256, 128, kernel_size=3, stride=1, padding=1)
-        self.dec_conv2 = nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=1)
-        self.dec_conv3 = nn.Conv2d(64, output_channels, kernel_size=3, stride=1, padding=1)
+        x_reconstructed = self.decoder(z_cond)
 
-    def encode(self, x, c):
-        # Combine input image and conditional input
-        c = c.view(c.size(0), self.conditional_dim, 1, 1).expand(-1, -1, x.size(2), x.size(3))
-        x = torch.cat([x, c], dim=1)
+        # Reshape output to (batch_size, 3, 84, 84)
+        x_reconstructed = x_reconstructed.view(-1, 3, 84, 84)
 
-        x1 = F.relu(self.enc_conv1(x))
-        x2 = F.relu(self.enc_conv2(x1))
-        x3 = F.relu(self.enc_conv3(x2))
-
-        x3_flat = x3.view(x3.size(0), -1)
-        mu = self.fc_mu(x3_flat)
-        logvar = self.fc_logvar(x3_flat)
-        return mu, logvar, x3
-
-    def reparameterize(self, mu, logvar):
-        std = torch.exp(0.5 * logvar)
-        eps = torch.randn_like(std)
-        return mu + eps * std
-
-    def decode(self, z, c):
-        # Combine latent variable and conditional input
-        z = torch.cat([z, c], dim=1)
-        x = self.fc_latent(z)
-        x = x.view(x.size(0), 256, 21, 21)
-
-        x = F.relu(self.dec_conv1(x))
-        x = F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=True)
-        x = F.relu(self.dec_conv2(x))
-        x = F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=True)
-        x = self.dec_conv3(x)
-        x = torch.sigmoid(x)
-
-        return x
-
-    def forward(self, x, c):
-        mu, logvar, _ = self.encode(x, c)
-        z = self.reparameterize(mu, logvar)
-        recon_x = self.decode(z, c)
-        return recon_x, mu, logvar
+        return x_reconstructed, mu, logvar

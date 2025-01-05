@@ -70,10 +70,27 @@ class MAMLFewShotClassifier(nn.Module):
                                                                     learning_rate=self.task_learning_rate)
 
         if self.args.prompter and self.args.prompt_engineering == 'arbiter':
-            nz = 10
+            ''' 1. Generator'''
+            nz = 1610
             img_size = 84
             channel = 3
             self.arbiter = arbiter.PromptGenerator(nz=nz, ngf=64, img_size=img_size, nc=channel)
+
+            ''' 2. Conditional Autoencoder'''
+            input_dim = 1600
+            output_dim = 3 * 84 * 84
+            latent_dim = 32 # 32, 64, 128 ..., 512
+            condition_dim = 10
+            # self.arbiter = arbiter.ConditionalAutoencoder(input_dim, output_dim, latent_dim, condition_dim)
+            # output = self.arbiter(x, condition)
+
+            ''' 2. Conditional  Variational Autoencoder'''
+            # input_dim = 1600
+            # output_dim = 3 * 84 * 84
+            # latent_dim = 10 # 32, 64, ... 512
+            # condition_dim = 5
+            # self.arbiter = arbiter.ConditionalVariationalAutoencoder(input_dim, output_dim, latent_dim, condition_dim)
+            # output, mu, logvar = model(x, condition)
 
         print("Inner Loop parameters")
         for key, value in self.inner_loop_optimizer.named_parameters():
@@ -232,26 +249,44 @@ class MAMLFewShotClassifier(nn.Module):
                                                           epoch=0,
                                                           prepend_prompt=False)
 
-        # task embedding vector를 Gradient만을 고집할 것이 아니라, Feature map도 고려하자
-        # task_embeddings = feature_map.mean(dim=0).unsqueeze(0).view(-1)
-        # task_embeddings = feature_map.mean(dim=0).view(-1)
 
-        if torch.cuda.device_count() > 1:
-            self.classifier.module.zero_grad(names_weights_copy)
-        else:
-            self.classifier.zero_grad(names_weights_copy)
-        grads = torch.autograd.grad(support_loss, names_weights_copy.values(), create_graph=True)
 
-        per_step_task_embedding = []
+        '''Conditional AE'''
+        # mean_feature_map = feature_map.mean(dim=0).view(-1)
+        # mean_weight = []
         # for k, v in names_weights_copy.items():
-        #     per_step_task_embedding.append(v.mean())
+        #     mean_weight.append(v.mean())
+        # task_embeddings = mean_feature_map.unsqueeze(0)
+        # condition = torch.stack(mean_weight).unsqueeze(0)
 
-        for i in range(len(grads)):
-            per_step_task_embedding.append(grads[i].mean())
+        '''Generator'''
 
-        task_embeddings = torch.stack(per_step_task_embedding).unsqueeze(0)
+        mean_feature_map = feature_map.mean(dim=0).view(-1)
 
-        return task_embeddings
+        mean_weight = []
+        for k, v in names_weights_copy.items():
+            mean_weight.append(v.mean())
+        mean_weight = torch.stack(mean_weight)
+
+        # task_embeddings를 PyTorch 텐서로 변환
+        task_embeddings = torch.cat([mean_feature_map, mean_weight])
+
+        task_embeddings = (task_embeddings - task_embeddings.mean()) / (task_embeddings.std() + 1e-12)
+        task_embeddings= task_embeddings.unsqueeze(0)
+        #print("task_embeddings == ", task_embeddings.shape)
+
+        # if torch.cuda.device_count() > 1:
+        #     self.classifier.module.zero_grad(names_weights_copy)
+        # else:
+        #     self.classifier.zero_grad(names_weights_copy)
+        # grads = torch.autograd.grad(support_loss, names_weights_copy.values(), create_graph=True)
+        #
+        # for i in range(len(grads)):
+        #     per_step_task_embedding.append(grads[i].mean())
+        #
+        # task_embeddings = torch.stack(per_step_task_embedding).unsqueeze(0)
+
+        return task_embeddings # , condition
 
     def forward(self, data_batch, epoch, use_second_order, use_multi_step_loss_optimization, num_steps, training_phase,
                 current_iter):
@@ -326,7 +361,10 @@ class MAMLFewShotClassifier(nn.Module):
                                                            y_support_set_task=y_support_set_task,
                                                            names_weights_copy=names_weights_copy)
 
+
+                # init_prompt = self.arbiter(task_embeddings, condition)
                 init_prompt = self.arbiter(task_embeddings)
+
                 prompted_weights_copy['prompt.prompt_dict.arbiter'] = init_prompt
 
             for num_step in range(num_steps):
@@ -414,13 +452,13 @@ class MAMLFewShotClassifier(nn.Module):
         # all_kl_losses = compute_all_kl_losses(feature_maps=feature_map_list)
         # total_kl_loss = sum(all_kl_losses.values())
 
-        unique_mse_losses = compute_unique_mse_losses(feature_maps=feature_map_list, reduction='mean')
-        total_mse_loss  = sum(unique_mse_losses.values())
+        # unique_mse_losses = compute_unique_mse_losses(feature_maps=feature_map_list, reduction='mean')
+        # total_mse_loss  = sum(unique_mse_losses.values())
 
         losses = self.get_across_task_loss_metrics(total_losses=total_losses,
                                                    total_accuracies=total_accuracies)
 
-        losses['loss'] = losses['loss'] + total_mse_loss
+        # losses['loss'] = losses['loss'] + total_mse_loss
 
         for idx, item in enumerate(per_step_loss_importance_vectors):
             losses['loss_importance_vector_{}'.format(idx)] = item.detach().cpu().numpy()
