@@ -59,6 +59,7 @@
   "image_size" : 84,
   "prompt_random_init": false,
   "outer_prompt_learning_rate": 0.001,
-  "inner_prompt_learning_rate": 0.01
-
+  "inner_prompt_learning_rate": 0.01,
+  "num_text_embedding_params": 256,
+  "text_embedding_learning_rate": 0.1
 }
