@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 import itertools
 
-def compute_kl_loss(feature_map_1, feature_map_2, reduction='mean'):
+def compute_kl_loss(feature_map_1, feature_map_2, reduction='batchmean'):
     """
     Compute KL divergence loss between two feature maps.
 
@@ -36,7 +36,7 @@ def compute_kl_loss(feature_map_1, feature_map_2, reduction='mean'):
 
     return kl_loss
 
-def compute_all_kl_losses(feature_maps, reduction='mean'):
+def compute_all_kl_losses(feature_maps, reduction='batchmean'):
     """
     Compute KL divergence for all combinations of feature maps.
 
@@ -57,7 +57,7 @@ def compute_all_kl_losses(feature_maps, reduction='mean'):
     return kl_losses
 
 
-def js_divergence(feature_map_1, feature_map_2, reduction='batchmean'):
+def compute_js_divergence(feature_map_1, feature_map_2, reduction='batchmean'):
 
     """Jensen-Shannon divergence"""
 
@@ -75,6 +75,17 @@ def js_divergence(feature_map_1, feature_map_2, reduction='batchmean'):
     # Compute JS divergence
     js_div = 0.5 * (kl_pm + kl_qm)
     return js_div
+
+
+def compute_all_js_divergence(feature_maps, reduction='batchmean'):
+
+    js_divergence = {}
+
+    # for i, j in itertools.permutations(range(len(feature_maps)), 2):  # All pair permutations
+    for i, j in itertools.combinations(range(len(feature_maps)), 2):  # Unique combinations
+        js_divergence[(i, j)] = js_divergence(feature_maps[i], feature_maps[j], reduction=reduction)
+
+    return js_divergence
 
 
 def compute_mse_loss(feature_map_1, feature_map_2, reduction='mean'):

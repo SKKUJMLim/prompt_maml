@@ -12,7 +12,7 @@ from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDesce
 from utils.storage import save_statistics
 
 import arbiter
-from utils.basic import compute_kl_loss, compute_mse_loss, compute_js_divergence, compute_all_js_divergence, compute_all_kl_losses, compute_unique_mse_losses
+from utils.basic import compute_kl_loss, compute_mse_loss, js_divergence
 
 
 def set_torch_seed(seed):
@@ -71,7 +71,7 @@ class MAMLFewShotClassifier(nn.Module):
 
         if self.args.prompter and self.args.prompt_engineering == 'arbiter':
             ''' 1. Generator'''
-            nz = 100
+            nz = 10
             img_size = 84
             channel = 3
             self.arbiter = arbiter.PromptGenerator(nz=nz, ngf=64, img_size=img_size, nc=channel)
@@ -160,7 +160,8 @@ class MAMLFewShotClassifier(nn.Module):
 
         return param_dict
 
-    def apply_inner_loop_update(self, loss, names_weights_copy, use_second_order, current_step_idx, current_iter, training_phase):
+    def apply_inner_loop_update(self, loss, names_weights_copy, prompted_weights_copy, use_second_order,
+                                current_step_idx, current_iter, training_phase):
         """
         Applies an inner loop update given current step's loss, the weights to update, a flag indicating whether to use
         second order derivatives and the current step's index.
@@ -173,23 +174,44 @@ class MAMLFewShotClassifier(nn.Module):
         num_gpus = torch.cuda.device_count()
         if num_gpus > 1:
             self.classifier.module.zero_grad(params=names_weights_copy)
+            self.classifier.module.zero_grad(params=prompted_weights_copy)
         else:
             self.classifier.zero_grad(params=names_weights_copy)
+            self.classifier.zero_grad(params=prompted_weights_copy)
 
+        prompted_grads_copy = {}
+        if self.args.prompter:
+            grads = torch.autograd.grad(loss, names_weights_copy.values(),
+                                        create_graph=use_second_order, allow_unused=True, retain_graph=True)  ###### retrain_graph 추가
+            names_grads_copy = dict(zip(names_weights_copy.keys(), grads))
+            names_weights_copy = {key: value[0] for key, value in names_weights_copy.items()}
 
-        grads = torch.autograd.grad(loss, names_weights_copy.values(),
-                                    create_graph=use_second_order, allow_unused=True)
-        names_grads_copy = dict(zip(names_weights_copy.keys(), grads))
-        names_weights_copy = {key: value[0] for key, value in names_weights_copy.items()}
+            prompt_grads = torch.autograd.grad(loss, prompted_weights_copy.values(),
+                                               create_graph=use_second_order, allow_unused=True)
+            prompted_grads_copy = dict(zip(prompted_weights_copy.keys(), prompt_grads))
+            prompted_weights_copy = {key: value[0] for key, value in prompted_weights_copy.items()}
+
+        else:
+            grads = torch.autograd.grad(loss, names_weights_copy.values(),
+                                        create_graph=use_second_order, allow_unused=True)
+            names_grads_copy = dict(zip(names_weights_copy.keys(), grads))
+            names_weights_copy = {key: value[0] for key, value in names_weights_copy.items()}
 
         for key, grad in names_grads_copy.items():
             if grad is None:
                 print('Grads not found for inner loop parameter', key)
             names_grads_copy[key] = names_grads_copy[key].sum(dim=0)
 
+        for key, prompt_grad in prompted_grads_copy.items():
+            if prompt_grad is None:
+                print('Prompt Grads not found for inner loop parameter', key)
+            prompted_grads_copy[key] = prompted_grads_copy[key].sum(dim=0)
+
         names_weights_copy, prompted_weights_copy = self.inner_loop_optimizer.update_params(
             names_weights_dict=names_weights_copy,
             names_grads_wrt_params_dict=names_grads_copy,
+            prompted_weights_dict=prompted_weights_copy,
+            prompted_grads_wrt_params_dict=prompted_grads_copy,
             num_step=current_step_idx,
             current_iter=current_iter,
             training_phase=training_phase)
@@ -201,7 +223,12 @@ class MAMLFewShotClassifier(nn.Module):
                 [num_devices] + [1 for i in range(len(value.shape))]) for
             name, value in names_weights_copy.items()}
 
-        return names_weights_copy
+        prompted_weights_copy = {
+            name.replace('module.', ''): value.unsqueeze(0).repeat(
+                [num_devices] + [1 for i in range(len(value.shape))]) for
+            name, value in prompted_weights_copy.items()}
+
+        return names_weights_copy, prompted_weights_copy
 
     def get_across_task_loss_metrics(self, total_losses, total_accuracies):
         losses = dict()
@@ -328,13 +355,19 @@ class MAMLFewShotClassifier(nn.Module):
             x_target_set_task = x_target_set_task.view(-1, c, h, w)
             y_target_set_task = y_target_set_task.view(-1)
 
-            z = nn.Parameter(torch.randn([1, 100]), requires_grad=True).to(self.device)
-            # torch.zeros(size=[args.num_context_params], requires_grad=True).to(device)
+            if self.args.prompter and self.args.prompt_engineering == 'arbiter':
+                # Obtain gradients from support set for task embedding
+                task_embeddings, feature_list_detach = self.get_task_embeddings(x_support_set_task=x_support_set_task,
+                                                           y_support_set_task=y_support_set_task,
+                                                           names_weights_copy=names_weights_copy)
+
+
+                # init_prompt = self.arbiter(task_embeddings, condition)
+                init_prompt = self.arbiter(task_embeddings)
+
+                prompted_weights_copy['prompt.prompt_dict.arbiter'] = init_prompt
 
             for num_step in range(num_steps):
-
-                ideal_prompt = self.arbiter(z)
-                prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
 
                 support_loss, support_preds, feature_list = self.net_forward(x=x_support_set_task,
                                                                   y=y_support_set_task,
@@ -346,18 +379,24 @@ class MAMLFewShotClassifier(nn.Module):
                                                                   training_phase=training_phase,
                                                                   epoch=epoch)
 
-                gradients = torch.autograd.grad(support_loss, (*names_weights_copy.values(), z),
-                                                create_graph=use_second_order, retain_graph=True)
+                # print("num_step == ", num_step)
+                # for i in range(len(feature_list)):
+                #     # mse_loss = compute_mse_loss(feature_list_detach[i].detach().clone(), feature_list[i], reduction='none')
+                #     kl_loss = compute_kl_loss(feature_list_detach[i].detach().clone(), feature_list[i], reduction='batchmean')
+                #     # js_loss = js_divergence(feature_list_detach[i].detach().clone(), feature_list[i], reduction='batchmean')
+                #     print(f"feature{i}== ", kl_loss)
+                #     support_loss = support_loss - kl_loss
+                #
+                # # print("support_loss == ", support_loss)
 
-                grads, context_grads = gradients[:-1], gradients[-1]
-                z = z - 1 * context_grads
+                names_weights_copy, prompted_weights_copy = self.apply_inner_loop_update(loss=support_loss,
+                                                                                         names_weights_copy=names_weights_copy,
+                                                                                         prompted_weights_copy=prompted_weights_copy,
+                                                                                         use_second_order=use_second_order,
+                                                                                         current_step_idx=num_step,
+                                                                                         current_iter=current_iter,
+                                                                                         training_phase=training_phase)
 
-                names_weights_copy = self.apply_inner_loop_update(loss=support_loss,
-                                                                  names_weights_copy=names_weights_copy,
-                                                                  use_second_order=use_second_order,
-                                                                  current_step_idx=num_step,
-                                                                  current_iter=current_iter,
-                                                                  training_phase=training_phase)
 
                 if use_multi_step_loss_optimization and training_phase and epoch < self.args.multi_step_loss_num_epochs:
                     target_loss, target_preds, _ = self.net_forward(x=x_target_set_task,
@@ -380,7 +419,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                         num_step=num_step,
                                                                         training_phase=training_phase,
                                                                         epoch=epoch)
-                        feature_map_list.append(prompt_feature_map[3])
+                        feature_map_list.append(prompt_feature_map)
                         task_losses.append(target_loss)
 
             per_task_target_preds[task_id] = target_preds.detach().cpu().numpy()
@@ -422,12 +461,6 @@ class MAMLFewShotClassifier(nn.Module):
 
         losses = self.get_across_task_loss_metrics(total_losses=total_losses,
                                                    total_accuracies=total_accuracies)
-
-        # all_kl_losses = compute_all_kl_losses(feature_maps=feature_map_list)
-        # total_kl_loss = sum(all_kl_losses.values())
-        # js_losses = compute_all_js_divergence(feature_maps=feature_map_list, reduction='batchmean')
-        # total_js_losses  = sum(js_losses.values())
-        # print("total_js_losses == ", total_js_losses)
 
         # losses['loss'] = losses['loss'] + total_mse_loss
 
