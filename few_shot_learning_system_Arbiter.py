@@ -409,12 +409,10 @@ class MAMLFewShotClassifier(nn.Module):
         losses = self.get_across_task_loss_metrics(total_losses=total_losses,
                                                    total_accuracies=total_accuracies)
 
-        # all_kl_losses = compute_all_kl_losses(feature_maps=feature_map_list)
-        # total_kl_loss = sum(all_kl_losses.values())
+
         # js_losses = compute_all_js_divergence(feature_maps=feature_map_list, reduction='batchmean')
         # total_js_losses  = sum(js_losses.values())
         # print("total_js_losses == ", total_js_losses)
-
         # losses['loss'] = losses['loss'] + total_mse_loss
 
         for idx, item in enumerate(per_step_loss_importance_vectors):

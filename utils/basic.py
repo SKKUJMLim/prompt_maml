@@ -83,7 +83,7 @@ def compute_all_js_divergence(feature_maps, reduction='batchmean'):
 
     # for i, j in itertools.permutations(range(len(feature_maps)), 2):  # All pair permutations
     for i, j in itertools.combinations(range(len(feature_maps)), 2):  # Unique combinations
-        js_divergence[(i, j)] = js_divergence(feature_maps[i], feature_maps[j], reduction=reduction)
+        js_divergence[(i, j)] = compute_js_divergence(feature_maps[i], feature_maps[j], reduction=reduction)
 
     return js_divergence
 
