@@ -194,31 +194,6 @@ class MAMLFewShotClassifier(nn.Module):
 
         return losses
 
-    def get_task_embeddings(self, x_support_set_task, y_support_set_task, names_weights_copy):
-        # Use gradients as task embeddings
-        support_loss, support_preds, feature_list = self.net_forward(x=x_support_set_task,
-                                                          y=y_support_set_task,
-                                                          weights=names_weights_copy,
-                                                          backup_running_statistics=True,
-                                                          training=True, num_step=0,
-                                                          training_phase=True,
-                                                          epoch=0,
-                                                          prepend_prompt=False)
-
-        if torch.cuda.device_count() > 1:
-            self.classifier.module.zero_grad(names_weights_copy)
-        else:
-            self.classifier.zero_grad(names_weights_copy)
-        grads = torch.autograd.grad(support_loss, names_weights_copy.values(), create_graph=True)
-
-        per_step_task_embedding = []
-        for i in range(len(grads)):
-            per_step_task_embedding.append(grads[i].mean())
-
-        task_embeddings = torch.stack(per_step_task_embedding).unsqueeze(0)
-
-        return task_embeddings, feature_list
-
     def forward(self, data_batch, epoch, use_second_order, use_multi_step_loss_optimization, num_steps, training_phase,
                 current_iter):
         """
@@ -243,8 +218,6 @@ class MAMLFewShotClassifier(nn.Module):
         total_support_accuracies = [[] for i in range(num_steps)]
         total_target_accuracies = [[] for i in range(num_steps)]
         per_task_target_preds = [[] for i in range(len(x_target_set))]
-
-        feature_map_list = []
 
         if torch.cuda.device_count() > 1:
             self.classifier.module.zero_grad()
@@ -358,6 +331,10 @@ class MAMLFewShotClassifier(nn.Module):
 
                 else:
                     if num_step == (self.args.number_of_training_steps_per_iter - 1):
+
+                        ideal_prompt = self.arbiter(z)
+                        prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
+
                         target_loss, target_preds, prompt_feature_map = self.net_forward(x=x_target_set_task,
                                                                         y=y_target_set_task,
                                                                         weights=names_weights_copy,
@@ -366,7 +343,6 @@ class MAMLFewShotClassifier(nn.Module):
                                                                         num_step=num_step,
                                                                         training_phase=training_phase,
                                                                         epoch=epoch)
-                        feature_map_list.append(prompt_feature_map[3])
                         task_losses.append(target_loss)
 
             per_task_target_preds[task_id] = target_preds.detach().cpu().numpy()
@@ -408,12 +384,6 @@ class MAMLFewShotClassifier(nn.Module):
 
         losses = self.get_across_task_loss_metrics(total_losses=total_losses,
                                                    total_accuracies=total_accuracies)
-
-
-        # js_losses = compute_all_js_divergence(feature_maps=feature_map_list, reduction='batchmean')
-        # total_js_losses  = sum(js_losses.values())
-        # print("total_js_losses == ", total_js_losses)
-        # losses['loss'] = losses['loss'] + total_mse_loss
 
         for idx, item in enumerate(per_step_loss_importance_vectors):
             losses['loss_importance_vector_{}'.format(idx)] = item.detach().cpu().numpy()

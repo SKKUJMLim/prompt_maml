@@ -41,7 +41,7 @@
   "weight_decay": 0.0,
 
   "norm_layer":"batch_norm",
-  "cnn_num_filters":64,
+  "cnn_num_filters":48,
   "num_stages":4,
   "conv_padding": true,
   "number_of_training_steps_per_iter":5,
@@ -60,6 +60,6 @@
   "prompt_random_init": false,
   "outer_prompt_learning_rate": 0.001,
   "inner_prompt_learning_rate": 0.01,
-  "num_text_embedding_params": 100,
-  "text_embedding_learning_rate": 0.1
+  "num_text_embedding_params": 64,
+  "text_embedding_learning_rate": 1
 }
