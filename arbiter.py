@@ -26,7 +26,7 @@ class PromptGenerator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(ngf, nc, 3, stride=1, padding=1),
             # nn.Sigmoid(),
-            # nn.Tanh(),
+            nn.Tanh(),
             # nn.LeakyReLU(0.2, inplace=True),
         )
 

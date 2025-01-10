@@ -131,8 +131,10 @@ def image_denormalization(image, datasets="mini_imagenet"):
 
     image = image.permute(1, 2, 0).detach().cpu().numpy()  # [C, H, W] -> [H, W, C]
 
-    mean = np.array([0.0, 0.0, 0.0])
-    std = np.array([0.0, 0.0, 0.0])
+    # mean = np.array([0.0, 0.0, 0.0])
+    # std = np.array([0.0, 0.0, 0.0])
+
+    mean, std = None, None
 
     # Normalize의 반대로 [0, 1] 범위로 복원
     if datasets == "mini_imagenet":
@@ -147,6 +149,8 @@ def image_denormalization(image, datasets="mini_imagenet"):
     elif datasets == "CUB":
         mean = np.array([104 / 255.0, 117 / 255.0, 128 / 255.0])
         std = np.array([1 / 255.0, 1 / 255.0, 1 / 255.0])
+    else:
+        raise ValueError(f"Unknown dataset: {datasets}")
 
     denom_image = image * std + mean
     denom_image = np.clip(denom_image, 0, 1)
@@ -154,15 +158,22 @@ def image_denormalization(image, datasets="mini_imagenet"):
     return denom_image
 
 def show_batch(images, labels, datasets='mini_imagenet'):
-
     '''배치 전체 이미지를 시각화하는 함수'''
-
     batch_size = images.shape[0]
-    fig, axes = plt.subplots(1, batch_size, figsize=(batch_size * 3, 3))
-    for i in range(batch_size):
-        ax = axes[i]
-        denom_image = image_denormalization(image=images[i], datasets=datasets)
-        ax.imshow(denom_image)  # [C, H, W] -> [H, W, C]
-        ax.set_title(f"Label: {labels[i].item()}")
+
+    # 배치 크기에 따라 Subplot 설정
+    if batch_size == 1:
+        fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+        denom_image = image_denormalization(image=images[0], datasets=datasets)
+        ax.imshow(denom_image)
+        ax.set_title(f"Label: {labels[0].item()}")
         ax.axis('off')
+    else:
+        fig, axes = plt.subplots(1, batch_size, figsize=(batch_size * 3, 3))
+        for i in range(batch_size):
+            ax = axes[i]
+            denom_image = image_denormalization(image=images[i], datasets=datasets)
+            ax.imshow(denom_image)
+            ax.set_title(f"Label: {labels[i].item()}")
+            ax.axis('off')
     plt.show()
