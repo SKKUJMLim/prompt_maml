@@ -264,19 +264,20 @@ class MAMLFewShotClassifier(nn.Module):
             z = nn.Parameter(torch.randn([self.args.num_text_embedding_params]), requires_grad=True).to(self.device)
             # torch.zeros(size=[args.num_context_params], requires_grad=True).to(device)
 
-            meta_support_loss, meta_support_preds, meta_feature_list = self.net_forward(x=x_support_set_task,
-                                                                         y=y_support_set_task,
-                                                                         weights=names_weights_copy,
-                                                                         backup_running_statistics=True,
-                                                                         training=True, num_step=0,
-                                                                         training_phase=True,
-                                                                         epoch=0,
-                                                                         prepend_prompt=False)
-
-            meta_support_loss = meta_support_loss.detach().clone()
-            meta_support_preds = meta_support_preds.detach().clone()
-            for idx in range(len(meta_feature_list)):
-                meta_feature_list[idx] = meta_feature_list[idx].detach().clone()
+            # meta_support_loss, meta_support_preds, meta_feature_list = self.net_forward(x=x_support_set_task,
+            #                                                              y=y_support_set_task,
+            #                                                              weights=names_weights_copy,
+            #                                                              backup_running_statistics=True,
+            #                                                              training=True, num_step=0,
+            #                                                              training_phase=True,
+            #                                                              epoch=0,
+            #                                                              prepend_prompt=False)
+            #
+            # meta_support_loss = meta_support_loss.detach().clone()
+            # meta_support_preds = meta_support_preds.detach().clone()
+            #
+            # for idx in range(len(meta_feature_list)):
+            #     meta_feature_list[idx] = meta_feature_list[idx].detach().clone()
 
             for num_step in range(num_steps):
 
@@ -435,14 +436,13 @@ class MAMLFewShotClassifier(nn.Module):
         loss = F.cross_entropy(input=preds, target=y)
 
         # embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
-        #
-        # # spatial dimensions 평균
         # embeddings = embeddings.mean(dim=[2, 3])  # shape: (batch_size, 64)
-        # contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=embeddings, labels=y, temperature=0.1)
+        # flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
 
-        # # Flatten spatial dimensions
-        # flatten_embedding = embeddings.view(embeddings.size(0), -1) # shape: (batch_size, 1600)
+        # contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=flatten_embedding, labels=y, temperature=0.1)
         # contrastive_loss = soft_nearest_neighbors_loss_euclidean(features=flatten_embedding, labels=y, temperature=0.1)
+
+        # print("contrastive_loss == ", contrastive_loss)
 
         # loss = loss + contrastive_loss
 

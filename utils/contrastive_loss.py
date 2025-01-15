@@ -111,10 +111,8 @@ def soft_nearest_neighbors_loss_euclidean(features, labels, temperature):
     device = features.device
     labels = labels.to(device)
 
-    # Manually compute pairwise Euclidean distances
-    # distances[i, j] = ||embeddings[i] - embeddings[j]||_2
-    diff = features.unsqueeze(1) - features.unsqueeze(0)  # Shape: (N, N, D)
-    distances = torch.sqrt((diff ** 2).sum(dim=-1) + 1e-8)  # Shape: (N, N)
+    # Compute pairwise Euclidean distances
+    distances = torch.cdist(features, features, p=2)  # Shape: (N, N)
 
     # Apply softmax with temperature to the negative distances
     negative_distances = -distances / temperature
@@ -124,7 +122,7 @@ def soft_nearest_neighbors_loss_euclidean(features, labels, temperature):
     label_mask = labels.unsqueeze(0) == labels.unsqueeze(1)  # Shape: (N, N)
 
     # Remove diagonal elements from the mask
-    label_mask.fill_diagonal_(False)
+    label_mask = label_mask.fill_diagonal_(False)
 
     # Compute the loss
     numerator = torch.sum(similarity * label_mask.float(), dim=1)
