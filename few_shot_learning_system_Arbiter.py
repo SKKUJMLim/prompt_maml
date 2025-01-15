@@ -13,6 +13,7 @@ from utils.storage import save_statistics
 
 import arbiter
 from utils.basic import compute_kl_loss, compute_mse_loss, compute_js_divergence, compute_all_js_divergence, compute_all_kl_losses, compute_unique_mse_losses
+from utils.contrastive_loss import soft_nearest_neighbors_loss_cos_similarity, soft_nearest_neighbors_loss_euclidean
 
 
 def set_torch_seed(seed):
@@ -70,6 +71,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                     learning_rate=self.task_learning_rate)
 
         if self.args.prompter and self.args.prompt_engineering == 'arbiter':
+            # num_layers = len(names_weights_copy) - 1
             nz = self.args.num_text_embedding_params
             img_size = self.args.image_width
             channel = 3
@@ -278,10 +280,17 @@ class MAMLFewShotClassifier(nn.Module):
 
             for num_step in range(num_steps):
 
+                # layerwise_mean_weights = []
+                # for k, v in names_weights_copy.items():
+                #     layerwise_mean_weights.append(v.mean())
+                #
+                # condition = torch.stack(layerwise_mean_weights)
+                # task_embedding = torch.cat([z, condition], dim=0)
+                # task_embedding = task_embedding.unsqueeze(0)
                 ideal_prompt = self.arbiter(z)
                 prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
 
-                support_loss, support_preds, feature_list = self.net_forward(x=x_support_set_task,
+                support_loss, support_preds, support_feature_list = self.net_forward(x=x_support_set_task,
                                                                   y=y_support_set_task,
                                                                   weights=names_weights_copy,
                                                                   prompted_weights=prompted_weights_copy,
@@ -290,6 +299,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                   num_step=num_step,
                                                                   training_phase=training_phase,
                                                                   epoch=epoch)
+
 
                 gradients = torch.autograd.grad(support_loss, (*names_weights_copy.values(), z),
                                                 create_graph=use_second_order, retain_graph=True)
@@ -332,10 +342,20 @@ class MAMLFewShotClassifier(nn.Module):
                 else:
                     if num_step == (self.args.number_of_training_steps_per_iter - 1):
 
+                        # layerwise_mean_weights = []
+                        # for k, v in names_weights_copy.items():
+                        #     layerwise_mean_weights.append(v.mean())
+                        #
+                        # condition = torch.stack(layerwise_mean_weights)
+                        # task_embedding = torch.cat([z, condition], dim=0)
+                        # task_embedding = task_embedding.unsqueeze(0)
+                        # ideal_prompt = self.arbiter(task_embedding)
+                        # prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
+
                         ideal_prompt = self.arbiter(z)
                         prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
 
-                        target_loss, target_preds, prompt_feature_map = self.net_forward(x=x_target_set_task,
+                        target_loss, target_preds, target_feature_list = self.net_forward(x=x_target_set_task,
                                                                         y=y_target_set_task,
                                                                         weights=names_weights_copy,
                                                                         prompted_weights=prompted_weights_copy,
@@ -343,6 +363,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                         num_step=num_step,
                                                                         training_phase=training_phase,
                                                                         epoch=epoch)
+
                         task_losses.append(target_loss)
 
             per_task_target_preds[task_id] = target_preds.detach().cpu().numpy()
@@ -406,14 +427,20 @@ class MAMLFewShotClassifier(nn.Module):
         :param num_step: An integer indicating the number of the step in the inner loop.
         :return: the crossentropy losses with respect to the given y, the predictions of the base model.
         """
-        preds, feature_map = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+        preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
                                                      training=training,
                                                      backup_running_statistics=backup_running_statistics,
                                                      num_step=num_step, prepend_prompt=prepend_prompt)
 
         loss = F.cross_entropy(input=preds, target=y)
 
-        return loss, preds, feature_map
+        embeddings = feature_map_list[3]
+        embeddings = embeddings.mean(dim=[2, 3])
+        contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(embeddings, y)
+
+        loss = loss + contrastive_loss
+
+        return loss, preds, feature_map_list
 
     def trainable_parameters(self):
         """
