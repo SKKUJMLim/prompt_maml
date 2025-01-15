@@ -71,8 +71,8 @@ class MAMLFewShotClassifier(nn.Module):
                                                                     learning_rate=self.task_learning_rate)
 
         if self.args.prompter and self.args.prompt_engineering == 'arbiter':
-            # num_layers = len(names_weights_copy) - 1
-            nz = self.args.num_text_embedding_params
+            num_layers = len(names_weights_copy) - 1
+            nz = self.args.num_text_embedding_params + num_layers
             img_size = self.args.image_width
             channel = 3
             self.arbiter = arbiter.PromptGenerator(nz=nz, ngf=64, img_size=img_size, nc=channel)
@@ -261,7 +261,7 @@ class MAMLFewShotClassifier(nn.Module):
             x_target_set_task = x_target_set_task.view(-1, c, h, w)
             y_target_set_task = y_target_set_task.view(-1)
 
-            z = nn.Parameter(torch.randn([1, self.args.num_text_embedding_params]), requires_grad=True).to(self.device)
+            z = nn.Parameter(torch.randn([self.args.num_text_embedding_params]), requires_grad=True).to(self.device)
             # torch.zeros(size=[args.num_context_params], requires_grad=True).to(device)
 
             meta_support_loss, meta_support_preds, meta_feature_list = self.net_forward(x=x_support_set_task,
@@ -280,14 +280,14 @@ class MAMLFewShotClassifier(nn.Module):
 
             for num_step in range(num_steps):
 
-                # layerwise_mean_weights = []
-                # for k, v in names_weights_copy.items():
-                #     layerwise_mean_weights.append(v.mean())
-                #
-                # condition = torch.stack(layerwise_mean_weights)
-                # task_embedding = torch.cat([z, condition], dim=0)
-                # task_embedding = task_embedding.unsqueeze(0)
-                ideal_prompt = self.arbiter(z)
+                layerwise_mean_weights = []
+                for k, v in names_weights_copy.items():
+                    layerwise_mean_weights.append(v.mean())
+
+                condition = torch.stack(layerwise_mean_weights)
+                task_embedding = torch.cat([z, condition], dim=0)
+                task_embedding = task_embedding.unsqueeze(0)
+                ideal_prompt = self.arbiter(task_embedding)
                 prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
 
                 support_loss, support_preds, support_feature_list = self.net_forward(x=x_support_set_task,
@@ -342,18 +342,18 @@ class MAMLFewShotClassifier(nn.Module):
                 else:
                     if num_step == (self.args.number_of_training_steps_per_iter - 1):
 
-                        # layerwise_mean_weights = []
-                        # for k, v in names_weights_copy.items():
-                        #     layerwise_mean_weights.append(v.mean())
-                        #
-                        # condition = torch.stack(layerwise_mean_weights)
-                        # task_embedding = torch.cat([z, condition], dim=0)
-                        # task_embedding = task_embedding.unsqueeze(0)
-                        # ideal_prompt = self.arbiter(task_embedding)
-                        # prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
+                        layerwise_mean_weights = []
+                        for k, v in names_weights_copy.items():
+                            layerwise_mean_weights.append(v.mean())
 
-                        ideal_prompt = self.arbiter(z)
+                        condition = torch.stack(layerwise_mean_weights)
+                        task_embedding = torch.cat([z, condition], dim=0)
+                        task_embedding = task_embedding.unsqueeze(0)
+                        ideal_prompt = self.arbiter(task_embedding)
                         prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
+
+                        # ideal_prompt = self.arbiter(z)
+                        # prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
 
                         target_loss, target_preds, target_feature_list = self.net_forward(x=x_target_set_task,
                                                                         y=y_target_set_task,
@@ -434,18 +434,17 @@ class MAMLFewShotClassifier(nn.Module):
 
         loss = F.cross_entropy(input=preds, target=y)
 
-
-        embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
-
-        # spatial dimensions 평균
-        embeddings = embeddings.mean(dim=[2, 3])  # shape: (batch_size, 64)
-        contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=embeddings, labels=y, temperature=0.1)
+        # embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
+        #
+        # # spatial dimensions 평균
+        # embeddings = embeddings.mean(dim=[2, 3])  # shape: (batch_size, 64)
+        # contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=embeddings, labels=y, temperature=0.1)
 
         # # Flatten spatial dimensions
         # flatten_embedding = embeddings.view(embeddings.size(0), -1) # shape: (batch_size, 1600)
         # contrastive_loss = soft_nearest_neighbors_loss_euclidean(features=flatten_embedding, labels=y, temperature=0.1)
 
-        loss = loss + contrastive_loss
+        # loss = loss + contrastive_loss
 
         return loss, preds, feature_map_list
 
