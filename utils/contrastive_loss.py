@@ -46,12 +46,12 @@ def soft_nearest_neighbors_loss_cos_similarity(features, labels, temperature):
 
     return loss
 
-def soft_nearest_neighbors_loss_euclidean(embeddings, labels, temperature):
+def soft_nearest_neighbors_loss_euclidean(features, labels, temperature):
     """
     Computes the Soft Nearest Neighbors Loss using Euclidean distance.
 
     Args:
-        embeddings (torch.Tensor): Tensor of shape (N, D) where N is the number of samples and D is the embedding dimension.
+        features (torch.Tensor): Tensor of shape (N, D) where N is the number of samples and D is the embedding dimension.
         labels (torch.Tensor): Tensor of shape (N,) containing the class labels for the samples.
         temperature (float): Temperature parameter to control the sharpness of the softmax distribution.
 
@@ -59,12 +59,12 @@ def soft_nearest_neighbors_loss_euclidean(embeddings, labels, temperature):
         torch.Tensor: The computed loss value.
     """
     # Ensure inputs are on the same device
-    device = embeddings.device
+    device = features.device
     labels = labels.to(device)
 
     # Manually compute pairwise Euclidean distances
     # distances[i, j] = ||embeddings[i] - embeddings[j]||_2
-    diff = embeddings.unsqueeze(1) - embeddings.unsqueeze(0)  # Shape: (N, N, D)
+    diff = features.unsqueeze(1) - features.unsqueeze(0)  # Shape: (N, N, D)
     distances = torch.sqrt((diff ** 2).sum(dim=-1) + 1e-8)  # Shape: (N, N)
 
     # Apply softmax with temperature to the negative distances
