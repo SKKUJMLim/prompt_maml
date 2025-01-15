@@ -437,7 +437,6 @@ class MAMLFewShotClassifier(nn.Module):
         embeddings = feature_map_list[3]
         embeddings = embeddings.mean(dim=[2, 3])
         contrastive_loss = soft_nearest_neighbors_loss_euclidean(embeddings=embeddings, labels=y, temperature=0.1)
-        print("contrastive_loss == ", contrastive_loss)
 
         loss = loss + contrastive_loss
 
