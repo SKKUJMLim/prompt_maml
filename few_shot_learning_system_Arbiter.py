@@ -443,8 +443,21 @@ class MAMLFewShotClassifier(nn.Module):
         # contrastive_loss = soft_nearest_neighbors_loss_euclidean(features=flatten_embedding, labels=y, temperature=0.1)
 
         # print("contrastive_loss == ", contrastive_loss)
-
         # loss = loss + contrastive_loss
+
+        '''layer-wise contrastive loss'''
+        # for layer_index in range(len(feature_map_list)):
+        #     # torch.Size([64, 42, 42])
+        #     # torch.Size([64, 21, 21])
+        #     # torch.Size([64, 10, 10])
+        #     # torch.Size([64, 5, 5])
+        #     embeddings = feature_map_list[layer_index]
+        #     flatten_embedding = embeddings.view(embeddings.size(0), -1)
+        #     contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=flatten_embedding,
+        #                                                                   labels=y,
+        #                                                                   temperature=0.1)
+        #
+        #     loss = loss + contrastive_loss
 
         return loss, preds, feature_map_list
 
