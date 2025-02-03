@@ -2,6 +2,32 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
+
+
+class Decoder(nn.Module):
+    def __init__(self, input_dim, output_dim, latent_dim=100):
+        super(Decoder, self).__init__()
+
+        self.decoder = nn.Sequential(
+            nn.Linear(latent_dim, 256),
+            nn.ReLU(),
+            nn.Linear(256, 512),
+            nn.ReLU(),
+            nn.Linear(512, output_dim),
+            nn.LeakyReLU(0.2, inplace=True)
+        )
+
+    def forward(self, x):
+
+        # Decoder
+        x = self.decoder(x)
+
+        # Reshape output to (batch_size, 3, 84, 84)
+        x = x.view(-1, 3, 84, 84)
+        return x
+
+
 class PromptGenerator(nn.Module):
 
     # https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/ebgan/ebgan.py 참조

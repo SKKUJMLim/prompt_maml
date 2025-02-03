@@ -12,7 +12,8 @@ from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDesce
 from utils.storage import save_statistics
 
 import arbiter
-
+from utils.basic import compute_kl_loss, compute_mse_loss, compute_js_divergence, compute_all_js_divergence, compute_all_kl_losses, compute_unique_mse_losses
+from utils.contrastive_loss import soft_nearest_neighbors_loss_cos_similarity, soft_nearest_neighbors_loss_euclidean
 
 def set_torch_seed(seed):
     """
@@ -247,7 +248,7 @@ class MAMLFewShotClassifier(nn.Module):
         total_target_accuracies = [[] for i in range(num_steps)]
         per_task_target_preds = [[] for i in range(len(x_target_set))]
 
-        feature_map_list = []
+        # feature_map_list = []
 
         if torch.cuda.device_count() > 1:
             self.classifier.module.zero_grad()
@@ -359,7 +360,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                         num_step=num_step,
                                                                         training_phase=training_phase,
                                                                         epoch=epoch)
-                        feature_map_list.append(prompt_feature_map)
+                        # feature_map_list.append(prompt_feature_map)
                         task_losses.append(target_loss)
 
             per_task_target_preds[task_id] = target_preds.detach().cpu().numpy()
@@ -425,11 +426,24 @@ class MAMLFewShotClassifier(nn.Module):
         :param num_step: An integer indicating the number of the step in the inner loop.
         :return: the crossentropy losses with respect to the given y, the predictions of the base model.
         """
-        preds, feature_map = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+        preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
                                                      training=training,
                                                      backup_running_statistics=backup_running_statistics,
                                                      num_step=num_step, prepend_prompt=prepend_prompt)
 
+        loss = F.cross_entropy(input=preds, target=y)
+
+        # embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
+        # embeddings = embeddings.mean(dim=[2, 3])  # shape: (batch_size, 64)
+        # flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
+        #
+        # contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=flatten_embedding, labels=y, temperature=0.1)
+        # # contrastive_loss = soft_nearest_neighbors_loss_euclidean(features=flatten_embedding, labels=y, temperature=0.1)
+        #
+        # # print("contrastive_loss == ", contrastive_loss)
+        # loss = loss + contrastive_loss
+
+        '''Mutual Information'''
         # prompted_weights['prompt.prompt_dict.arbiter']
         # self.classifier.my_param
         # weights["layer_dict.linear.weights"]
@@ -439,9 +453,7 @@ class MAMLFewShotClassifier(nn.Module):
         # mutual_info = F.softmax(dot_product)
         # print("mutual_info == ", mutual_info)
 
-        loss = F.cross_entropy(input=preds, target=y)
-
-        return loss, preds, feature_map
+        return loss, preds, feature_map_list
 
     def trainable_parameters(self):
         """

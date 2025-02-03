@@ -95,6 +95,19 @@ def soft_nearest_neighbors_loss_cos_similarity(features, labels, temperature):
 
     return loss
 
+
+def squared_euclidean_distance(x):
+    """
+    x: (N, D) 형태의 텐서
+    반환값: (N, N) 형태의 유클리드 제곱 거리 행렬
+    """
+    # ||a - b||^2 = ||a||^2 + ||b||^2 - 2 * (a @ b.T)
+    x_norm = (x ** 2).sum(dim=1, keepdim=True)  # ||x||^2, Shape: (N, 1)
+    distance_matrix = x_norm + x_norm.T - 2 * (x @ x.T)  # (N, N)
+    distance_matrix = torch.sqrt(torch.clamp(distance_matrix, min=1e-8))  # sqrt 적용 (음수 방지)
+    return distance_matrix
+
+
 def soft_nearest_neighbors_loss_euclidean(features, labels, temperature):
     """
     Computes the Soft Nearest Neighbors Loss using Euclidean distance.
@@ -112,7 +125,8 @@ def soft_nearest_neighbors_loss_euclidean(features, labels, temperature):
     labels = labels.to(device)
 
     # Compute pairwise Euclidean distances
-    distances = torch.cdist(features, features, p=2)  # Shape: (N, N)
+    # distances = torch.cdist(features, features, p=2) ** 2  # Shape: (N, N)
+    distances = squared_euclidean_distance(features)
 
     # Apply softmax with temperature to the negative distances
     negative_distances = -distances / temperature
