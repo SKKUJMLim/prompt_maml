@@ -6,16 +6,19 @@ import torch.nn.functional as F
 
 
 class Decoder(nn.Module):
-    def __init__(self, input_dim, output_dim, latent_dim=100):
+    def __init__(self, latent_dim=100, img_size=84, channel=3):
         super(Decoder, self).__init__()
+
+        output_dim = channel * img_size * img_size
 
         self.decoder = nn.Sequential(
             nn.Linear(latent_dim, 256),
             nn.ReLU(),
             nn.Linear(256, 512),
-            nn.ReLU(),
+            nn.ReLU(),  # 나머지 layer도 LeakRelu로?
             nn.Linear(512, output_dim),
             nn.LeakyReLU(0.2, inplace=True)
+            # x = self.prelu(x)
         )
 
     def forward(self, x):

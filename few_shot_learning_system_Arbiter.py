@@ -71,11 +71,13 @@ class MAMLFewShotClassifier(nn.Module):
                                                                     learning_rate=self.task_learning_rate)
 
         if self.args.prompter and self.args.prompt_engineering == 'arbiter':
-            num_layers = len(names_weights_copy) - 1
-            nz = self.args.num_text_embedding_params # + num_layers
-            img_size = self.args.image_width
-            channel = 3
-            self.arbiter = arbiter.PromptGenerator(nz=nz, ngf=64, img_size=img_size, nc=channel)
+            # num_layers = len(names_weights_copy) - 1
+            # nz = self.args.num_text_embedding_params # + num_layers
+            # img_size = self.args.image_width
+            # channel = 3
+            # self.arbiter = arbiter.PromptGenerator(nz=nz, ngf=64, img_size=img_size, nc=channel)
+
+            self.arbiter = arbiter.Decoder(latent_dim=self.args.num_text_embedding_params, img_size=self.args.image_width, channel=3)
 
         print("Inner Loop parameters")
         for key, value in self.inner_loop_optimizer.named_parameters():
