@@ -10,7 +10,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import arbiter
+import torch.nn.functional as F
 
 def extract_top_level_dict(current_dict):
 
@@ -156,6 +156,73 @@ class PromptArbiter(nn.Module):
 
         return x + prompt
 
+class SimpleConvolution(nn.Module):
+    def __init__(self, args, in_channels, out_channels, kernel_size, stride, padding, use_bias, groups=1, dilation_rate=1):
+        super(SimpleConvolution, self).__init__()
+        num_filters = out_channels
+        self.args = args
+        self.stride = int(stride)
+        self.padding = int(padding)
+        self.dilation_rate = int(dilation_rate)
+        self.use_bias = use_bias
+        self.groups = int(groups)
+        self.prompt_weight = nn.Parameter(torch.empty(num_filters, in_channels, kernel_size, kernel_size))
+        nn.init.xavier_uniform_(self.prompt_weight)
+
+        if self.use_bias:
+            self.prompt_bias = nn.Parameter(torch.zeros(num_filters))
+    def forward(self, images, prompt_params=None):
+        if prompt_params is not None:
+            prompt_params = extract_top_level_dict(current_dict=prompt_params)
+            if self.use_bias:
+                (prompt_weight, prompt_bias) = prompt_params["prompt_conv"]["prompt_weight"], prompt_params["prompt_conv"]["prompt_bias"]
+                prompt_weight = prompt_weight.squeeze(0)
+                prompt_bias = prompt_bias.squeeze(0)
+            else:
+                (prompt_weight) = prompt_params["prompt_conv"]["prompt_weight"]
+                prompt_bias = None
+        else:
+            if self.use_bias:
+                prompt_weight, prompt_bias = self.prompt_weight, self.prompt_bias
+            else:
+                prompt_weight = self.prompt_weight
+                prompt_bias = None
+
+        ideal_prompt = F.conv2d(input=images, weight=prompt_weight, bias=prompt_bias, stride=self.stride,
+                       padding=self.padding, dilation=self.dilation_rate, groups=self.groups)
+
+        prompt_image = images + ideal_prompt
+
+        return prompt_image
+
+class PromptConvolution(nn.Module):
+    def __init__(self, args):
+        super(PromptConvolution, self).__init__()
+        self.isize = args.image_size
+        self.args = args
+        self.prompt_dict = nn.ParameterDict()
+        self.build_prompt()
+
+    def build_prompt(self):
+        self.prompt_dict['prompt_conv'] = SimpleConvolution(args=self.args,
+                                                            in_channels=3,
+                                                            out_channels=3,
+                                                            kernel_size=3,
+                                                            stride=1,
+                                                            padding=1,
+                                                            use_bias=True)
+
+    def forward(self, x, prompted_params=None):
+
+        if prompted_params is not None:
+            prompted_params = extract_top_level_dict(current_dict=prompted_params)
+        else:
+            print("prompted_params is None")
+
+        prompt_image = self.prompt_dict['prompt_conv'](images=x, prompt_params=prompted_params)
+
+        return prompt_image
+
 
 def padding(args):
     return PadPrompter(args)
@@ -168,3 +235,6 @@ def random_patch(args):
 
 def arbiter(args):
     return PromptArbiter(args)
+
+def convolution(args):
+    return PromptConvolution(args)
