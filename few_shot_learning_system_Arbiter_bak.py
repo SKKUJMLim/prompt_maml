@@ -436,11 +436,10 @@ class MAMLFewShotClassifier(nn.Module):
         # embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
         # embeddings = embeddings.mean(dim=[2, 3])  # shape: (batch_size, 64)
         # flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
-        #
+
         # contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=flatten_embedding, labels=y, temperature=0.1)
-        # # contrastive_loss = soft_nearest_neighbors_loss_euclidean(features=flatten_embedding, labels=y, temperature=0.1)
-        #
-        # # print("contrastive_loss == ", contrastive_loss)
+        # contrastive_loss = soft_nearest_neighbors_loss_euclidean(features=flatten_embedding, labels=y, temperature=0.1)
+
         # loss = loss + contrastive_loss
 
         '''Mutual Information'''

@@ -72,12 +72,12 @@ class MAMLFewShotClassifier(nn.Module):
 
         if self.args.prompter and self.args.prompt_engineering == 'arbiter':
             # num_layers = len(names_weights_copy) - 1
-            # nz = self.args.num_text_embedding_params # + num_layers
-            # img_size = self.args.image_width
-            # channel = 3
-            # self.arbiter = arbiter.PromptGenerator(nz=nz, ngf=64, img_size=img_size, nc=channel)
+            nz = self.args.num_text_embedding_params # + num_layers
+            img_size = self.args.image_width
+            channel = 3
+            self.arbiter = arbiter.PromptGenerator(nz=nz, ngf=64, img_size=img_size, nc=channel)
 
-            self.arbiter = arbiter.Decoder(latent_dim=self.args.num_text_embedding_params, img_size=self.args.image_width, channel=3)
+            # self.arbiter = arbiter.CrossAttentionVisualPrompt(image_channels=3, task_dim=self.args.num_text_embedding_params)
 
         print("Inner Loop parameters")
         for key, value in self.inner_loop_optimizer.named_parameters():
@@ -263,7 +263,7 @@ class MAMLFewShotClassifier(nn.Module):
             x_target_set_task = x_target_set_task.view(-1, c, h, w)
             y_target_set_task = y_target_set_task.view(-1)
 
-            z = nn.Parameter(torch.randn([1, self.args.num_text_embedding_params]), requires_grad=True).to(self.device)
+            z = nn.Parameter(torch.randn([self.args.num_text_embedding_params]), requires_grad=True).to(self.device)
             # z = torch.zeros(size=[self.args.num_text_embedding_params], requires_grad=True).to(self.device)
 
             # meta_support_loss, meta_support_preds, meta_feature_list = self.net_forward(x=x_support_set_task,
@@ -291,8 +291,12 @@ class MAMLFewShotClassifier(nn.Module):
                 # task_embedding = torch.cat([z, condition], dim=0)
                 # task_embedding = task_embedding.unsqueeze(0)
                 # ideal_prompt = self.arbiter(task_embedding)
+
                 ideal_prompt = self.arbiter(z)
                 prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
+
+                # ideal_prompt = self.arbiter(image=x_support_set_task, task_embedding=z)
+                # prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
 
                 support_loss, support_preds, support_feature_list = self.net_forward(x=x_support_set_task,
                                                                   y=y_support_set_task,
@@ -353,8 +357,13 @@ class MAMLFewShotClassifier(nn.Module):
                         # task_embedding = torch.cat([z, condition], dim=0)
                         # task_embedding = task_embedding.unsqueeze(0)
                         # ideal_prompt = self.arbiter(task_embedding)
+
                         ideal_prompt = self.arbiter(z)
                         prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
+
+                        # ideal_prompt = self.arbiter(image=x_target_set_task, task_embedding=z)
+                        # prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
+                        # print("ideal_prompt == ", ideal_prompt)
 
                         target_loss, target_preds, target_feature_list = self.net_forward(x=x_target_set_task,
                                                                         y=y_target_set_task,

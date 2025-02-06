@@ -5,31 +5,43 @@ import torch.nn.functional as F
 
 
 
-class Decoder(nn.Module):
-    def __init__(self, latent_dim=100, img_size=84, channel=3):
-        super(Decoder, self).__init__()
+class CrossAttentionVisualPrompt(nn.Module):
+    def __init__(self, image_channels=3, task_dim=100):
+        super(CrossAttentionVisualPrompt, self).__init__()
 
-        output_dim = channel * img_size * img_size
+        # Key, Value 변환 (이미지를 그대로 사용)
+        self.key_proj = nn.Conv2d(image_channels, task_dim, kernel_size=1)
+        self.value_proj = nn.Conv2d(image_channels, image_channels, kernel_size=1)
 
-        self.decoder = nn.Sequential(
-            nn.Linear(latent_dim, 256),
-            nn.ReLU(),
-            nn.Linear(256, 512),
-            nn.ReLU(),  # 나머지 layer도 LeakRelu로?
-            nn.Linear(512, output_dim),
-            nn.LeakyReLU(0.2, inplace=True)
-            # x = self.prelu(x)
-        )
+        # Attention 계산 후 prompt 변환
+        self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, x):
+    def forward(self, image, task_embedding):
+        """
+        image: (B, 3, 84, 84) - Key, Value 역할
+        task_embedding: (B, 100) - Query 역할
+        """
+        batch_size, _, height, width = image.shape
 
-        # Decoder
-        x = self.decoder(x)
+        # Key, Value 변환 (B, 100, H, W) & (B, 3, H, W)
+        key = self.key_proj(image)  # (B, 100, H, W)
+        value = self.value_proj(image)  # (B, 3, H, W)
 
-        # Reshape output to (batch_size, 3, 84, 84)
-        x = x.view(-1, 3, 84, 84)
-        return x
+        # Query 크기 맞추기 (B, 100) → (B, 100, 1, 1)
+        task_embedding = task_embedding.unsqueeze(0).expand(batch_size, -1)
+        query = task_embedding.view(batch_size, -1, 1, 1)  # (B, 100, 1, 1)
 
+        print("task_embedding shape == ", task_embedding.shape)
+        print("query shape == ", query.shape)
+
+        # Attention score 계산 (B, 1, H, W)
+        scores = torch.sum(query * key, dim=1, keepdim=True) / (key.shape[1] ** 0.5)  # (B, 1, H, W)
+        attention_weights = self.softmax(scores.view(batch_size, 1, -1)).view(batch_size, 1, height, width)  # (B, 1, H, W)
+
+        # Attention 적용하여 Prompt 생성 (B, 3, H, W)
+        prompt = value * attention_weights
+
+        return prompt, attention_weights  # (B, 3, 84, 84), (B, 1, 84, 84)
 
 class PromptGenerator(nn.Module):
 
@@ -53,6 +65,7 @@ class PromptGenerator(nn.Module):
             nn.Conv2d(ngf*2, ngf, 3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(ngf),
             nn.LeakyReLU(0.2, inplace=True),
+
             nn.Conv2d(ngf, nc, 3, stride=1, padding=1),
             # nn.Sigmoid(),
             # nn.Tanh(),
