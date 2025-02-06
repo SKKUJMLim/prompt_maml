@@ -223,6 +223,43 @@ class PromptConvolution(nn.Module):
 
         return prompt_image
 
+class PromptCrossAttention(nn.Module):
+    def __init__(self, image_channels=3, task_dim=100):
+        super(PromptCrossAttention, self).__init__()
+
+        # Key, Value 변환 (이미지를 그대로 사용)
+        self.key_proj = nn.Conv2d(image_channels, task_dim, kernel_size=1)
+        self.value_proj = nn.Conv2d(image_channels, image_channels, kernel_size=1)
+
+        # Attention 계산 후 prompt 변환
+        self.softmax = nn.Softmax(dim=-1)
+
+    def forward(self, image, task_embedding):
+        """
+        image: (B, 3, 84, 84) - Key, Value 역할
+        task_embedding: (B, 100) - Query 역할
+        """
+        batch_size, _, height, width = image.shape
+
+        # Key, Value 변환 (B, 100, H, W) & (B, 3, H, W)
+        key = self.key_proj(image)  # (B, 100, H, W)
+        value = self.value_proj(image)  # (B, 3, H, W)
+
+        # Query 크기 맞추기 (B, 100) → (B, 100, 1, 1)
+        task_embedding = task_embedding.unsqueeze(0).expand(batch_size, -1)
+        query = task_embedding.view(batch_size, -1, 1, 1)  # (B, 100, 1, 1)
+
+        print("task_embedding shape == ", task_embedding.shape)
+        print("query shape == ", query.shape)
+
+        # Attention score 계산 (B, 1, H, W)
+        scores = torch.sum(query * key, dim=1, keepdim=True) / (key.shape[1] ** 0.5)  # (B, 1, H, W)
+        attention_weights = self.softmax(scores.view(batch_size, 1, -1)).view(batch_size, 1, height, width)  # (B, 1, H, W)
+
+        # Attention 적용하여 Prompt 생성 (B, 3, H, W)
+        prompt = value * attention_weights
+
+        return prompt, attention_weights  # (B, 3, 84, 84), (B, 1, 84, 84)
 
 def padding(args):
     return PadPrompter(args)
@@ -238,3 +275,6 @@ def arbiter(args):
 
 def convolution(args):
     return PromptConvolution(args)
+
+def attention(args):
+    return PromptCrossAttention(args)
