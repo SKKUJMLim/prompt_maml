@@ -263,7 +263,7 @@ class MAMLFewShotClassifier(nn.Module):
             x_target_set_task = x_target_set_task.view(-1, c, h, w)
             y_target_set_task = y_target_set_task.view(-1)
 
-            z = nn.Parameter(torch.randn([self.args.num_text_embedding_params]), requires_grad=True).to(self.device)
+            z = nn.Parameter(torch.randn([1, self.args.num_text_embedding_params]), requires_grad=True).to(self.device)
             # z = torch.zeros(size=[self.args.num_text_embedding_params], requires_grad=True).to(self.device)
 
             # meta_support_loss, meta_support_preds, meta_feature_list = self.net_forward(x=x_support_set_task,
