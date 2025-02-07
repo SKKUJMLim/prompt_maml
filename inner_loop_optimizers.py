@@ -115,7 +115,7 @@ class LSLRGradientDescentLearningRule(nn.Module):
 
         self.args = args
         self.init_learning_rate = torch.ones(1) * init_learning_rate
-        self.init_learning_rate.to(device)
+        self.learning_rate = init_learning_rate
         self.total_num_inner_loop_steps = total_num_inner_loop_steps
         self.use_learnable_learning_rates = use_learnable_learning_rates
 
@@ -166,7 +166,7 @@ class LSLRGradientDescentLearningRule(nn.Module):
             for key in names_weights_dict.keys():
                 if 'linear' in key:
                     updated_names_weights_dict[key] = names_weights_dict[key] \
-                                                      - self.init_learning_rate \
+                                                      - self.learning_rate \
                                                       * names_grads_wrt_params_dict[key]
                 else:
                     updated_names_weights_dict[key] = names_weights_dict[key] \
