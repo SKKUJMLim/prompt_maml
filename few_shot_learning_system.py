@@ -74,7 +74,8 @@ class MAMLFewShotClassifier(nn.Module):
 
         print("Inner Loop parameters")
         for key, value in self.inner_loop_optimizer.named_parameters():
-            print(key, value.shape)
+            if value.requires_grad:
+                print(key, value.shape)
 
         self.use_cuda = args.use_cuda
         self.device = device
@@ -300,6 +301,7 @@ class MAMLFewShotClassifier(nn.Module):
 
             for num_step in range(num_steps):
 
+
                 support_loss, support_preds = self.net_forward(x=x_support_set_task,
                                                                y=y_support_set_task,
                                                                weights=names_weights_copy,
@@ -402,12 +404,9 @@ class MAMLFewShotClassifier(nn.Module):
         :return: the crossentropy losses with respect to the given y, the predictions of the base model.
         """
 
-        # print("weights == ", weights['layer_dict.conv0.conv.weight'].shape)
-        # print("prompted_weights == ", prompted_weights['prompt.prompt_dict.prompt_conv.prompt_weight'].shape)
-
         preds, feature_map = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-                                        training=training,
-                                        backup_running_statistics=backup_running_statistics, num_step=num_step, prepend_prompt=prepend_prompt)
+                                        training=training, backup_running_statistics=backup_running_statistics,
+                                                     num_step=num_step, prepend_prompt=prepend_prompt)
 
         loss = F.cross_entropy(input=preds, target=y)
 

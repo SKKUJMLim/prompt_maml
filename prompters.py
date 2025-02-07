@@ -12,8 +12,8 @@ import torch.nn as nn
 import numpy as np
 import torch.nn.functional as F
 
-def extract_top_level_dict(current_dict):
 
+def extract_top_level_dict(current_dict):
     output_dict = dict()
     for key in current_dict.keys():
         name = key.replace("prompt.", "")
@@ -33,6 +33,7 @@ def extract_top_level_dict(current_dict):
 
     return output_dict
 
+
 class PadPrompter(nn.Module):
     def __init__(self, args):
         super(PadPrompter, self).__init__()
@@ -50,8 +51,10 @@ class PadPrompter(nn.Module):
         # 원래 batch 때문에 1이 추가되어 있는데, 나는 few_shot_learning_system에서 batch를 추가해주기때문에 생략한다.
         self.prompt_dict['pad_up'] = nn.Parameter(torch.randn([3, self.pad_size, self.image_size]))
         self.prompt_dict['pad_down'] = nn.Parameter(torch.randn([3, self.pad_size, self.image_size]))
-        self.prompt_dict['pad_left'] = nn.Parameter(torch.randn([3, self.image_size - self.pad_size * 2, self.pad_size]))
-        self.prompt_dict['pad_right'] = nn.Parameter(torch.randn([3, self.image_size - self.pad_size * 2, self.pad_size]))
+        self.prompt_dict['pad_left'] = nn.Parameter(
+            torch.randn([3, self.image_size - self.pad_size * 2, self.pad_size]))
+        self.prompt_dict['pad_right'] = nn.Parameter(
+            torch.randn([3, self.image_size - self.pad_size * 2, self.pad_size]))
 
     def forward(self, x, prompted_params=None):
         if prompted_params is not None:
@@ -79,6 +82,7 @@ class PadPrompter(nn.Module):
 
         return x + prompt
 
+
 class FixedPatchPrompter(nn.Module):
     def __init__(self, args):
         super(FixedPatchPrompter, self).__init__()
@@ -104,6 +108,7 @@ class FixedPatchPrompter(nn.Module):
         prompt[:, :, :self.psize, :self.psize] = patch
 
         return x + prompt
+
 
 class RandomPatchPrompter(nn.Module):
     def __init__(self, args):
@@ -133,6 +138,7 @@ class RandomPatchPrompter(nn.Module):
 
         return x + prompt
 
+
 class PromptArbiter(nn.Module):
     def __init__(self, args):
         super(PromptArbiter, self).__init__()
@@ -156,8 +162,10 @@ class PromptArbiter(nn.Module):
 
         return x + prompt
 
+
 class SimpleConvolution(nn.Module):
-    def __init__(self, args, in_channels, out_channels, kernel_size, stride, padding, use_bias, groups=1, dilation_rate=1):
+    def __init__(self, args, in_channels, out_channels, kernel_size, stride, padding, use_bias, groups=1,
+                 dilation_rate=1):
         super(SimpleConvolution, self).__init__()
         num_filters = out_channels
         self.args = args
@@ -166,45 +174,46 @@ class SimpleConvolution(nn.Module):
         self.dilation_rate = int(dilation_rate)
         self.use_bias = use_bias
         self.groups = int(groups)
-        self.prompt_weight = nn.Parameter(torch.empty(num_filters, in_channels, kernel_size, kernel_size))
-        nn.init.xavier_uniform_(self.prompt_weight)
+        self.weight = nn.Parameter(torch.empty(num_filters, in_channels, kernel_size, kernel_size))
+        nn.init.xavier_uniform_(self.weight)
 
         if self.use_bias:
-            self.prompt_bias = nn.Parameter(torch.zeros(num_filters))
-    def forward(self, images, prompt_params=None):
-        if prompt_params is not None:
-            prompt_params = extract_top_level_dict(current_dict=prompt_params)
+            self.bias = nn.Parameter(torch.zeros(num_filters))
+
+    def forward(self, images, params=None):
+        if params is not None:
+            params = extract_top_level_dict(current_dict=params)
             if self.use_bias:
-                (prompt_weight, prompt_bias) = prompt_params["prompt_conv"]["prompt_weight"], prompt_params["prompt_conv"]["prompt_bias"]
-                prompt_weight = prompt_weight.squeeze(0)
-                prompt_bias = prompt_bias.squeeze(0)
+                (weight, bias) = params["weight"], params["bias"]
+                weight = weight.squeeze(0)
+                bias = bias.squeeze(0)
             else:
-                (prompt_weight) = prompt_params["prompt_conv"]["prompt_weight"]
-                prompt_bias = None
+                (weight) = params["weight"]
+                bias = None
         else:
             if self.use_bias:
-                prompt_weight, prompt_bias = self.prompt_weight, self.prompt_bias
+                weight, bias = self.weight, self.bias
             else:
-                prompt_weight = self.prompt_weight
-                prompt_bias = None
+                weight = self.weight
+                bias = None
 
-        ideal_prompt = F.conv2d(input=images, weight=prompt_weight, bias=prompt_bias, stride=self.stride,
+        out = F.conv2d(input=images, weight=weight, bias=bias, stride=self.stride,
                        padding=self.padding, dilation=self.dilation_rate, groups=self.groups)
 
-        prompt_image = images + ideal_prompt
+        return out
 
-        return prompt_image
 
 class PromptConvolution(nn.Module):
     def __init__(self, args):
         super(PromptConvolution, self).__init__()
-        self.isize = args.image_size
         self.args = args
         self.prompt_dict = nn.ParameterDict()
+        self.key_name = 'conv'
+
         self.build_prompt()
 
     def build_prompt(self):
-        self.prompt_dict['prompt_conv'] = SimpleConvolution(args=self.args,
+        self.prompt_dict[self.key_name] = SimpleConvolution(args=self.args,
                                                             in_channels=3,
                                                             out_channels=3,
                                                             kernel_size=3,
@@ -219,62 +228,103 @@ class PromptConvolution(nn.Module):
         else:
             print("prompted_params is None")
 
-        prompt_image = self.prompt_dict['prompt_conv'](images=x, prompt_params=prompted_params)
+        prompted_params = prompted_params[self.key_name]
 
-        return prompt_image
+        ideal_prompt = self.prompt_dict[self.key_name](images=x, params=prompted_params)
+        prompted_image = x + ideal_prompt
 
-class PromptCrossAttention(nn.Module):
-    def __init__(self, image_channels=3, task_dim=100):
-        super(PromptCrossAttention, self).__init__()
+        return prompted_image
 
-        # Key, Value 변환 (이미지를 그대로 사용)
-        self.key_proj = nn.Conv2d(image_channels, task_dim, kernel_size=1)
-        self.value_proj = nn.Conv2d(image_channels, image_channels, kernel_size=1)
 
-        # Attention 계산 후 prompt 변환
+class PromptSelfAttention(nn.Module):
+    def __init__(self, args):
+        super(PromptSelfAttention, self).__init__()
+        self.args = args
+        self.prompt_dict = nn.ParameterDict()
         self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, image, task_embedding):
-        """
-        image: (B, 3, 84, 84) - Key, Value 역할
-        task_embedding: (B, 100) - Query 역할
-        """
-        batch_size, _, height, width = image.shape
+        self.query_layer = 'query_proj '
+        self.key_layer = 'key_proj'
+        self.value_layer = 'value_proj'
+
+        self.build_prompt()
+
+    def build_prompt(self):
+
+        in_channels = 3
+        embed_dim = 64
+
+        self.prompt_dict[self.query_layer] = SimpleConvolution(args=self.args,
+                                                             in_channels=in_channels,
+                                                             out_channels=embed_dim,
+                                                             kernel_size=1,
+                                                             stride=1,
+                                                             padding=0,
+                                                             use_bias=True)
+
+        self.prompt_dict[self.key_layer] = SimpleConvolution(args=self.args,
+                                                          in_channels=in_channels,
+                                                          out_channels=embed_dim,
+                                                          kernel_size=1,
+                                                          stride=1,
+                                                          padding=0,
+                                                          use_bias=True)
+
+        self.prompt_dict[self.value_layer] = SimpleConvolution(args=self.args,
+                                                            in_channels=in_channels,
+                                                            out_channels=in_channels,
+                                                            kernel_size=1,
+                                                            stride=1,
+                                                            padding=0,
+                                                            use_bias=True)
+
+    def forward(self, x, prompted_params=None):
+
+        batch_size, channels, height, width = x.shape
+
+        if prompted_params is not None:
+            prompted_params = extract_top_level_dict(current_dict=prompted_params)
+        else:
+            print("prompted_params is None")
+
+        query_proj = prompted_params[self.query_layer]
+        key_proj = prompted_params[self.key_layer]
+        value_proj = prompted_params[self.value_layer]
 
         # Key, Value 변환 (B, 100, H, W) & (B, 3, H, W)
-        key = self.key_proj(image)  # (B, 100, H, W)
-        value = self.value_proj(image)  # (B, 3, H, W)
+        query = self.prompt_dict[self.query_layer](images=x, params=query_proj).view(batch_size, -1, height * width)  # (B, embed_dim, H*W)
+        key = self.prompt_dict[self.key_layer](images=x, params=key_proj).view(batch_size, -1, height * width)  # (B, embed_dim, H*W)
+        value = self.prompt_dict[self.value_layer](images=x, params=value_proj).view(batch_size, channels, height * width)  # (B, 3, H*W)
 
-        # Query 크기 맞추기 (B, 100) → (B, 100, 1, 1)
-        task_embedding = task_embedding.unsqueeze(0).expand(batch_size, -1)
-        query = task_embedding.view(batch_size, -1, 1, 1)  # (B, 100, 1, 1)
+        # Attention score 계산 (Q @ K^T) / sqrt(embed_dim)
+        scores = torch.matmul(query.permute(0, 2, 1), key) / (query.shape[1] ** 0.5)  # (B, H*W, H*W)
+        attention_weights = self.softmax(scores)  # (B, H*W, H*W)
 
-        print("task_embedding shape == ", task_embedding.shape)
-        print("query shape == ", query.shape)
+        # Attention 적용하여 Prompt 생성 (B, 3, H*W)
+        prompt = torch.matmul(value, attention_weights).view(batch_size, channels, height, width)  # (B, 3, H, W)
 
-        # Attention score 계산 (B, 1, H, W)
-        scores = torch.sum(query * key, dim=1, keepdim=True) / (key.shape[1] ** 0.5)  # (B, 1, H, W)
-        attention_weights = self.softmax(scores.view(batch_size, 1, -1)).view(batch_size, 1, height, width)  # (B, 1, H, W)
+        return x + prompt
 
-        # Attention 적용하여 Prompt 생성 (B, 3, H, W)
-        prompt = value * attention_weights
-
-        return prompt, attention_weights  # (B, 3, 84, 84), (B, 1, 84, 84)
 
 def padding(args):
     return PadPrompter(args)
 
+
 def fixed_patch(args):
     return FixedPatchPrompter(args)
+
 
 def random_patch(args):
     return RandomPatchPrompter(args)
 
+
 def arbiter(args):
     return PromptArbiter(args)
+
 
 def convolution(args):
     return PromptConvolution(args)
 
-def attention(args):
-    return PromptCrossAttention(args)
+
+def cross_attention(args):
+    return PromptSelfAttention(args)
