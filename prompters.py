@@ -207,7 +207,7 @@ class PromptConvolution(nn.Module):
     def __init__(self, args):
         super(PromptConvolution, self).__init__()
         self.args = args
-        self.prompt_dict = nn.ParameterDict()
+        self.prompt_dict = nn.ModuleDict()
         self.key_name = 'conv'
 
         self.build_prompt()
@@ -240,7 +240,7 @@ class PromptSelfAttention(nn.Module):
     def __init__(self, args):
         super(PromptSelfAttention, self).__init__()
         self.args = args
-        self.prompt_dict = nn.ParameterDict()
+        self.prompt_dict = nn.ModuleDict()
         self.softmax = nn.Softmax(dim=-1)
 
         self.query_layer = 'query_proj '
