@@ -305,6 +305,88 @@ class PromptSelfAttention(nn.Module):
 
         return x + prompt
 
+class TaskAwareAttention(nn.Module):
+    def __init__(self, args):
+        super(TaskAwareAttention, self).__init__()
+        self.args = args
+        self.prompt_dict = nn.ModuleDict()
+        self.softmax = nn.Softmax(dim=-1)
+
+        self.query_layer = 'query_proj '
+        self.key_layer = 'key_proj'
+        self.value_layer = 'value_proj'
+
+        self.build_prompt()
+
+    def build_prompt(self):
+
+        """
+        image: (B, 3, 84, 84) - Key, Value 역할
+        task_embedding: (B, 100) - Query 역할
+        """
+
+        in_channels = 3
+        embed_dim = 64
+
+        # self.prompt_dict[self.query_layer] = SimpleConvolution(args=self.args,
+        #                                                      in_channels=in_channels,
+        #                                                      out_channels=embed_dim,
+        #                                                      kernel_size=1,
+        #                                                      stride=1,
+        #                                                      padding=0,
+        #                                                      use_bias=True)
+
+        self.prompt_dict[self.key_layer] = SimpleConvolution(args=self.args,
+                                                          in_channels=in_channels,
+                                                          out_channels=embed_dim,
+                                                          kernel_size=1,
+                                                          stride=1,
+                                                          padding=0,
+                                                          use_bias=True)
+
+        self.prompt_dict[self.value_layer] = SimpleConvolution(args=self.args,
+                                                            in_channels=in_channels,
+                                                            out_channels=in_channels,
+                                                            kernel_size=1,
+                                                            stride=1,
+                                                            padding=0,
+                                                            use_bias=True)
+
+    def forward(self, x, prompted_params=None):
+
+        batch_size, channels, height, width = x.shape
+
+        if prompted_params is not None:
+            prompted_params = extract_top_level_dict(current_dict=prompted_params)
+        else:
+            print("prompted_params is None")
+
+        # query_proj = prompted_params[self.query_layer]
+        key_proj = prompted_params[self.key_layer]
+        value_proj = prompted_params[self.value_layer]
+
+        device=torch.device("cuda")
+        query = torch.randn(batch_size, 1, 64).to(device=device) # (B, 1, embed_dim)
+
+        # Key, Value
+        key = self.prompt_dict[self.key_layer](images=x, params=key_proj).view(batch_size, -1, height * width)  # (B, embed_dim, H*W)
+        value = self.prompt_dict[self.value_layer](images=x, params=value_proj).view(batch_size, channels, height * width)  # (B, 3, H*W)
+
+        # Attention Score 계산 (Query @ Key^T) / sqrt(embed_dim)
+        scores = torch.matmul(query, key) / (key.shape[1] ** 0.5)  # (B, 1, H*W)
+        attention_weights = self.softmax(scores)  # (B, 1, H*W)
+
+        # Attention 적용하여 Prompt 생성 (B, 3, H*W)
+        prompt = (value * attention_weights).view(batch_size, -1, height, width)
+        # prompt = torch.matmul(value, attention_weights.transpose(1, 2)).view(batch_size, -1, height, width)  # (B, 3, 84, 84)
+
+        print("Value Shape:", value.shape)  # (B, 3, H*W)
+        print("Attention Weights Shape:", attention_weights.shape)  # (B, 1, H*W)
+        print("Transposed Attention Weights Shape:", attention_weights.transpose(1, 2).shape)  # (B, H*W, 1)
+        print("Matmul Output Shape:", torch.matmul(value, attention_weights.transpose(1, 2)).shape)
+
+        return x + prompt
+
 
 def padding(args):
     return PadPrompter(args)
@@ -328,3 +410,6 @@ def convolution(args):
 
 def cross_attention(args):
     return PromptSelfAttention(args)
+
+def task_aware_attention(args):
+    return TaskAwareAttention(args)
