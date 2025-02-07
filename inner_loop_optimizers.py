@@ -122,9 +122,6 @@ class LSLRGradientDescentLearningRule(nn.Module):
     # def initialise(self, names_weights_dict):
     #     self.names_learning_rates_dict = nn.ParameterDict()
     #     for idx, (key, param) in enumerate(names_weights_dict.items()):
-    #
-    #         print(key)
-    #
     #         self.names_learning_rates_dict[key.replace(".", "-")] = nn.Parameter(
     #             data=torch.ones(self.total_num_inner_loop_steps + 1) * self.init_learning_rate,
     #             requires_grad=self.use_learnable_learning_rates)
@@ -140,10 +137,10 @@ class LSLRGradientDescentLearningRule(nn.Module):
                     data=torch.ones(self.total_num_inner_loop_steps + 1) * self.init_learning_rate,
                     requires_grad=self.use_learnable_learning_rates)
 
-        for idx, (key, param) in enumerate(names_weights_dict.items()):
-            self.names_learning_rates_dict[key.replace(".", "-")] = nn.Parameter(
-                data=torch.ones(self.total_num_inner_loop_steps + 1) * self.init_learning_rate,
-                requires_grad=self.use_learnable_learning_rates)
+        # for idx, (key, param) in enumerate(names_weights_dict.items()):
+        #     self.names_learning_rates_dict[key.replace(".", "-")] = nn.Parameter(
+        #         data=torch.ones(self.total_num_inner_loop_steps + 1) * self.init_learning_rate,
+        #         requires_grad=self.use_learnable_learning_rates)
 
     def update_params(self, names_weights_dict, names_grads_wrt_params_dict, num_step, current_iter, training_phase,
                       freeze_layer_step_size=0, prompted_weights_dict=None, prompted_grads_wrt_params_dict=None):
@@ -169,7 +166,7 @@ class LSLRGradientDescentLearningRule(nn.Module):
             for key in names_weights_dict.keys():
                 if 'linear' in key:
                     updated_names_weights_dict[key] = names_weights_dict[key] \
-                                                      - self.names_learning_rates_dict[key.replace(".", "-")][num_step] \
+                                                      - self.init_learning_rate \
                                                       * names_grads_wrt_params_dict[key]
                 else:
                     updated_names_weights_dict[key] = names_weights_dict[key] \
