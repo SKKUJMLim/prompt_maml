@@ -301,7 +301,6 @@ class MAMLFewShotClassifier(nn.Module):
 
             for num_step in range(num_steps):
 
-
                 support_loss, support_preds = self.net_forward(x=x_support_set_task,
                                                                y=y_support_set_task,
                                                                weights=names_weights_copy,
