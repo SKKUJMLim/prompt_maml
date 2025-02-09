@@ -325,7 +325,7 @@ class TaskAwareAttention(nn.Module):
         """
 
         in_channels = 3
-        embed_dim = 64
+        embed_dim = 100
 
 
         self.prompt_dict[self.key_layer] = SimpleConvolution(args=self.args,
