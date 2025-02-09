@@ -209,16 +209,19 @@ class SimpleLinearLayer(nn.Module):
 
         self.args = args
         self.use_bias = use_bias
-        self.weights = nn.Parameter(torch.ones(num_filters, output_size))
+        self.weights = nn.Parameter(torch.ones(output_size, num_filters))
         nn.init.xavier_uniform_(self.weights)
         if self.use_bias:
-            self.bias = nn.Parameter(torch.zeros(num_filters))
+            self.bias = nn.Parameter(torch.zeros(output_size))
 
     def forward(self, x, params=None):
+
         if params is not None:
             params = extract_top_level_dict(current_dict=params)
             if self.use_bias:
                 (weight, bias) = params["weights"], params["bias"]
+                weight = weight.squeeze(0)
+                bias = bias.squeeze(0)
             else:
                 (weight) = params["weights"]
                 bias = None
@@ -228,6 +231,7 @@ class SimpleLinearLayer(nn.Module):
             else:
                 weight = self.weights
                 bias = None
+
         out = F.linear(input=x, weight=weight, bias=bias)
         return out
 
@@ -355,13 +359,13 @@ class TaskAwareAttention(nn.Module):
         """
 
         in_channels = 3
-        embed_dim = 100
+        embed_dim = 64
         task_dim = self.args.num_text_embedding_params
 
-        # self.prompt_dict[self.query_layer]= SimpleLinearLayer(args=self.args,
-        #                                                       num_filters=task_dim,
-        #                                                       output_size=embed_dim,
-        #                                                       use_bias=True)
+        self.prompt_dict[self.query_layer]= SimpleLinearLayer(args=self.args,
+                                                              num_filters=task_dim,
+                                                              output_size=embed_dim,
+                                                              use_bias=True)
 
         self.prompt_dict[self.key_layer] = SimpleConvolution(args=self.args,
                                                           in_channels=in_channels,
@@ -388,7 +392,7 @@ class TaskAwareAttention(nn.Module):
         else:
             print("prompted_params is None")
 
-        # query_proj = prompted_params[self.query_layer]
+        query_proj = prompted_params[self.query_layer]
 
         key_proj = prompted_params[self.key_layer]
         value_proj = prompted_params[self.value_layer]
@@ -397,14 +401,17 @@ class TaskAwareAttention(nn.Module):
         key = self.prompt_dict[self.key_layer](images=x, params=key_proj).view(batch_size, -1, height * width)  # (B, embed_dim, H*W)
         value = self.prompt_dict[self.value_layer](images=x, params=value_proj).view(batch_size, channels, height * width)  # (B, 3, H*W)
 
-        # device = torch.device("cuda")
-        # query = torch.randn(batch_size, 1, 64).to(device=device) # (B, 1, embed_dim)
 
-        # query = self.prompt_dict[self.query_layer](x=task_embedding, params=query_proj)
+        query = self.prompt_dict[self.query_layer](x=task_embedding, params=query_proj).unsqueeze(1)  # (B, 1, embed_dim)
 
+        # print("key == ", key.shape)
+        # print("query == ", query.shape)
+        # print("value == ", value.shape)
 
         # Attention Score 계산 (Query @ Key^T) / sqrt(embed_dim)
-        scores = torch.matmul(task_embedding, key) / (key.shape[1] ** 0.5)  # (B, 1, H*W)
+        # scores = torch.matmul(task_embedding, key) / (key.shape[1] ** 0.5)  # (B, 1, H*W) query_layer를 사용하지 않을때
+        scores = torch.matmul(query, key) / (key.shape[1] ** 0.5)  # (B, 1, H*W)
+
         # scores = torch.matmul(query, key) / (key.shape[1] ** 0.5)  # (B, 1, H*W)
         attention_weights = self.softmax(scores)  # (B, 1, H*W)
 

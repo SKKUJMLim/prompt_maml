@@ -316,12 +316,11 @@ class MAMLFewShotClassifier(nn.Module):
                                                                epoch=epoch)
 
                 if self.args.prompt_engineering == 'task_aware_attention':
+
                     gradients = torch.autograd.grad(support_loss, (*names_weights_copy.values(), task_embedding),
                                                     create_graph=use_second_order, retain_graph=True)
-
                     grads, context_grads = gradients[:-1], gradients[-1]
                     task_embedding = task_embedding - self.args.text_embedding_learning_rate * context_grads
-
 
                 names_weights_copy, prompted_weights_copy = self.apply_inner_loop_update(loss=support_loss,
                                                                   names_weights_copy=names_weights_copy,
@@ -345,6 +344,7 @@ class MAMLFewShotClassifier(nn.Module):
 
                 else:
                     if num_step == (self.args.number_of_training_steps_per_iter - 1):
+
                         target_loss, target_preds = self.net_forward(x=x_target_set_task,
                                                                      y=y_target_set_task,
                                                                      weights=names_weights_copy,
