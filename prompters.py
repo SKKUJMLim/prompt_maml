@@ -372,10 +372,10 @@ class TaskAwareAttention(nn.Module):
         prompt = (value * attention_weights).view(batch_size, -1, height, width)
         # prompt = torch.matmul(value, attention_weights.transpose(1, 2)).view(batch_size, -1, height, width)  # (B, 3, 84, 84)
 
-        print("Value Shape:", value.shape)  # (B, 3, H*W)
-        print("Attention Weights Shape:", attention_weights.shape)  # (B, 1, H*W)
-        print("Transposed Attention Weights Shape:", attention_weights.transpose(1, 2).shape)  # (B, H*W, 1)
-        print("Matmul Output Shape:", torch.matmul(value, attention_weights.transpose(1, 2)).shape)
+        # print("Value Shape:", value.shape)  # (B, 3, H*W)
+        # print("Attention Weights Shape:", attention_weights.shape)  # (B, 1, H*W)
+        # print("Transposed Attention Weights Shape:", attention_weights.transpose(1, 2).shape)  # (B, H*W, 1)
+        # print("Matmul Output Shape:", torch.matmul(value, attention_weights.transpose(1, 2)).shape)
 
         return x + prompt
 
