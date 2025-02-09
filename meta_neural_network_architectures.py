@@ -916,7 +916,7 @@ class VGGReLUNormNetwork(nn.Module):
         out = self.layer_dict['linear'](out)
         # print("VGGNetwork build", out.shape)
 
-    def forward(self, x, num_step, params=None, prompted_params=None, training=False, backup_running_statistics=False, prepend_prompt=True):
+    def forward(self, x, num_step, params=None, prompted_params=None, training=False, backup_running_statistics=False, task_embedding=None, prepend_prompt=True):
         """
         Forward propages through the network. If any params are passed then they are used instead of stored params.
         :param x: Input image batch.
@@ -945,7 +945,11 @@ class VGGReLUNormNetwork(nn.Module):
 
         if self.args.prompter and prepend_prompt:
             # get_task_embeddings을 통해 호출될때는 prompt를 추가하지 않는다
-            out = self.prompt(x=out, prompted_params=prompted_params)
+
+            if self.args.prompt_engineering == 'task_aware_attention':
+                out = self.prompt(x=out, prompted_params=prompted_params, task_embedding=task_embedding)
+            else:
+                out = self.prompt(x=out, prompted_params=prompted_params)
 
 
         feature_list = []

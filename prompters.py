@@ -312,7 +312,6 @@ class TaskAwareAttention(nn.Module):
         self.prompt_dict = nn.ModuleDict()
         self.softmax = nn.Softmax(dim=-1)
 
-        self.query_layer = 'query_proj '
         self.key_layer = 'key_proj'
         self.value_layer = 'value_proj'
 
@@ -328,13 +327,6 @@ class TaskAwareAttention(nn.Module):
         in_channels = 3
         embed_dim = 64
 
-        # self.prompt_dict[self.query_layer] = SimpleConvolution(args=self.args,
-        #                                                      in_channels=in_channels,
-        #                                                      out_channels=embed_dim,
-        #                                                      kernel_size=1,
-        #                                                      stride=1,
-        #                                                      padding=0,
-        #                                                      use_bias=True)
 
         self.prompt_dict[self.key_layer] = SimpleConvolution(args=self.args,
                                                           in_channels=in_channels,
@@ -352,7 +344,7 @@ class TaskAwareAttention(nn.Module):
                                                             padding=0,
                                                             use_bias=True)
 
-    def forward(self, x, prompted_params=None):
+    def forward(self, x, task_embedding, prompted_params=None):
 
         batch_size, channels, height, width = x.shape
 
@@ -366,14 +358,14 @@ class TaskAwareAttention(nn.Module):
         value_proj = prompted_params[self.value_layer]
 
         device=torch.device("cuda")
-        query = torch.randn(batch_size, 1, 64).to(device=device) # (B, 1, embed_dim)
+        # query = torch.randn(batch_size, 1, 64).to(device=device) # (B, 1, embed_dim)
 
         # Key, Value
         key = self.prompt_dict[self.key_layer](images=x, params=key_proj).view(batch_size, -1, height * width)  # (B, embed_dim, H*W)
         value = self.prompt_dict[self.value_layer](images=x, params=value_proj).view(batch_size, channels, height * width)  # (B, 3, H*W)
 
         # Attention Score 계산 (Query @ Key^T) / sqrt(embed_dim)
-        scores = torch.matmul(query, key) / (key.shape[1] ** 0.5)  # (B, 1, H*W)
+        scores = torch.matmul(task_embedding, key) / (key.shape[1] ** 0.5)  # (B, 1, H*W)
         attention_weights = self.softmax(scores)  # (B, 1, H*W)
 
         # Attention 적용하여 Prompt 생성 (B, 3, H*W)
