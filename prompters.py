@@ -359,8 +359,9 @@ class TaskAwareAttention(nn.Module):
         """
 
         in_channels = 3
-        embed_dim = 100
-        task_dim = self.args.num_text_embedding_params
+        # embed_dim = 64
+        embed_dim = self.args.num_text_embedding_params
+        # task_dim = self.args.num_text_embedding_params
 
         # self.prompt_dict[self.query_layer]= SimpleLinearLayer(args=self.args,
         #                                                       num_filters=task_dim,
