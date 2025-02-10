@@ -308,7 +308,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                y=y_support_set_task,
                                                                weights=names_weights_copy,
                                                                prompted_weights=prompted_weights_copy,
-                                                               task_embedding = task_embedding,
+                                                               task_embedding=task_embedding,
                                                                backup_running_statistics=num_step == 0,
                                                                training=True,
                                                                num_step=num_step,
