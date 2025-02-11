@@ -288,6 +288,14 @@ class PromptSelfAttention(nn.Module):
         embed_dim = 64
 
         self.prompt_dict[self.query_layer] = SimpleConvolution(args=self.args,
+                                                               in_channels=in_channels,
+                                                               out_channels=embed_dim,
+                                                               kernel_size=1,
+                                                               stride=1,
+                                                               padding=0,
+                                                               use_bias=True)
+
+        self.prompt_dict[self.key_layer] = SimpleConvolution(args=self.args,
                                                              in_channels=in_channels,
                                                              out_channels=embed_dim,
                                                              kernel_size=1,
@@ -295,21 +303,13 @@ class PromptSelfAttention(nn.Module):
                                                              padding=0,
                                                              use_bias=True)
 
-        self.prompt_dict[self.key_layer] = SimpleConvolution(args=self.args,
-                                                          in_channels=in_channels,
-                                                          out_channels=embed_dim,
-                                                          kernel_size=1,
-                                                          stride=1,
-                                                          padding=0,
-                                                          use_bias=True)
-
         self.prompt_dict[self.value_layer] = SimpleConvolution(args=self.args,
-                                                            in_channels=in_channels,
-                                                            out_channels=in_channels,
-                                                            kernel_size=1,
-                                                            stride=1,
-                                                            padding=0,
-                                                            use_bias=True)
+                                                               in_channels=in_channels,
+                                                               out_channels=in_channels,
+                                                               kernel_size=1,
+                                                               stride=1,
+                                                               padding=0,
+                                                               use_bias=True)
 
     def forward(self, x, prompted_params=None):
 
@@ -325,9 +325,12 @@ class PromptSelfAttention(nn.Module):
         value_proj = prompted_params[self.value_layer]
 
         # Key, Value 변환 (B, 100, H, W) & (B, 3, H, W)
-        query = self.prompt_dict[self.query_layer](images=x, params=query_proj).view(batch_size, -1, height * width)  # (B, embed_dim, H*W)
-        key = self.prompt_dict[self.key_layer](images=x, params=key_proj).view(batch_size, -1, height * width)  # (B, embed_dim, H*W)
-        value = self.prompt_dict[self.value_layer](images=x, params=value_proj).view(batch_size, channels, height * width)  # (B, 3, H*W)
+        query = self.prompt_dict[self.query_layer](images=x, params=query_proj).view(batch_size, -1,
+                                                                                     height * width)  # (B, embed_dim, H*W)
+        key = self.prompt_dict[self.key_layer](images=x, params=key_proj).view(batch_size, -1,
+                                                                               height * width)  # (B, embed_dim, H*W)
+        value = self.prompt_dict[self.value_layer](images=x, params=value_proj).view(batch_size, channels,
+                                                                                     height * width)  # (B, 3, H*W)
 
         # Attention score 계산 (Q @ K^T) / sqrt(embed_dim)
         scores = torch.matmul(query.permute(0, 2, 1), key) / (query.shape[1] ** 0.5)  # (B, H*W, H*W)
@@ -338,6 +341,7 @@ class PromptSelfAttention(nn.Module):
 
         return x + prompt
 
+
 class TaskAwareAttention(nn.Module):
     def __init__(self, args):
         super(TaskAwareAttention, self).__init__()
@@ -345,7 +349,7 @@ class TaskAwareAttention(nn.Module):
         self.prompt_dict = nn.ModuleDict()
         self.softmax = nn.Softmax(dim=-1)
 
-        # self.query_layer = 'query_proj'
+        self.query_layer = 'query_proj'
         self.key_layer = 'key_proj'
         self.value_layer = 'value_proj'
 
@@ -359,32 +363,35 @@ class TaskAwareAttention(nn.Module):
         """
 
         in_channels = 3
-        # embed_dim = 64
-        embed_dim = self.args.num_text_embedding_params
-        # task_dim = self.args.num_text_embedding_params
+        embed_dim = 100
+        kernel_size = 7
+        padding = 3
+        stride = 1
+        # embed_dim = self.args.num_text_embedding_params
+        task_dim = self.args.num_text_embedding_params
 
-        # self.prompt_dict[self.query_layer]= SimpleLinearLayer(args=self.args,
-        #                                                       num_filters=task_dim,
-        #                                                       output_size=embed_dim,
-        #                                                       use_bias=True)
+        self.prompt_dict[self.query_layer] = SimpleLinearLayer(args=self.args,
+                                                               num_filters=task_dim,
+                                                               output_size=embed_dim,
+                                                               use_bias=True)
 
         self.prompt_dict[self.key_layer] = SimpleConvolution(args=self.args,
-                                                          in_channels=in_channels,
-                                                          out_channels=embed_dim,
-                                                          kernel_size=1,
-                                                          stride=1,
-                                                          padding=0,
-                                                          use_bias=True)
+                                                             in_channels=in_channels,
+                                                             out_channels=embed_dim,
+                                                             kernel_size=kernel_size,
+                                                             stride=stride,
+                                                             padding=padding,
+                                                             use_bias=True)
 
         self.prompt_dict[self.value_layer] = SimpleConvolution(args=self.args,
-                                                            in_channels=in_channels,
-                                                            out_channels=in_channels,
-                                                            kernel_size=1,
-                                                            stride=1,
-                                                            padding=0,
-                                                            use_bias=True)
+                                                               in_channels=in_channels,
+                                                               out_channels=in_channels,
+                                                               kernel_size=kernel_size,
+                                                               stride=stride,
+                                                               padding=padding,
+                                                               use_bias=True)
 
-    def forward(self, x, task_embedding, prompted_params=None):
+    def forward(self, x,task_embedding, prompted_params=None):
 
         batch_size, channels, height, width = x.shape
 
@@ -393,25 +400,26 @@ class TaskAwareAttention(nn.Module):
         else:
             print("prompted_params is None")
 
-        # query_proj = prompted_params[self.query_layer]
-
+        query_proj = prompted_params[self.query_layer]
         key_proj = prompted_params[self.key_layer]
         value_proj = prompted_params[self.value_layer]
 
         # Key, Value
-        key = self.prompt_dict[self.key_layer](images=x, params=key_proj).view(batch_size, -1, height * width)  # (B, embed_dim, H*W)
-        value = self.prompt_dict[self.value_layer](images=x, params=value_proj).view(batch_size, channels, height * width)  # (B, 3, H*W)
+        key = self.prompt_dict[self.key_layer](images=x, params=key_proj).view(batch_size, -1,
+                                                                               height * width)  # (B, embed_dim, H*W)
+        value = self.prompt_dict[self.value_layer](images=x, params=value_proj).view(batch_size, channels,
+                                                                                     height * width)  # (B, 3, H*W)
 
-
-        # query = self.prompt_dict[self.query_layer](x=task_embedding, params=query_proj).unsqueeze(1)  # (B, 1, embed_dim)
+        query = self.prompt_dict[self.query_layer](x=task_embedding, params=query_proj).unsqueeze(
+            1)  # (B, 1, embed_dim)
 
         # print("key == ", key.shape)
         # print("query == ", query.shape)
         # print("value == ", value.shape)
 
         # Attention Score 계산 (Query @ Key^T) / sqrt(embed_dim)
-        scores = torch.matmul(task_embedding, key) / (key.shape[1] ** 0.5)  # (B, 1, H*W) query_layer를 사용하지 않을때
-        # scores = torch.matmul(query, key) / (key.shape[1] ** 0.5)  # (B, 1, H*W)
+        # scores = torch.matmul(task_embedding, key) / (key.shape[1] ** 0.5)  # (B, 1, H*W) query_layer를 사용하지 않을때
+        scores = torch.matmul(query, key) / (key.shape[1] ** 0.5)  # (B, 1, H*W)
 
         # scores = torch.matmul(query, key) / (key.shape[1] ** 0.5)  # (B, 1, H*W)
         attention_weights = self.softmax(scores)  # (B, 1, H*W)
@@ -450,6 +458,7 @@ def convolution(args):
 
 def cross_attention(args):
     return PromptSelfAttention(args)
+
 
 def task_aware_attention(args):
     return TaskAwareAttention(args)
