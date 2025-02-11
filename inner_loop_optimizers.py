@@ -133,18 +133,18 @@ class LSLRGradientDescentLearningRule(nn.Module):
 
         if self.args.prompter:
 
-            self.prompt_learning_rates_dict['prompt_weight_learning_rate'] = nn.Parameter(
-                data=torch.ones(self.total_num_inner_loop_steps + 1) * self.init_learning_rate,
-                requires_grad=self.use_learnable_learning_rates)
+            # self.prompt_learning_rates_dict['prompt_weight_learning_rate'] = nn.Parameter(
+            #     data=torch.ones(self.total_num_inner_loop_steps + 1) * self.init_learning_rate,
+            #     requires_grad=self.use_learnable_learning_rates)
+            #
+            # self.prompt_learning_rates_dict['prompt_bias_learning_rate'] = nn.Parameter(
+            #     data=torch.ones(self.total_num_inner_loop_steps + 1) * self.init_learning_rate,
+            #     requires_grad=self.use_learnable_learning_rates)
 
-            self.prompt_learning_rates_dict['prompt_bias_learning_rate'] = nn.Parameter(
-                data=torch.ones(self.total_num_inner_loop_steps + 1) * self.init_learning_rate,
-                requires_grad=self.use_learnable_learning_rates)
-
-            # for idx, (key, param) in enumerate(prompted_weights_dict.items()):
-            #     self.prompt_learning_rates_dict[key.replace(".", "-")] = nn.Parameter(
-            #         data=torch.ones(self.total_num_inner_loop_steps + 1) * self.init_learning_rate,
-            #         requires_grad=self.use_learnable_learning_rates)
+            for idx, (key, param) in enumerate(prompted_weights_dict.items()):
+                self.prompt_learning_rates_dict[key.replace(".", "-")] = nn.Parameter(
+                    data=torch.ones(self.total_num_inner_loop_steps + 1) * self.init_learning_rate,
+                    requires_grad=self.use_learnable_learning_rates)
 
         for idx, (key, param) in enumerate(names_weights_dict.items()):
             self.names_learning_rates_dict[key.replace(".", "-")] = nn.Parameter(
@@ -169,19 +169,20 @@ class LSLRGradientDescentLearningRule(nn.Module):
         if self.args.prompter:
             for key in prompted_weights_dict.keys():
 
-                if 'weight' in key:
-                    updated_prompt_weights_dict[key] = prompted_weights_dict[key] \
-                                                       - self.prompt_learning_rates_dict['prompt_weight_learning_rate'][num_step] \
-                                                       * prompted_grads_wrt_params_dict[key]
-                elif 'bias' in key:
-                    updated_prompt_weights_dict[key] = prompted_weights_dict[key] \
-                                                       - self.prompt_learning_rates_dict['prompt_bias_learning_rate'][num_step] \
-                                                       * prompted_grads_wrt_params_dict[key]
-                else:
-                    print("error")
-            # updated_prompt_weights_dict[key] = prompted_weights_dict[key] \
-            #                                   - self.prompt_learning_rates_dict[key.replace(".", "-")][num_step] \
-            #                                   * prompted_grads_wrt_params_dict[key]
+                updated_prompt_weights_dict[key] = prompted_weights_dict[key] \
+                                                  - self.prompt_learning_rates_dict[key.replace(".", "-")][num_step] \
+                                                  * prompted_grads_wrt_params_dict[key]
+
+                # if 'weight' in key:
+                #     updated_prompt_weights_dict[key] = prompted_weights_dict[key] \
+                #                                        - self.prompt_learning_rates_dict['prompt_weight_learning_rate'][num_step] \
+                #                                        * prompted_grads_wrt_params_dict[key]
+                # elif 'bias' in key:
+                #     updated_prompt_weights_dict[key] = prompted_weights_dict[key] \
+                #                                        - self.prompt_learning_rates_dict['prompt_bias_learning_rate'][num_step] \
+                #                                        * prompted_grads_wrt_params_dict[key]
+                # else:
+                #     print("error")
 
             for key in names_weights_dict.keys():
                 if 'linear' in key:

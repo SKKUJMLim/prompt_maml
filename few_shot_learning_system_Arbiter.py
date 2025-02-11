@@ -60,15 +60,23 @@ class MAMLFewShotClassifier(nn.Module):
         self.task_learning_rate = args.init_inner_loop_learning_rate
         names_weights_copy = self.get_inner_loop_parameter_dict(self.classifier.named_parameters())
 
+        prompted_weights_copy = {}
+        if self.args.prompter:
+            prompted_weights_copy = {key: value for key, value in names_weights_copy.items() if 'prompt' in key}
+        names_weights_copy = {key: value for key, value in names_weights_copy.items() if 'layer_dict' in key}
+
         if self.args.learnable_per_layer_per_step_inner_loop_learning_rate:
             self.inner_loop_optimizer = LSLRGradientDescentLearningRule(device=device,
+                                                                        args=self.args,
                                                                         init_learning_rate=self.task_learning_rate,
-                                                                        init_weight_decay=args.init_inner_loop_weight_decay,
                                                                         total_num_inner_loop_steps=self.args.number_of_training_steps_per_iter,
                                                                         use_learnable_learning_rates=True)
+            self.inner_loop_optimizer.initialise(names_weights_dict=names_weights_copy,
+                                                 prompted_weights_dict=prompted_weights_copy)
         else:
             self.inner_loop_optimizer = GradientDescentLearningRule(device=device, args=self.args,
                                                                     learning_rate=self.task_learning_rate)
+
 
         if self.args.prompter and self.args.prompt_engineering == 'arbiter':
             # num_layers = len(names_weights_copy) - 1
@@ -266,37 +274,10 @@ class MAMLFewShotClassifier(nn.Module):
             z = nn.Parameter(torch.randn([1, self.args.num_text_embedding_params]), requires_grad=True).to(self.device)
             # z = torch.zeros(size=[self.args.num_text_embedding_params], requires_grad=True).to(self.device)
 
-            # meta_support_loss, meta_support_preds, meta_feature_list = self.net_forward(x=x_support_set_task,
-            #                                                              y=y_support_set_task,
-            #                                                              weights=names_weights_copy,
-            #                                                              backup_running_statistics=True,
-            #                                                              training=True, num_step=0,
-            #                                                              training_phase=True,
-            #                                                              epoch=0,
-            #                                                              prepend_prompt=False)
-            #
-            # meta_support_loss = meta_support_loss.detach().clone()
-            # meta_support_preds = meta_support_preds.detach().clone()
-            #
-            # for idx in range(len(meta_feature_list)):
-            #     meta_feature_list[idx] = meta_feature_list[idx].detach().clone()
-
             for num_step in range(num_steps):
-
-                # layerwise_mean_weights = []
-                # for k, v in names_weights_copy.items():
-                #     layerwise_mean_weights.append(v.mean())
-
-                # condition = torch.stack(layerwise_mean_weights)
-                # task_embedding = torch.cat([z, condition], dim=0)
-                # task_embedding = task_embedding.unsqueeze(0)
-                # ideal_prompt = self.arbiter(task_embedding)
 
                 ideal_prompt = self.arbiter(z)
                 prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
-
-                # ideal_prompt = self.arbiter(image=x_support_set_task, task_embedding=z)
-                # prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
 
                 support_loss, support_preds, support_feature_list = self.net_forward(x=x_support_set_task,
                                                                   y=y_support_set_task,
@@ -314,20 +295,6 @@ class MAMLFewShotClassifier(nn.Module):
 
                 grads, context_grads = gradients[:-1], gradients[-1]
                 z = z - self.args.text_embedding_learning_rate * context_grads
-
-                # print("num_step == ", num_step)
-                # for layer_index in range(len(feature_list)):
-                #     layer_js_loss = compute_js_divergence(meta_feature_list[layer_index], feature_list[layer_index], reduction='batchmean')
-                #     # layer_kl_loss = compute_kl_loss(meta_feature_list[layer_index], feature_list[layer_index], reduction='batchmean')
-                #     if layer_index == 3:
-                #         # print(f"js_losss: feature{layer_index}== ", layer_js_loss)
-                #         support_loss = support_loss +  (1 - layer_js_loss)
-                #         if support_loss < 0:
-                #             print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!minus!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-
-                # logit_layer_js_loss = compute_js_divergence(meta_support_preds.detach().clone(), support_preds)
-                # # print("meta_support_preds == ", logit_layer_js_loss)
-                # support_loss = support_loss - logit_layer_js_loss
 
                 names_weights_copy = self.apply_inner_loop_update(loss=support_loss,
                                                                   names_weights_copy=names_weights_copy,
@@ -349,21 +316,9 @@ class MAMLFewShotClassifier(nn.Module):
 
                 else:
                     if num_step == (self.args.number_of_training_steps_per_iter - 1):
-                        # layerwise_mean_weights = []
-                        # for k, v in names_weights_copy.items():
-                        #     layerwise_mean_weights.append(v.mean())
-
-                        # condition = torch.stack(layerwise_mean_weights)
-                        # task_embedding = torch.cat([z, condition], dim=0)
-                        # task_embedding = task_embedding.unsqueeze(0)
-                        # ideal_prompt = self.arbiter(task_embedding)
 
                         ideal_prompt = self.arbiter(z)
                         prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
-
-                        # ideal_prompt = self.arbiter(image=x_target_set_task, task_embedding=z)
-                        # prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
-                        # print("ideal_prompt == ", ideal_prompt)
 
                         target_loss, target_preds, target_feature_list = self.net_forward(x=x_target_set_task,
                                                                         y=y_target_set_task,
