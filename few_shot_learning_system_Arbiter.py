@@ -73,6 +73,10 @@ class MAMLFewShotClassifier(nn.Module):
                                                                         use_learnable_learning_rates=True)
             self.inner_loop_optimizer.initialise(names_weights_dict=names_weights_copy,
                                                  prompted_weights_dict=prompted_weights_copy)
+
+            self.task_embedding_adaptive_learning_rate = nn.Parameter(
+                data=torch.ones(self.args.number_of_training_steps_per_iter + 1) * self.args.text_embedding_learning_rate,
+                requires_grad=True)
         else:
             self.inner_loop_optimizer = GradientDescentLearningRule(device=device, args=self.args,
                                                                     learning_rate=self.task_learning_rate)
@@ -85,7 +89,7 @@ class MAMLFewShotClassifier(nn.Module):
             channel = 3
             self.arbiter = arbiter.PromptGenerator(nz=nz, ngf=64, img_size=img_size, nc=channel)
 
-            # self.arbiter = arbiter.CrossAttentionVisualPrompt(image_channels=3, task_dim=self.args.num_text_embedding_params)
+            # self.arbiter = arbiter.TaskAwareAttention(image_channels=3, task_dim=self.args.num_text_embedding_params, embed_dim=100)
 
         print("Inner Loop parameters")
         for key, value in self.inner_loop_optimizer.named_parameters():
@@ -294,7 +298,11 @@ class MAMLFewShotClassifier(nn.Module):
                                                 create_graph=use_second_order, retain_graph=True)
 
                 grads, context_grads = gradients[:-1], gradients[-1]
-                z = z - self.args.text_embedding_learning_rate * context_grads
+
+                if self.args.learnable_per_layer_per_step_inner_loop_learning_rate:
+                    z = z - self.task_embedding_adaptive_learning_rate[num_step] * context_grads
+                else:
+                    z = z - self.args.text_embedding_learning_rate * context_grads
 
                 names_weights_copy = self.apply_inner_loop_update(loss=support_loss,
                                                                   names_weights_copy=names_weights_copy,

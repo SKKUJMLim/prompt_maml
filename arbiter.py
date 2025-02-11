@@ -3,6 +3,63 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+class TaskAwareAttention(nn.Module):
+    def __init__(self, image_channels=3, task_dim=100, embed_dim=100):
+        super(TaskAwareAttention, self).__init__()
+
+        # 1x1 conv setting
+        kernel_size = 1
+        stride = 1
+        padding = 0
+
+        # 3x3 conv setting
+        # kernel_size = 3
+        # stride = 1
+        # padding = 1
+
+        # 7x7 conv setting
+        # kernel_size = 7
+        # stride = 1
+        # padding = 3
+
+        # Query: Task Embedding 변환
+        # self.query_proj = nn.Linear(task_dim, embed_dim)
+
+        # Key, Value 변환 (이미지 특징 추출)
+        self.key_proj = nn.Conv2d(image_channels, embed_dim, kernel_size=1, padding=0)
+        self.value_proj = nn.Conv2d(image_channels, image_channels, kernel_size=1, padding=0)
+
+        self.softmax = nn.Softmax(dim=-1)
+
+    def forward(self, image, task_embedding):
+        """
+        image: (B, 3, 84, 84) - Key, Value 역할
+        task_embedding: (B, 100) - Query 역할
+        """
+        batch_size, _, height, width = image.shape
+
+        # Key, Value 변환
+        key = self.key_proj(image).view(batch_size, -1, height * width)  # (B, embed_dim, H*W)
+        value = self.value_proj(image).view(batch_size, -1, height * width)  # (B, 3, H*W)
+
+        # Query 변환
+        # query = self.query_proj(task_embedding).unsqueeze(1)  # (B, 1, embed_dim)
+
+        # print("key == ", key.shape)
+        # print("query == ", task_embedding.shape)
+        # print("query == ", query.shape)
+        # print("value == ", value.shape)
+
+        # Attention Score 계산 (Query @ Key^T) / sqrt(embed_dim)
+        scores = torch.matmul(task_embedding, key) / (key.shape[1] ** 0.5)  # (B, 1, H*W) query_layer를 사용하지 않을때
+        # scores = torch.matmul(query, key) / (key.shape[1] ** 0.5)  # (B, 1, H*W)
+        attention_weights = self.softmax(scores)  # (B, 1, H*W)
+
+        prompt = (value * attention_weights).view(batch_size, -1, height, width)  # (B, 3, 84, 84)
+
+        return prompt # , attention_weights  # (B, 3, 84, 84), (B, 1, H*W)
+
+
 class PromptGenerator(nn.Module):
 
     # https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/ebgan/ebgan.py 참조
