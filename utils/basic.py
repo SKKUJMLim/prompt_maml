@@ -5,6 +5,29 @@ import torch
 import torch.nn.functional as F
 import itertools
 
+
+def kl_divergence_pixelwise(feat1, feat2):
+    """
+    두 개의 [64, 5, 5] 크기의 feature map 간 KL Divergence 계산
+    - feat1, feat2: [64, 5, 5] 형태의 텐서
+    - 출력: 픽셀별 KL Divergence 값 (동일한 [64, 5, 5] 크기)
+    """
+    # 확률 분포로 변환 (픽셀별 Softmax)
+    p = F.softmax(feat1, dim=0)  # 픽셀별 정규화
+    q = F.softmax(feat2, dim=0)
+
+    # # 확률 분포로 변환 (Channel별 Softmax)
+    # p = F.softmax(feat1, dim=1)  # Channel-wise softmax
+    # q = F.softmax(feat2, dim=1)
+
+    # log-prob 계산 (log(0) 방지)
+    log_p = torch.log(p + 1e-8)
+
+    # KL Divergence 계산 (픽셀별)
+    kl_div = F.kl_div(log_p, q, reduction='batchmean')  # 픽셀 단위로 유지
+    return kl_div
+
+
 def compute_kl_loss(feature_map_1, feature_map_2, reduction='batchmean'):
     """
     Compute KL divergence loss between two feature maps.
