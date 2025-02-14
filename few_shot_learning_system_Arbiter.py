@@ -274,8 +274,8 @@ class MAMLFewShotClassifier(nn.Module):
             x_target_set_task = x_target_set_task.view(-1, c, h, w)
             y_target_set_task = y_target_set_task.view(-1)
 
-            # z = nn.Parameter(torch.randn([1, self.args.num_text_embedding_params]), requires_grad=True).to(self.device)
-            z = torch.zeros(size=[1, self.args.num_text_embedding_params], requires_grad=True).to(self.device)
+            z = nn.Parameter(torch.randn([1, self.args.num_text_embedding_params]), requires_grad=True).to(self.device)
+            # z = torch.zeros(size=[1, self.args.num_text_embedding_params], requires_grad=True).to(self.device)
 
             for num_step in range(num_steps):
 
