@@ -1033,6 +1033,9 @@ class ResNet12(nn.Module):
             self.conv_stride = 2
         self.meta_classifier = meta_classifier
 
+        if self.args.prompter:
+            self.prompt = prompters.__dict__[args.prompt_engineering](args).to(device)
+
         self.build_network()
         print("meta network params")
         for name, param in self.named_parameters():
@@ -1078,7 +1081,7 @@ class ResNet12(nn.Module):
         out = self.layer_dict['linear'](out)
         print("ResNet12 build", out.shape)
 
-    def forward(self, x, num_step, params=None, training=False, backup_running_statistics=False):
+    def forward(self, x, num_step, params=None, prompted_params=None, training=False, backup_running_statistics=False, task_embedding=None, prepend_prompt=True):
         """
         Forward propages through the network. If any params are passed then they are used instead of stored params.
         :param x: Input image batch.
@@ -1107,16 +1110,27 @@ class ResNet12(nn.Module):
 
         out = x
 
+        if self.args.prompter and prepend_prompt:
+            # get_task_embeddings을 통해 호출될때는 prompt를 추가하지 않는다
+
+            if self.args.prompt_engineering == 'task_aware_attention':
+                out = self.prompt(x=out, prompted_params=prompted_params, task_embedding=task_embedding)
+            else:
+                out = self.prompt(x=out, prompted_params=prompted_params)
+
+        feature_list = []
+
         for i in range(self.num_stages):
             out = self.layer_dict['layer{}'.format(i)](out, params=param_dict['layer{}'.format(i)], training=training,
                                                        backup_running_statistics=backup_running_statistics,
                                                        num_step=num_step)
+            feature_list.append(out)
 
         out = F.adaptive_avg_pool2d(out, (1, 1))
         out = out.view(out.size(0), -1)
         out = self.layer_dict['linear'](out, param_dict['linear'])
 
-        return out
+        return out, feature_list
 
     def zero_grad(self, params=None):
         if params is None:
