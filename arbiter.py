@@ -93,6 +93,9 @@ class PromptGenerator(nn.Module):
         out = self.l1(z)
         out = out.view(out.shape[0], -1, self.init_size, self.init_size)
         img = self.conv_blocks(out)
+
+        # img = img * (2 / img.abs().max().detach())
+
         return img
 
 
