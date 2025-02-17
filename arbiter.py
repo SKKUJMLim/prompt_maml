@@ -94,7 +94,9 @@ class PromptGenerator(nn.Module):
         out = out.view(out.shape[0], -1, self.init_size, self.init_size)
         img = self.conv_blocks(out)
 
-        # img = img * (2 / img.abs().max().detach())
+        # # Tanh의 출력값을 miniImageNet 정규화 범위로 변환
+        # min_val, max_val = -2.12, 2.64
+        # img = img * (max_val - min_val) / 2 + (max_val + min_val) / 2
 
         return img
 
