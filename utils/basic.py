@@ -1,9 +1,39 @@
-
+import torch.nn as nn
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
 import itertools
+
+
+class LabelSmoothingCrossEntropy(nn.Module):
+    """
+    Cross-Entropy Loss with Label Smoothing.
+    """
+
+    def __init__(self, smoothing=0.1, reduction='mean'):
+        """
+        :param smoothing: Label smoothing factor (0 <= smoothing <= 1)
+        :param reduction: Reduction type ('none', 'sum', 'mean')
+        """
+        super().__init__()
+        assert 0.0 <= smoothing < 1.0, "Smoothing must be in [0, 1)"
+        self.smoothing = smoothing
+        self.confidence = 1.0 - smoothing
+        self.reduction = reduction
+
+    def forward(self, x: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        logprobs = F.log_softmax(x, dim=-1)
+        nll_loss = F.nll_loss(logprobs, target, reduction='none')
+        smooth_loss = -logprobs.mean(dim=-1)
+        loss = self.confidence * nll_loss + self.smoothing * smooth_loss
+
+        if self.reduction == 'sum':
+            return loss.sum()
+        elif self.reduction == 'mean':
+            return loss.mean()
+        return loss
+
 
 
 def kl_divergence_pixelwise(feat1, feat2):
