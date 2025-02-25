@@ -12,7 +12,7 @@ from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDesce
 from utils.storage import save_statistics
 
 import arbiter
-from utils.basic import kl_divergence_pixelwise
+from utils.basic import kl_divergence_pixelwise, LabelSmoothingCrossEntropy
 
 
 def set_torch_seed(seed):
@@ -405,6 +405,10 @@ class MAMLFewShotClassifier(nn.Module):
                                                      num_step=num_step, prepend_prompt=True)
 
         loss = F.cross_entropy(input=preds, target=y)
+
+        # criterion = LabelSmoothingCrossEntropy(smoothing=0.1)
+        # loss = criterion(preds, y)
+
         # loss_seperate = F.cross_entropy(input=preds, target=y, reduction='none')
 
         # Not add prompt
