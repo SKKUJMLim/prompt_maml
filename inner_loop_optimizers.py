@@ -126,7 +126,7 @@ class LSLRGradientDescentLearningRule(nn.Module):
     #             data=torch.ones(self.total_num_inner_loop_steps + 1) * self.init_learning_rate,
     #             requires_grad=self.use_learnable_learning_rates)
 
-    def initialise(self, names_weights_dict, prompted_weights_dict):
+    def initialise(self, names_weights_dict, prompted_weights_dict=None):
 
         self.prompt_learning_rates_dict = nn.ParameterDict()
         self.names_learning_rates_dict = nn.ParameterDict()
