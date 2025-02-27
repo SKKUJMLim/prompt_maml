@@ -13,6 +13,7 @@ from utils.storage import save_statistics
 
 import arbiter
 from utils.basic import kl_divergence_pixelwise, LabelSmoothingCrossEntropy
+from utils.contrastive_loss import soft_nearest_neighbors_loss_euclidean
 
 
 def set_torch_seed(seed):

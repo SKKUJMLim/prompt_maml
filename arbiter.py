@@ -89,11 +89,16 @@ class PromptGenerator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
         )
 
+        # self.multiplier_bias = nn.Parameter(torch.randn(1, nc, img_size,img_size))
+        # self.multiplier_bias = nn.Parameter(torch.randn(1))
+        # self.offset_bias = nn.Parameter(torch.randn(1))
+
     def forward(self, z):
         out = self.l1(z)
         out = out.view(out.shape[0], -1, self.init_size, self.init_size)
         img = self.conv_blocks(out)
 
+        # img = self.multiplier_bias * img + self.offset_bias
         # # Tanh의 출력값을 miniImageNet 정규화 범위로 변환
         # min_val, max_val = -2.12, 2.64
         # img = img * (max_val - min_val) / 2 + (max_val + min_val) / 2
