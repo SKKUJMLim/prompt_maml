@@ -3,6 +3,52 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+class PromptGenerator(nn.Module):
+
+    # https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/ebgan/ebgan.py 참조
+
+    def __init__(self, nz=100, ngf=64, img_size=84, nc=3):
+        super(PromptGenerator, self).__init__()
+
+        self.init_size = img_size // 4
+        self.l1 = nn.Sequential(nn.Linear(nz, ngf * 2 * self.init_size ** 2))
+
+        self.conv_blocks = nn.Sequential(
+            nn.BatchNorm2d(ngf * 2),
+            nn.Upsample(scale_factor=2),
+
+            nn.Conv2d(ngf*2, ngf*2, 3, stride=1, padding=1, bias=False),
+            nn.BatchNorm2d(ngf*2),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Upsample(scale_factor=2),
+
+            nn.Conv2d(ngf*2, ngf, 3, stride=1, padding=1, bias=False),
+            nn.BatchNorm2d(ngf),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Conv2d(ngf, nc, 3, stride=1, padding=1),
+            # nn.Sigmoid(),
+            # nn.Tanh(),
+            nn.LeakyReLU(0.2, inplace=True),
+        )
+
+        # self.multiplier_bias = nn.Parameter(torch.randn(1, nc, img_size,img_size))
+        # self.multiplier_bias = nn.Parameter(torch.randn(1))
+        # self.offset_bias = nn.Parameter(torch.randn(1))
+
+    def forward(self, z):
+        out = self.l1(z)
+        out = out.view(out.shape[0], -1, self.init_size, self.init_size)
+        img = self.conv_blocks(out)
+
+        # img = self.multiplier_bias * img + self.offset_bias
+        # # Tanh의 출력값을 miniImageNet 정규화 범위로 변환
+        # min_val, max_val = -2.12, 2.64
+        # img = img * (max_val - min_val) / 2 + (max_val + min_val) / 2
+
+        return img
+
+
 class TaskAwareAttention(nn.Module):
     def __init__(self, image_channels=3, task_dim=100, embed_dim=100):
         super(TaskAwareAttention, self).__init__()
@@ -58,53 +104,6 @@ class TaskAwareAttention(nn.Module):
         prompt = (value * attention_weights).view(batch_size, -1, height, width)  # (B, 3, 84, 84)
 
         return prompt # , attention_weights  # (B, 3, 84, 84), (B, 1, H*W)
-
-
-class PromptGenerator(nn.Module):
-
-    # https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/ebgan/ebgan.py 참조
-
-    def __init__(self, nz=100, ngf=64, img_size=84, nc=3):
-        super(PromptGenerator, self).__init__()
-
-        self.init_size = img_size // 4
-        self.l1 = nn.Sequential(nn.Linear(nz, ngf * 2 * self.init_size ** 2))
-
-        self.conv_blocks = nn.Sequential(
-            nn.BatchNorm2d(ngf * 2),
-            nn.Upsample(scale_factor=2),
-
-            nn.Conv2d(ngf*2, ngf*2, 3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(ngf*2),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Upsample(scale_factor=2),
-
-            nn.Conv2d(ngf*2, ngf, 3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(ngf),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(ngf, nc, 3, stride=1, padding=1),
-            # nn.Sigmoid(),
-            # nn.Tanh(),
-            nn.LeakyReLU(0.2, inplace=True),
-        )
-
-        # self.multiplier_bias = nn.Parameter(torch.randn(1, nc, img_size,img_size))
-        # self.multiplier_bias = nn.Parameter(torch.randn(1))
-        # self.offset_bias = nn.Parameter(torch.randn(1))
-
-    def forward(self, z):
-        out = self.l1(z)
-        out = out.view(out.shape[0], -1, self.init_size, self.init_size)
-        img = self.conv_blocks(out)
-
-        # img = self.multiplier_bias * img + self.offset_bias
-        # # Tanh의 출력값을 miniImageNet 정규화 범위로 변환
-        # min_val, max_val = -2.12, 2.64
-        # img = img * (max_val - min_val) / 2 + (max_val + min_val) / 2
-
-        return img
-
 
 class Autoencoder(nn.Module):
     def __init__(self, input_dim, output_dim, latent_dim=10):

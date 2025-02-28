@@ -276,6 +276,7 @@ class MAMLFewShotClassifier(nn.Module):
             y_target_set_task = y_target_set_task.view(-1)
 
             z = nn.Parameter(torch.randn([1, self.args.num_text_embedding_params]), requires_grad=True).to(self.device)
+            # z = nn.Parameter(torch.ones([1, self.args.num_text_embedding_params]), requires_grad=True).to(self.device)
             # z = torch.zeros(size=[1, self.args.num_text_embedding_params], requires_grad=True).to(self.device)
 
             for num_step in range(num_steps):
@@ -300,7 +301,8 @@ class MAMLFewShotClassifier(nn.Module):
                 grads, context_grads = gradients[:-1], gradients[-1]
 
                 if self.args.learnable_per_layer_per_step_inner_loop_learning_rate:
-                    z = z - self.task_embedding_adaptive_learning_rate[num_step] * context_grads
+                    # z = z - self.task_embedding_adaptive_learning_rate[num_step] * context_grads
+                    z = (1 - self.task_embedding_adaptive_learning_rate[num_step]) * z - self.task_embedding_adaptive_learning_rate[num_step] * context_grads
                 else:
                     z = z - self.args.text_embedding_learning_rate * context_grads
 
