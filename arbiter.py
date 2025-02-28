@@ -8,14 +8,14 @@ class TaskAwareAttention(nn.Module):
         super(TaskAwareAttention, self).__init__()
 
         # 1x1 conv setting
-        kernel_size = 1
-        stride = 1
-        padding = 0
+        # kernel_size = 1
+        # stride = 1
+        # padding = 0
 
         # 3x3 conv setting
-        # kernel_size = 3
-        # stride = 1
-        # padding = 1
+        kernel_size = 3
+        stride = 1
+        padding = 1
 
         # 7x7 conv setting
         # kernel_size = 7
@@ -26,8 +26,8 @@ class TaskAwareAttention(nn.Module):
         # self.query_proj = nn.Linear(task_dim, embed_dim)
 
         # Key, Value 변환 (이미지 특징 추출)
-        self.key_proj = nn.Conv2d(image_channels, embed_dim, kernel_size=1, padding=0)
-        self.value_proj = nn.Conv2d(image_channels, image_channels, kernel_size=1, padding=0)
+        self.key_proj = nn.Conv2d(image_channels, embed_dim, kernel_size=kernel_size, padding=padding)
+        self.value_proj = nn.Conv2d(image_channels, image_channels, kernel_size=kernel_size, padding=padding)
 
         self.softmax = nn.Softmax(dim=-1)
 
