@@ -78,6 +78,10 @@ class TaskAwareAttention(nn.Module):
 
         self.softmax = nn.Softmax(dim=-1)
 
+        # Bias 추가
+        self.multiplier_bias = nn.Parameter(torch.ones(1, image_channels, 84, 84))  # 채널별 조정
+        self.offset_bias = nn.Parameter(torch.zeros(1))  # 전체적인 조정
+
     def forward(self, image, task_embedding):
         """
         image: (B, 3, 84, 84) - Key, Value 역할
@@ -103,6 +107,10 @@ class TaskAwareAttention(nn.Module):
         attention_weights = self.softmax(scores)  # (B, 1, H*W)
 
         prompt = (value * attention_weights).view(batch_size, -1, height, width)  # (B, 3, 84, 84)
+
+        # Bias 적용
+        prompt = self.multiplier_bias * prompt + self.offset_bias
+
 
         return prompt # , attention_weights  # (B, 3, 84, 84), (B, 1, H*W)
 
