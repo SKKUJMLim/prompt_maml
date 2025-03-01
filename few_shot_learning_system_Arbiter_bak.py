@@ -300,8 +300,8 @@ class MAMLFewShotClassifier(nn.Module):
             if self.args.prompter and self.args.prompt_engineering == 'arbiter':
 
 
-                # z = nn.Parameter(torch.randn([1, self.args.num_text_embedding_params]), requires_grad=True).to(self.device)
-                z = torch.zeros(size=[1, self.args.num_text_embedding_params], requires_grad=True).to(self.device)
+                z = nn.Parameter(torch.randn([1, self.args.num_text_embedding_params]), requires_grad=True).to(self.device)
+                # z = torch.zeros(size=[1, self.args.num_text_embedding_params], requires_grad=True).to(self.device)
 
                 ideal_prompt = self.arbiter(z)
                 prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
