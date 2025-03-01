@@ -303,10 +303,8 @@ class MAMLFewShotClassifier(nn.Module):
 
             if self.args.prompter and self.args.prompt_engineering == 'arbiter':
 
-                if self.args.learnable_per_layer_per_step_inner_loop_learning_rate:
-                    z = z - self.task_embedding_adaptive_learning_rate * context_grads
-                else:
-                    z = z - self.args.text_embedding_learning_rate * context_grads
+                z = nn.Parameter(torch.randn([1, self.args.num_text_embedding_params]), requires_grad=True).to(
+                    self.device)
 
                 ideal_prompt = self.arbiter(z)
                 prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
@@ -325,7 +323,12 @@ class MAMLFewShotClassifier(nn.Module):
                                                 create_graph=use_second_order, retain_graph=True)
 
                 grads, context_grads = gradients[:-1], gradients[-1]
-                z = z - self.args.text_embedding_learning_rate * context_grads
+
+                if self.args.learnable_per_layer_per_step_inner_loop_learning_rate:
+                    z = z - self.task_embedding_adaptive_learning_rate * context_grads
+                else:
+                    z = z - self.args.text_embedding_learning_rate * context_grads
+
 
                 init_prompt = self.arbiter(z)
                 prompted_weights_copy['prompt.prompt_dict.arbiter'] = init_prompt
