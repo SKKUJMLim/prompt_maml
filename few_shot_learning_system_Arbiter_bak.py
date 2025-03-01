@@ -72,6 +72,10 @@ class MAMLFewShotClassifier(nn.Module):
                                                                         use_learnable_learning_rates=True)
             self.inner_loop_optimizer.initialise(names_weights_dict=names_weights_copy,
                                                  prompted_weights_dict=prompted_weights_copy)
+
+            self.task_embedding_adaptive_learning_rate = nn.Parameter(
+                data=torch.ones(1) * self.args.text_embedding_learning_rate,requires_grad=True)
+
         else:
             self.inner_loop_optimizer = GradientDescentLearningRule(device=device, args=self.args,
                                                                     learning_rate=self.task_learning_rate)
@@ -299,9 +303,10 @@ class MAMLFewShotClassifier(nn.Module):
 
             if self.args.prompter and self.args.prompt_engineering == 'arbiter':
 
-
-                z = nn.Parameter(torch.randn([1, self.args.num_text_embedding_params]), requires_grad=True).to(self.device)
-                # z = torch.zeros(size=[1, self.args.num_text_embedding_params], requires_grad=True).to(self.device)
+                if self.args.learnable_per_layer_per_step_inner_loop_learning_rate:
+                    z = z - self.task_embedding_adaptive_learning_rate * context_grads
+                else:
+                    z = z - self.args.text_embedding_learning_rate * context_grads
 
                 ideal_prompt = self.arbiter(z)
                 prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
