@@ -200,8 +200,6 @@ class LSLRGradientDescentLearningRule(nn.Module):
         else:
             if self.args.prompt_engineering == 'attention':
 
-                print(self.args.prompt_engineering)
-
                 for key in names_weights_dict.keys():
                     if 'linear' in key:
                         updated_names_weights_dict[key] = names_weights_dict[key] \
