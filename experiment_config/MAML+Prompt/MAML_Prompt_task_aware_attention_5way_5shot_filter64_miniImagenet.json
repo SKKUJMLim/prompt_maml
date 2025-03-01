@@ -54,7 +54,7 @@
   "second_order": true,
   "use_multi_step_loss_optimization":false,
   "prompter": false,
-  "prompt_engineering": "not",
+  "prompt_engineering": "attention",
   "prompt_size" : 10,
   "image_size" : 84,
   "prompt_random_init": false,
