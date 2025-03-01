@@ -280,6 +280,9 @@ class MAMLFewShotClassifier(nn.Module):
             # z = torch.zeros(size=[1, self.args.num_text_embedding_params], requires_grad=True).to(self.device)
 
             for num_step in range(num_steps):
+                mask_ratio = 0.5
+                mask = (torch.rand_like(z) > mask_ratio).float().to(self.device)
+                z = z * mask
 
                 ideal_prompt = self.arbiter(z)
                 prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
