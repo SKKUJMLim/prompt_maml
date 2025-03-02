@@ -89,8 +89,6 @@ class MAMLFewShotClassifier(nn.Module):
             channel = 3
             self.arbiter = arbiter.PromptGenerator(nz=nz, ngf=64, img_size=img_size, nc=channel)
 
-            # self.arbiter = arbiter.TaskAwareAttention(image_channels=3, task_dim=self.args.num_text_embedding_params, embed_dim=100)
-
         print("Inner Loop parameters")
         for key, value in self.inner_loop_optimizer.named_parameters():
             print(key, value.shape)
@@ -105,7 +103,18 @@ class MAMLFewShotClassifier(nn.Module):
             if param.requires_grad:
                 print(name, param.shape, param.device, param.requires_grad)
 
-        self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False)
+
+        if self.args.prompter:
+            # self.optimizer = optim.Adam([
+            #     {'params': self.classifier.parameters(), 'lr': args.meta_learning_rate},
+            #     {'params': self.arbiter.parameters(), 'lr': args.outer_prompt_learning_rate},
+            #     {'params': self.task_embedding_adaptive_learning_rate, 'lr': args.meta_learning_rate},
+            #     {'params': self.inner_loop_optimizer.parameters(), 'lr': args.meta_learning_rate},
+            # ], amsgrad=False)
+            self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False)
+        else:
+            self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False)
+
         self.scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer=self.optimizer, T_max=self.args.total_epochs,
                                                               eta_min=self.args.min_learning_rate)
 
@@ -476,9 +485,9 @@ class MAMLFewShotClassifier(nn.Module):
         """
 
         # 가중치 업데이트 확인용 변수
-        # prev_weights = {}
-        # for name, param in self.named_parameters():
-        #     prev_weights[name] = param.data.clone()
+        prev_weights = {}
+        for name, param in self.named_parameters():
+            prev_weights[name] = param.data.clone()
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -492,10 +501,10 @@ class MAMLFewShotClassifier(nn.Module):
         self.optimizer.step()
 
         # 가중치 업데이트 확인
-        # for name, param in self.named_parameters():
-        #     if not torch.equal(prev_weights[name], param.data):
-        #         print(f"{name} 가중치가 업데이트되었습니다.")
-        #         prev_weights[name] = param.data.clone()
+        for name, param in self.named_parameters():
+            if not torch.equal(prev_weights[name], param.data):
+                print(f"{name} 가중치가 업데이트되었습니다.")
+                prev_weights[name] = param.data.clone()
 
     def run_train_iter(self, data_batch, epoch, current_iter):
         """
