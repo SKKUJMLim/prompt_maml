@@ -15,13 +15,8 @@ def compute_class_prototypes(preds, target, num_classes, device):
     for i, label in enumerate(target):
         class_features[label.item()].append(preds[i].cpu())
 
-    print("class_features ==", class_features)
-
     # 각 클래스의 평균 벡터를 대표 벡터로 설정
     class_prototypes = torch.stack([torch.stack(class_features[i]).mean(dim=0) for i in range(num_classes)])
-
-    print("class_features ==", class_features)
-
 
     return class_prototypes.to(device)
 

@@ -336,6 +336,11 @@ class MAMLFewShotClassifier(nn.Module):
                 else:
                     if num_step == (self.args.number_of_training_steps_per_iter - 1):
 
+                        # class_prototypes = compute_class_prototypes(preds=support_preds,
+                        #                                             target=y_support_set_task,
+                        #                                             num_classes=self.args.num_classes_per_set,
+                        #                                             device=self.device)
+
                         ideal_prompt = self.arbiter(z)
                         prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
 
@@ -420,7 +425,6 @@ class MAMLFewShotClassifier(nn.Module):
         # criterion = LabelSmoothingCrossEntropy(smoothing=0.1)
         # loss = criterion(preds, y)
         # loss_seperate = F.cross_entropy(input=preds, target=y, reduction='none')
-        # class_prototypes = compute_class_prototypes(preds=preds, target=y, num_classes=self.args.num_classes_per_set)
 
         return loss, preds, feature_map_list
 
