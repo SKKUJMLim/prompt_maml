@@ -2,49 +2,28 @@ import torch
 import torch.nn.functional as F
 
 
-# def soft_nearest_neighbors_loss_cos_similarity(features, labels, temperature):
-#     """
-#     Compute the Soft Nearest Neighbors Loss.
-#
-#     Args:
-#         features (torch.Tensor): Feature vectors with shape (batch_size, feature_dim).
-#         labels (torch.Tensor): Labels for the features with shape (batch_size,).
-#         temperature (float): Temperature scaling factor for the softmax.
-#
-#     Returns:
-#         torch.Tensor: The computed loss.
-#     """
-#     # Normalize features to ensure unit vectors
-#     features = F.normalize(features, dim=1)
-#
-#     # Compute pairwise similarity (cosine similarity)
-#     similarity = torch.mm(features, features.t())
-#
-#     # Scale similarity by temperature
-#     scaled_similarity = similarity / temperature
-#
-#     # Create a mask to exclude self-similarity
-#     batch_size = features.size(0)
-#     mask = torch.eye(batch_size, device=features.device).bool()
-#
-#     # Convert labels to one-hot encoding
-#     labels = labels.unsqueeze(1)
-#     one_hot_labels = (labels == labels.t()).float()
-#
-#     # Apply the mask to exclude self-similarity
-#     exp_similarity = torch.exp(scaled_similarity) * ~mask
-#
-#     # Compute the denominators for the softmax
-#     denominators = exp_similarity.sum(dim=1, keepdim=True)
-#
-#     # Compute the soft nearest neighbors loss
-#     positive_similarity = exp_similarity * one_hot_labels
-#     positive_probabilities = positive_similarity.sum(dim=1) / denominators.squeeze(1)
-#
-#     # Take the log and compute the mean loss
-#     loss = -torch.log(positive_probabilities + 1e-8).mean()
-#
-#     return loss
+def cosine_similarity_classifier(features, class_prototypes):
+    similarities = F.cosine_similarity(features.unsqueeze(1), class_prototypes.unsqueeze(0), dim=-1)
+    return similarities.argmax(dim=1)  # 가장 유사한 클래스 반환
+
+
+def compute_class_prototypes(preds, target, num_classes, device):
+
+
+    class_features = {i: [] for i in range(num_classes)}
+
+    for i, label in enumerate(target):
+        class_features[label.item()].append(preds[i].cpu())
+
+    print("class_features ==", class_features)
+
+    # 각 클래스의 평균 벡터를 대표 벡터로 설정
+    class_prototypes = torch.stack([torch.stack(class_features[i]).mean(dim=0) for i in range(num_classes)])
+
+    print("class_features ==", class_features)
+
+
+    return class_prototypes.to(device)
 
 
 def soft_nearest_neighbors_loss_cos_similarity(features, labels, temperature):

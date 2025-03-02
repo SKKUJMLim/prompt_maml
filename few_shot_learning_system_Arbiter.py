@@ -13,7 +13,7 @@ from utils.storage import save_statistics
 
 import arbiter
 from utils.basic import kl_divergence_pixelwise, LabelSmoothingCrossEntropy
-from utils.contrastive_loss import soft_nearest_neighbors_loss_euclidean
+from utils.contrastive_loss import soft_nearest_neighbors_loss_cos_similarity, soft_nearest_neighbors_loss_euclidean, compute_class_prototypes
 
 
 def set_torch_seed(seed):
@@ -280,9 +280,9 @@ class MAMLFewShotClassifier(nn.Module):
             # z = torch.zeros(size=[1, self.args.num_text_embedding_params], requires_grad=True).to(self.device)
 
             for num_step in range(num_steps):
-                mask_ratio = 0.5
-                mask = (torch.rand_like(z) > mask_ratio).float().to(self.device)
-                z = z * mask
+                # mask_ratio = 0.5
+                # mask = (torch.rand_like(z) > mask_ratio).float().to(self.device)
+                # z = z * mask
 
                 ideal_prompt = self.arbiter(z)
                 prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
@@ -298,6 +298,12 @@ class MAMLFewShotClassifier(nn.Module):
                                                                                      num_step=num_step,
                                                                                      training_phase=training_phase,
                                                                                      epoch=epoch)
+                '''1. contrastive loss를 inner-loop 에서만'''
+                # embeddings = support_feature_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
+                # flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
+                # contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=flatten_embedding, labels=y_support_set_task,
+                #                                                               temperature=0.1)
+                # support_loss = support_loss + contrastive_loss
 
                 gradients = torch.autograd.grad(support_loss, (*names_weights_copy.values(), z), create_graph=use_second_order, retain_graph=True)
 
@@ -411,56 +417,10 @@ class MAMLFewShotClassifier(nn.Module):
                                                      num_step=num_step, prepend_prompt=True)
 
         loss = F.cross_entropy(input=preds, target=y)
-
         # criterion = LabelSmoothingCrossEntropy(smoothing=0.1)
         # loss = criterion(preds, y)
-
         # loss_seperate = F.cross_entropy(input=preds, target=y, reduction='none')
-
-        # Not add prompt
-        # preds_, feature_map_list_ = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-        #                                                   training=training,
-        #                                                   backup_running_statistics=backup_running_statistics,
-        #                                                   num_step=num_step, prepend_prompt=False)
-
-        # print("num_step == ", num_step)
-        # batch_correct_prompt = (torch.argmax(preds, dim=1) == y)   # Add Prompt로 올바르게 예측한 샘플 여부
-        # batch_incorrect_prompt = (torch.argmax(preds, dim=1) != y) # Add Prompt로 올바르게 예측하지 못한 샘플 여부
-        #
-        # batch_correct = (torch.argmax(preds_, dim=1) == y)  # 올바르게 예측한 샘플 여부
-        # batch_incorrect = (torch.argmax(preds_, dim=1) != y)  # 올바르게 예측하지 못한 샘플 여부
-        #
-        # print(f"정답 샘플 인덱스: {torch.nonzero(batch_correct_prompt).squeeze().tolist()}")
-        # print(f"오답 샘플 인덱스: {torch.nonzero(batch_incorrect_prompt).squeeze().tolist()}")
-        #
-        # # Visual Prompt를 추가하거나 추가하지 않아도 맞춘 경우
-        # always_correct_samples = batch_correct_prompt & batch_correct
-        # always_correct_indices = torch.nonzero(always_correct_samples).squeeze() # 해당 샘플들의 인덱스 찾기
-        # print(f"Prompt 추가 여부와 관계없이 맞춘 샘플 인덱스: {always_correct_indices.tolist()}")
-        #
-        # # Visual Prompt 추가 시 올바르게 예측했지만, 추가하지 않았을 때 틀린 샘플 찾기
-        # improved_samples = batch_correct_prompt & batch_incorrect       # Prompt 덕분에 올바르게 예측한 샘플
-        # improved_indices = torch.nonzero(improved_samples).squeeze()    # 해당 샘플들의 인덱스 찾기
-        # print(f"Visual Prompt 덕분에 올바르게 예측한 샘플 인덱스: {improved_indices.tolist()}")
-        #
-        # # Visual Prompt 없이 맞췄지만, Prompt 추가 후 틀린 샘플 찾기
-        # worse_samples = batch_correct & batch_incorrect_prompt  # Prompt 추가 후 오히려 틀린 샘플
-        # worse_indices = torch.nonzero(worse_samples).squeeze()  # 해당 샘플 인덱스
-        # print(f"Visual Prompt 추가 후 오히려 틀린 샘플 인덱스: {worse_indices.tolist()}")
-        # print("====" * 50)
-
-        # print("batch_correct")
-        # for i in range(len(batch_correct)):
-        #     if batch_correct[i]:
-        #         print(torch.norm(feature_map_list[3][i] - feature_map_list_[3][i].detach().clone(), p=2))
-        #         # loss = loss + kl_divergence_pixelwise(feature_map_list[3][i], feature_map_list_[3][i].detach().clone())  # detach?
-        #
-        # print("batch_incorrect")
-        # for i in range(len(batch_incorrect)):
-        #     if batch_incorrect[i]:
-        #         print(torch.norm(feature_map_list[3][i] - feature_map_list_[3][i].detach().clone(), p=2))
-        #         # loss = loss + kl_divergence_pixelwise(feature_map_list[3][i], feature_map_list_[3][i].detach().clone())  # detach?
-        # print("===="*50)
+        # class_prototypes = compute_class_prototypes(preds=preds, target=y, num_classes=self.args.num_classes_per_set)
 
         return loss, preds, feature_map_list
 

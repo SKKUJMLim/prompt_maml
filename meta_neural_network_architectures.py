@@ -840,7 +840,7 @@ class MetaNormLayerConvReLU(nn.Module):
 
 
 class VGGReLUNormNetwork(nn.Module):
-    def __init__(self, im_shape, num_output_classes, args, device, meta_classifier=True):
+    def __init__(self, im_shape, num_output_classes, args, device, meta_classifier=True, classifier_type='linear'):
         """
         Builds a multilayer convolutional network. It also provides functionality for passing external parameters to be
         used at inference time. Enables inner loop optimization readily.
@@ -872,6 +872,8 @@ class VGGReLUNormNetwork(nn.Module):
 
         if self.args.prompter:
             self.prompt = prompters.__dict__[args.prompt_engineering](args).to(device)
+
+        self.classifier_type = classifier_type
 
         self.build_network()
         print("meta network params")
@@ -910,8 +912,9 @@ class VGGReLUNormNetwork(nn.Module):
         self.encoder_features_shape = list(out.shape)
         out = out.view(out.shape[0], -1)
 
-        self.layer_dict['linear'] = MetaLinearLayer(input_shape=(out.shape[0], np.prod(out.shape[1:])),
-                                                    num_filters=self.num_output_classes, use_bias=True)
+        if self.classifier_type == 'linear':
+            self.layer_dict['linear'] = MetaLinearLayer(input_shape=(out.shape[0], np.prod(out.shape[1:])),
+                                                        num_filters=self.num_output_classes, use_bias=True)
 
         out = self.layer_dict['linear'](out)
         # print("VGGNetwork build", out.shape)
@@ -966,8 +969,9 @@ class VGGReLUNormNetwork(nn.Module):
         if not self.args.max_pooling:
             out = F.avg_pool2d(out, out.shape[2])
 
-        out = out.view(out.size(0), -1)
-        out = self.layer_dict['linear'](out, param_dict['linear'])
+        if self.classifier_type == 'linear':
+            out = out.view(out.size(0), -1)
+            out = self.layer_dict['linear'](out, param_dict['linear'])
 
         return out, feature_list
 
