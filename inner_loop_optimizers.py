@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from utils.basic import kl_divergence_pixelwise, LabelSmoothingCrossEntropy, gaussian_dropout
 
 
 class GradientDescentLearningRule(nn.Module):
@@ -186,6 +187,9 @@ class LSLRGradientDescentLearningRule(nn.Module):
 
             for key in names_weights_dict.keys():
                 if 'linear' in key:
+                    if training_phase and self.args.DropGrad:
+                        names_grads_wrt_params_dict[key] = gaussian_dropout(names_grads_wrt_params_dict[key], p=0.1)
+
                     updated_names_weights_dict[key] = names_weights_dict[key] \
                                                       - self.names_learning_rates_dict[key.replace(".", "-")][num_step] \
                                                       * names_grads_wrt_params_dict[key]

@@ -292,8 +292,7 @@ class MAMLFewShotClassifier(nn.Module):
                 # mask_ratio = 0.1
                 # mask = (torch.rand_like(z) > mask_ratio).float().to(self.device)
                 # z = z * mask # Binary Dropout
-
-                z = gaussian_dropout(z, p=0.1) # Gaussian Dropout
+                # z = gaussian_dropout(z, p=0.1) # Gaussian Dropout
 
                 ideal_prompt = self.arbiter(z)
                 prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
@@ -319,6 +318,9 @@ class MAMLFewShotClassifier(nn.Module):
                 gradients = torch.autograd.grad(support_loss, (*names_weights_copy.values(), z), create_graph=use_second_order, retain_graph=True)
 
                 grads, context_grads = gradients[:-1], gradients[-1]
+
+                if training_phase and self.args.DropGrad:
+                    context_grads = gaussian_dropout(context_grads, p=0.1)
 
                 if self.args.learnable_per_layer_per_step_inner_loop_learning_rate:
                     z = z - self.task_embedding_adaptive_learning_rate[num_step] * context_grads
@@ -485,9 +487,9 @@ class MAMLFewShotClassifier(nn.Module):
         """
 
         # 가중치 업데이트 확인용 변수
-        prev_weights = {}
-        for name, param in self.named_parameters():
-            prev_weights[name] = param.data.clone()
+        # prev_weights = {}
+        # for name, param in self.named_parameters():
+        #     prev_weights[name] = param.data.clone()
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -501,10 +503,10 @@ class MAMLFewShotClassifier(nn.Module):
         self.optimizer.step()
 
         # 가중치 업데이트 확인
-        for name, param in self.named_parameters():
-            if not torch.equal(prev_weights[name], param.data):
-                print(f"{name} 가중치가 업데이트되었습니다.")
-                prev_weights[name] = param.data.clone()
+        # for name, param in self.named_parameters():
+        #     if not torch.equal(prev_weights[name], param.data):
+        #         print(f"{name} 가중치가 업데이트되었습니다.")
+        #         prev_weights[name] = param.data.clone()
 
     def run_train_iter(self, data_batch, epoch, current_iter):
         """
