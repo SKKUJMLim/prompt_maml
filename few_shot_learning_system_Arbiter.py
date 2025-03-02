@@ -308,19 +308,13 @@ class MAMLFewShotClassifier(nn.Module):
                                                                                      num_step=num_step,
                                                                                      training_phase=training_phase,
                                                                                      epoch=epoch)
-                '''1. contrastive loss를 inner-loop 에서만'''
-                # embeddings = support_feature_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
-                # flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
-                # contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=flatten_embedding, labels=y_support_set_task,
-                #                                                               temperature=0.1)
-                # support_loss = support_loss + contrastive_loss
 
                 gradients = torch.autograd.grad(support_loss, (*names_weights_copy.values(), z), create_graph=use_second_order, retain_graph=True)
 
                 grads, context_grads = gradients[:-1], gradients[-1]
 
-                if training_phase and self.args.DropGrad:
-                    context_grads = gaussian_dropout(context_grads, p=0.1)
+                if self.args.DropGrad:
+                    context_grads = gaussian_dropout(context_grads, p=self.args.DropGrad_rate)
 
                 if self.args.learnable_per_layer_per_step_inner_loop_learning_rate:
                     z = z - self.task_embedding_adaptive_learning_rate[num_step] * context_grads
@@ -438,6 +432,14 @@ class MAMLFewShotClassifier(nn.Module):
         # criterion = LabelSmoothingCrossEntropy(smoothing=0.1)
         # loss = criterion(preds, y)
         # loss_seperate = F.cross_entropy(input=preds, target=y, reduction='none')
+
+        embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
+        flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
+        contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=flatten_embedding,
+                                                                      labels=y,
+                                                                      temperature=0.1)
+        loss = loss + 0.1 * contrastive_loss
+
 
         return loss, preds, feature_map_list
 
