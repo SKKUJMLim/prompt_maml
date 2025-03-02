@@ -12,7 +12,7 @@ from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDesce
 from utils.storage import save_statistics
 
 import arbiter
-from utils.basic import kl_divergence_pixelwise, LabelSmoothingCrossEntropy
+from utils.basic import kl_divergence_pixelwise, LabelSmoothingCrossEntropy, gaussian_dropout
 from utils.contrastive_loss import soft_nearest_neighbors_loss_cos_similarity, soft_nearest_neighbors_loss_euclidean, compute_class_prototypes
 
 
@@ -280,9 +280,11 @@ class MAMLFewShotClassifier(nn.Module):
             # z = torch.zeros(size=[1, self.args.num_text_embedding_params], requires_grad=True).to(self.device)
 
             for num_step in range(num_steps):
-                # mask_ratio = 0.5
+                # mask_ratio = 0.1
                 # mask = (torch.rand_like(z) > mask_ratio).float().to(self.device)
-                # z = z * mask
+                # z = z * mask # Binary Dropout
+
+                z = gaussian_dropout(z, p=0.1) # Gaussian Dropout
 
                 ideal_prompt = self.arbiter(z)
                 prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt

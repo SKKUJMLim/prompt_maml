@@ -6,6 +6,11 @@ import torch.nn.functional as F
 import itertools
 
 
+def gaussian_dropout(x, p):
+    std = (p / (1 - p)) ** 0.5  # 표준편차 계산
+    noise = torch.randn_like(x) * std + 1  # 1 + N(0, std^2)
+    return x * noise
+
 class LabelSmoothingCrossEntropy(nn.Module):
     """
     Cross-Entropy Loss with Label Smoothing.
