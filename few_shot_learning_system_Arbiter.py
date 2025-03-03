@@ -435,7 +435,7 @@ class MAMLFewShotClassifier(nn.Module):
 
         # loss = F.cross_entropy(input=preds, target=y)
         loss_separate = F.cross_entropy(input=preds, target=y, reduction='none')
-        k = 0.1  # Scaling 계수
+        k = 0.01  # Scaling 계수
         weights = torch.exp(k * loss_separate)  # Exponential Scaling 적용
         loss = (weights * loss_separate).mean()
 
