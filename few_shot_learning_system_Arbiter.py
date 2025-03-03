@@ -433,12 +433,12 @@ class MAMLFewShotClassifier(nn.Module):
         # loss = criterion(preds, y)
         # loss_seperate = F.cross_entropy(input=preds, target=y, reduction='none')
 
-        embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
-        flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
-        contrastive_loss = soft_nearest_neighbors_loss_euclidean(features=flatten_embedding,
-                                                                 labels=y,
-                                                                 temperature=0.1)
-        loss = loss + contrastive_loss
+        # embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
+        # flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
+        # contrastive_loss = soft_nearest_neighbors_loss_euclidean(features=flatten_embedding,
+        #                                                          labels=y,
+        #                                                          temperature=0.1)
+        # loss = loss + contrastive_loss
 
 
         return loss, preds, feature_map_list
