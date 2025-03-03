@@ -451,6 +451,9 @@ class MAMLFewShotClassifier(nn.Module):
         lambda_kl = 0.1
         loss = loss - lambda_kl * kl_loss
 
+        if loss <0:
+            print("Minus loss!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+
 
         return loss, preds, feature_map_list
 
