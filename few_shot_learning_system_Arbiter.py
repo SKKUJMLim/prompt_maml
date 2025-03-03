@@ -433,31 +433,30 @@ class MAMLFewShotClassifier(nn.Module):
                                                           backup_running_statistics=backup_running_statistics,
                                                           num_step=num_step, prepend_prompt=False)
 
-        # print("num_step == ", num_step)
         loss = F.cross_entropy(input=preds, target=y)
         # loss_seperate = F.cross_entropy(input=preds, target=y, reduction='none')
-        # kl_loss = kl_divergence(feature_map_list_[3], feature_map_list[3])
-        kl_loss = kl_divergence(preds, preds_)
-        #print("kl_loss == ", kl_loss)
+
+        batch_correct_prompt = (torch.argmax(preds, dim=1) == y)   # Add Prompt로 올바르게 예측한 샘플 여부
+        batch_incorrect_prompt = (torch.argmax(preds, dim=1) != y) # Add Prompt로 올바르게 예측하지 못한 샘플 여부
+        batch_correct = (torch.argmax(preds_, dim=1) == y)  # 올바르게 예측한 샘플 여부
+        batch_incorrect = (torch.argmax(preds_, dim=1) != y)  # 올바르게 예측하지 못한 샘플 여부
+
+        # Visual Prompt를 추가하거나 추가하지 않아도 맞춘 경우
+        always_correct_samples = batch_correct_prompt & batch_correct
+        always_correct_indices = torch.nonzero(always_correct_samples).squeeze() # 해당 샘플들의 인덱스 찾기
+
+        # print("num_step == ", num_step)
+        # print("preds[always_correct_indices]=== ", preds[always_correct_indices].shape)
+        kl_loss = kl_divergence(preds[always_correct_indices], preds_[always_correct_indices])
+        # print("kl_loss == ", kl_loss)
 
         loss = loss - kl_loss
 
-
-        # weights = torch.exp(loss_seperate)  # Loss가 클수록 가중치 증가
-
-        # criterion = LabelSmoothingCrossEntropy(smoothing=0.1)
-        # loss = criterion(preds, y)
-        # loss_seperate = F.cross_entropy(input=preds, target=y, reduction='none')
-
-        # embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
-        # flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
-        # contrastive_loss = soft_nearest_neighbors_loss_euclidean(features=flatten_embedding,
-        #                                                          labels=y,
-        #                                                          temperature=0.1)
-        # loss = loss + contrastive_loss
-
-
         return loss, preds, feature_map_list
+
+
+    def hi(self, preds, preds_, y):
+        pass
 
     def trainable_parameters(self):
         """
