@@ -439,6 +439,13 @@ class MAMLFewShotClassifier(nn.Module):
         weights = torch.exp(k * loss_separate)  # Exponential Scaling 적용
         loss = (weights * loss_separate).mean()
 
+        '''
+        supp_loss_class = loss_seperate.reshape(5,-1)
+        supp_loss_avg = torch.mean(supp_loss_class,dim=1)
+        loss_weight = torch.softmax(supp_loss_avg/25,dim=0).detach()
+        loss = F.cross_entropy(input=preds, target=y, weight=loss_weight)
+        '''
+
         # batch_correct_prompt = (torch.argmax(preds, dim=1) == y)   # Add Prompt로 올바르게 예측한 샘플 여부
         # batch_incorrect_prompt = (torch.argmax(preds, dim=1) != y) # Add Prompt로 올바르게 예측하지 못한 샘플 여부
         # batch_correct = (torch.argmax(preds_, dim=1) == y)  # 올바르게 예측한 샘플 여부
