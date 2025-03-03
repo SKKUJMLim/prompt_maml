@@ -445,8 +445,8 @@ class MAMLFewShotClassifier(nn.Module):
         always_correct_samples = batch_correct_prompt & batch_correct
         always_correct_indices = torch.nonzero(always_correct_samples).squeeze() # 해당 샘플들의 인덱스 찾기
 
-        kl_loss = kl_divergence(preds[always_correct_indices], preds_[always_correct_indices]) #kl_loss dim=0으로 변경해야함
-        # kl_loss = kl_divergence(feature_map_list[3][always_correct_indices], feature_map_list_[3][always_correct_indices])
+        # kl_loss = kl_divergence(preds[always_correct_indices], preds_[always_correct_indices]) #kl_loss dim=0으로 변경해야함
+        kl_loss = kl_divergence(feature_map_list[3][always_correct_indices], feature_map_list_[3][always_correct_indices])
 
         lambda_kl = 0.1
         loss = loss - lambda_kl * kl_loss

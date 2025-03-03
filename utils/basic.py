@@ -52,8 +52,8 @@ def kl_divergence(feat1, feat2):
     # q = F.softmax(feat2, dim=0)
 
     # 확률 분포로 변환 (Channel별 Softmax)
-    p = F.softmax(feat1, dim=0)  # channel-dimension에서 softmax 적용
-    q = F.softmax(feat2, dim=0)
+    p = F.softmax(feat1, dim=1)  # channel-dimension에서 softmax 적용
+    q = F.softmax(feat2, dim=1)
 
     # log-prob 계산 (log(0) 방지)
     log_p = torch.log(p)
