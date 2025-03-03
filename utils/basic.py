@@ -41,25 +41,25 @@ class LabelSmoothingCrossEntropy(nn.Module):
 
 
 
-def kl_divergence_pixelwise(feat1, feat2):
+def kl_divergence(feat1, feat2):
     """
     두 개의 [64, 5, 5] 크기의 feature map 간 KL Divergence 계산
     - feat1, feat2: [64, 5, 5] 형태의 텐서
     - 출력: 픽셀별 KL Divergence 값 (동일한 [64, 5, 5] 크기)
     """
-    # 확률 분포로 변환 (픽셀별 Softmax)
-    p = F.softmax(feat1, dim=0)  # 픽셀별 정규화
-    q = F.softmax(feat2, dim=0)
+    # # 확률 분포로 변환 (픽셀별 Softmax)
+    # p = F.softmax(feat1, dim=0)  # 픽셀별 정규화
+    # q = F.softmax(feat2, dim=0)
 
-    # # 확률 분포로 변환 (Channel별 Softmax)
-    # p = F.softmax(feat1, dim=1)  # Channel-wise softmax
-    # q = F.softmax(feat2, dim=1)
+    # 확률 분포로 변환 (Channel별 Softmax)
+    p = F.softmax(feat1, dim=1)  # channel-dimension에서 softmax 적용
+    q = F.softmax(feat2, dim=1)
 
     # log-prob 계산 (log(0) 방지)
-    log_p = torch.log(p + 1e-8)
+    log_p = torch.log(p)
 
-    # KL Divergence 계산 (픽셀별)
-    kl_div = F.kl_div(log_p, q, reduction='batchmean')  # 픽셀 단위로 유지
+    kl_div = F.kl_div(log_p, q, reduction='batchmean')
+
     return kl_div
 
 

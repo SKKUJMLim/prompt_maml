@@ -12,7 +12,7 @@ from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDesce
 from utils.storage import save_statistics
 
 import arbiter
-from utils.basic import kl_divergence_pixelwise, LabelSmoothingCrossEntropy, gaussian_dropout
+from utils.basic import kl_divergence, LabelSmoothingCrossEntropy, gaussian_dropout
 from utils.contrastive_loss import soft_nearest_neighbors_loss_cos_similarity, soft_nearest_neighbors_loss_euclidean
 
 
@@ -427,8 +427,24 @@ class MAMLFewShotClassifier(nn.Module):
                                                      training=training,
                                                      backup_running_statistics=backup_running_statistics,
                                                      num_step=num_step, prepend_prompt=True)
+        # Not add prompt
+        preds_, feature_map_list_ = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+                                                          training=training,
+                                                          backup_running_statistics=backup_running_statistics,
+                                                          num_step=num_step, prepend_prompt=False)
 
+        # print("num_step == ", num_step)
         loss = F.cross_entropy(input=preds, target=y)
+        # loss_seperate = F.cross_entropy(input=preds, target=y, reduction='none')
+        # kl_loss = kl_divergence(feature_map_list_[3], feature_map_list[3])
+        kl_loss = kl_divergence(preds, preds_)
+        #print("kl_loss == ", kl_loss)
+
+        loss = loss - kl_loss
+
+
+        # weights = torch.exp(loss_seperate)  # Loss가 클수록 가중치 증가
+
         # criterion = LabelSmoothingCrossEntropy(smoothing=0.1)
         # loss = criterion(preds, y)
         # loss_seperate = F.cross_entropy(input=preds, target=y, reduction='none')
