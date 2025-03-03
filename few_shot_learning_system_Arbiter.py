@@ -438,7 +438,7 @@ class MAMLFewShotClassifier(nn.Module):
         contrastive_loss = soft_nearest_neighbors_loss_euclidean(features=flatten_embedding,
                                                                  labels=y,
                                                                  temperature=0.1)
-        loss = loss + 0.1 * contrastive_loss
+        loss = loss + contrastive_loss
 
 
         return loss, preds, feature_map_list
