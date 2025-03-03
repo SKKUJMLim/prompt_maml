@@ -448,8 +448,8 @@ class MAMLFewShotClassifier(nn.Module):
         # kl_loss = kl_divergence(preds[always_correct_indices], preds_[always_correct_indices]) #kl_loss dim=0으로 변경해야함
         kl_loss = kl_divergence(feature_map_list[3][always_correct_indices], feature_map_list_[3][always_correct_indices])
 
-        # lambda_kl = 0.01
-        loss = loss - torch.clamp(kl_loss, 0, loss.item())
+        lambda_kl = 0.01
+        loss = loss - lambda_kl * kl_loss
 
         if loss <0:
             print("Minus loss!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
