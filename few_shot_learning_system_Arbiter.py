@@ -447,10 +447,12 @@ class MAMLFewShotClassifier(nn.Module):
 
         # print("num_step == ", num_step)
         # print("preds[always_correct_indices]=== ", preds[always_correct_indices].shape)
-        kl_loss = kl_divergence(preds[always_correct_indices], preds_[always_correct_indices])
-        # print("kl_loss == ", kl_loss)
 
-        loss = loss - kl_loss
+        if len(always_correct_indices) != 0:
+            kl_loss = kl_divergence(preds[always_correct_indices], preds_[always_correct_indices])
+            # print("kl_loss == ", kl_loss)
+            loss = loss - kl_loss
+
 
         return loss, preds, feature_map_list
 
