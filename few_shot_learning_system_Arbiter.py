@@ -448,11 +448,11 @@ class MAMLFewShotClassifier(nn.Module):
         # print("num_step == ", num_step)
         # print("preds[always_correct_indices]=== ", preds[always_correct_indices].shape)
 
-        if len(always_correct_indices) != 0:
-            print("len(always_correct_indices) == ", len(always_correct_indices))
-            kl_loss = kl_divergence(preds[always_correct_indices], preds_[always_correct_indices])
-            print("kl_loss == ", kl_loss)
-            loss = loss - kl_loss
+        # if always_correct_indices.dim() != 0:
+        # kl_loss = kl_divergence(preds[always_correct_indices], preds_[always_correct_indices]) klloss dim=0으로 변경해야함
+        kl_loss = kl_divergence(feature_map_list[3][always_correct_indices], feature_map_list_[3][always_correct_indices])
+        # print("kl_loss == ", kl_loss)
+        loss = loss - kl_loss
 
 
         return loss, preds, feature_map_list
