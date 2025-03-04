@@ -471,9 +471,6 @@ class MAMLFewShotClassifier(nn.Module):
         return loss, preds, feature_map_list
 
 
-    def hi(self, preds, preds_, y):
-        pass
-
     def trainable_parameters(self):
         """
         Returns an iterator over the trainable parameters of the model.

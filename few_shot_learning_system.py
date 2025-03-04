@@ -89,18 +89,22 @@ class MAMLFewShotClassifier(nn.Module):
             if param.requires_grad:
                 print(name, param.shape, param.device, param.requires_grad)
 
-        if self.args.prompter:
-            if self.args.prompt_random_init:
-                self.optimizer = optim.Adam([
-                    {'params': self.trainable_parameters(), 'lr': args.meta_learning_rate},
-                ], amsgrad=False)
-            else:
-                self.optimizer = optim.Adam([
-                    {'params': self.trainable_parameters(), 'lr': args.meta_learning_rate},
-                    {'params': self.trainable_prompt_parameters(), 'lr': args.outer_prompt_learning_rate},
-                ], amsgrad=False)
-        else:
-            self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False)
+        self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False)
+
+
+        # if self.args.prompter:
+        #     if self.args.prompt_random_init:
+        #         self.optimizer = optim.Adam([
+        #             {'params': self.trainable_parameters(), 'lr': args.meta_learning_rate},
+        #         ], amsgrad=False)
+        #     else:
+        #         self.optimizer = optim.Adam([
+        #             {'params': self.trainable_parameters(), 'lr': args.meta_learning_rate},
+        #             {'params': self.trainable_prompt_parameters(), 'lr': args.outer_prompt_learning_rate},
+        #             {'params': self.inner_loop_optimizer.parameters(), 'lr': args.outer_prompt_learning_rate},
+        #         ], amsgrad=False)
+        # else:
+        #     self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False)
 
         self.scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer=self.optimizer, T_max=self.args.total_epochs,
                                                               eta_min=self.args.min_learning_rate)
@@ -425,33 +429,41 @@ class MAMLFewShotClassifier(nn.Module):
 
         loss = F.cross_entropy(input=preds, target=y)
 
-        embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
-        embeddings = embeddings.mean(dim=[2, 3])  # shape: (batch_size, 64)
-        flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
-
-        contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=flatten_embedding, labels=y, temperature=0.1)
-        loss = loss + contrastive_loss
+        # embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
+        # # embeddings = embeddings.mean(dim=[2, 3])  # shape: (batch_size, 64)
+        # flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
+        #
+        # contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=flatten_embedding, labels=y, temperature=0.1)
+        # loss = loss + contrastive_loss
 
         return loss, preds
 
 
-    def trainable_prompt_parameters(self):
-        """
-        Returns an iterator over the trainable parameters of the model.
-        """
-        for name, param in self.named_parameters():
-            if param.requires_grad:
-                if 'prompt' in name:
-                    yield param
+    # def trainable_prompt_parameters(self):
+    #     """
+    #     Returns an iterator over the trainable parameters of the model.
+    #     """
+    #     for name, param in self.named_parameters():
+    #         if param.requires_grad:
+    #             if 'prompt' in name:
+    #                 yield param
+    #
+    # def trainable_parameters(self):
+    #     """
+    #     Returns an iterator over the trainable parameters of the model.
+    #     """
+    #     for name, param in self.named_parameters():
+    #         if param.requires_grad:
+    #             if 'layer_dict' in name:
+    #                 yield param
 
     def trainable_parameters(self):
         """
         Returns an iterator over the trainable parameters of the model.
         """
-        for name, param in self.named_parameters():
+        for param in self.parameters():
             if param.requires_grad:
-                if 'layer_dict' in name:
-                    yield param
+                yield param
 
     def train_forward_prop(self, data_batch, epoch, current_iter):
         """
