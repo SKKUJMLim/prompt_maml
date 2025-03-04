@@ -447,15 +447,22 @@ class MAMLFewShotClassifier(nn.Module):
         batch_correct = (torch.argmax(preds_not_prompted, dim=1) == y)  # Not Add Prompt로 올바르게 예측한 샘플 여부
         batch_incorrect = (torch.argmax(preds_not_prompted, dim=1) != y)  # Not Add Promptfh 올바르게 예측하지 못한 샘플 여부
 
-        correct_indices = torch.nonzero(batch_correct, as_tuple=True)[0]
-
+        # correct_indices = torch.nonzero(batch_correct, as_tuple=True)[0]
         # adv_loss = kl_divergence(preds[correct_indices], preds_not_prompted[correct_indices].clone().detach()) #kl_loss dim=0으로 변경해야함
         # adv_loss = compute_mse_loss(preds[correct_indices], preds_not_prompted[correct_indices].clone().detach())
         # adv_loss = kl_divergence(feature_map_list[3][correct_indices], feature_map_list_not_prompted[3][correct_indices].clone().detach())
-        adv_loss =  compute_mse_loss(feature_map_list[3][correct_indices], feature_map_list_not_prompted[3][correct_indices].clone().detach())
+        # adv_loss =  compute_mse_loss(feature_map_list[3][correct_indices], feature_map_list_not_prompted[3][correct_indices].clone().detach())
+        #
+        # lambda_adv = 0.1
+        # loss = loss - lambda_adv * adv_loss
 
-        lambda_adv = 1
-        loss = loss - lambda_adv * adv_loss
+        # Visual Prompt 없이 맞췄지만, Prompt 추가 후 틀린 샘플 찾기
+        # worse_samples = batch_correct & batch_incorrect_prompt  # Prompt 추가 후 오히려 틀린 샘플
+        # worse_indice = torch.nonzero(worse_samples, as_tuple=True)[0]
+        #
+        # if len(worse_indice) != 0:
+        #     mse_loss = kl_divergence(feature_map_list[3][worse_indice], feature_map_list_not_prompted[3][worse_indice].clone().detach())
+        #     loss = loss + mse_loss
 
         if loss < 0:
             print("Minus loss!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")

@@ -11,6 +11,8 @@ from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDesce
 
 from utils.storage import save_statistics
 
+from utils.contrastive_loss import soft_nearest_neighbors_loss_cos_similarity
+
 
 def set_torch_seed(seed):
     """
@@ -417,11 +419,18 @@ class MAMLFewShotClassifier(nn.Module):
         :return: the crossentropy losses with respect to the given y, the predictions of the base model.
         """
 
-        preds, feature_map = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights, task_embedding=task_embedding,
+        preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights, task_embedding=task_embedding,
                                         training=training, backup_running_statistics=backup_running_statistics,
                                                      num_step=num_step, prepend_prompt=prepend_prompt)
 
         loss = F.cross_entropy(input=preds, target=y)
+
+        embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
+        embeddings = embeddings.mean(dim=[2, 3])  # shape: (batch_size, 64)
+        flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
+
+        contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=flatten_embedding, labels=y, temperature=0.1)
+        loss = loss + contrastive_loss
 
         return loss, preds
 
