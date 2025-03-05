@@ -428,12 +428,15 @@ class MAMLFewShotClassifier(nn.Module):
                                                      backup_running_statistics=backup_running_statistics,
                                                      num_step=num_step, prepend_prompt=True)
         # Not add prompt
-        # preds_not_prompted, feature_map_list_not_prompted = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-        #                                                   training=training,
-        #                                                   backup_running_statistics=backup_running_statistics,
-        #                                                   num_step=num_step, prepend_prompt=False)
+        preds_not_prompted, feature_map_list_not_prompted = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+                                                          training=training,
+                                                          backup_running_statistics=backup_running_statistics,
+                                                          num_step=num_step, prepend_prompt=False)
 
         loss = F.cross_entropy(input=preds, target=y)
+        kl_loss = kl_divergence(preds, preds_not_prompted.clone().detach())
+
+        loss  = loss + kl_loss
 
         # embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
         # # embeddings = embeddings.mean(dim=[2, 3])  # shape: (batch_size, 64)

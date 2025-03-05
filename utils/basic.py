@@ -42,16 +42,7 @@ class LabelSmoothingCrossEntropy(nn.Module):
 
 
 def kl_divergence(feat1, feat2):
-    """
-    두 개의 [64, 5, 5] 크기의 feature map 간 KL Divergence 계산
-    - feat1, feat2: [64, 5, 5] 형태의 텐서
-    - 출력: 픽셀별 KL Divergence 값 (동일한 [64, 5, 5] 크기)
-    """
-    # # 확률 분포로 변환 (픽셀별 Softmax)
-    # p = F.softmax(feat1, dim=0)  # 픽셀별 정규화
-    # q = F.softmax(feat2, dim=0)
 
-    # 확률 분포로 변환 (Channel별 Softmax)
     p = F.softmax(feat1, dim=1)  # channel-dimension에서 softmax 적용
     q = F.softmax(feat2, dim=1)
 
