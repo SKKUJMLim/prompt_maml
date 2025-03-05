@@ -60,7 +60,7 @@
   "prompt_random_init": false,
   "outer_prompt_learning_rate": 0.001,
   "inner_prompt_learning_rate": 0.01,
-  "num_text_embedding_params": 256,
+  "num_text_embedding_params": 100,
   "text_embedding_learning_rate": 0.01,
   "DropGrad": false,
   "DropGrad_rate" : 0.2
