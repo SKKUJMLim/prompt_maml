@@ -40,6 +40,17 @@ class LabelSmoothingCrossEntropy(nn.Module):
         return loss
 
 
+def logit_based_kd_loss(student_logits, teacher_logits, temperature=3.0, alpha=0.7):
+
+    # Soft labels 생성
+    student_probs = F.log_softmax(student_logits / temperature, dim=1)
+    teacher_probs = F.softmax(teacher_logits / temperature, dim=1)
+
+    # KL Divergence Loss (Soft Label Distillation)
+    kd_loss = F.kl_div(student_probs, teacher_probs, reduction='batchmean') * (temperature ** 2)
+
+    return kd_loss
+
 
 def kl_divergence(feat1, feat2):
 

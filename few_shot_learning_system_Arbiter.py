@@ -87,7 +87,7 @@ class MAMLFewShotClassifier(nn.Module):
             nz = self.args.num_text_embedding_params # + num_layers
             img_size = self.args.image_width
             channel = 3
-            self.arbiter = arbiter.PromptGenerator(nz=nz, ngf=64, img_size=img_size, nc=channel)
+            self.arbiter = arbiter.PromptGenerator(args=self.args, nz=nz, ngf=64, img_size=img_size, nc=channel)
 
         print("Inner Loop parameters")
         for key, value in self.inner_loop_optimizer.named_parameters():
@@ -434,15 +434,16 @@ class MAMLFewShotClassifier(nn.Module):
                                                           num_step=num_step, prepend_prompt=False)
 
         loss = F.cross_entropy(input=preds, target=y)
-        kl_loss = kl_divergence(preds, preds_not_prompted.clone().detach())
 
+        kl_loss = kl_divergence(feature_map_list[3], feature_map_list_not_prompted[3].clone().detach())
         loss  = loss + kl_loss
 
         # embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
-        # # embeddings = embeddings.mean(dim=[2, 3])  # shape: (batch_size, 64)
-        # flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
+        # embeddings = embeddings.mean(dim=[2, 3])  # shape: (batch_size, 64)
+        # # flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
         #
-        # contrastive_loss = soft_nearest_neighbors_loss_euclidean(features=flatten_embedding, labels=y, temperature=0.1)
+        # contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=embeddings, labels=y, temperature=0.1)
+        # # contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=embeddings, labels=y, temperature=0.1)
         # loss = loss + contrastive_loss
 
         '''Weighted loss'''
@@ -454,7 +455,7 @@ class MAMLFewShotClassifier(nn.Module):
         # batch_correct_prompt = (torch.argmax(preds, dim=1) == y)   # Add Prompt로 올바르게 예측한 샘플 여부
         # batch_incorrect_prompt = (torch.argmax(preds, dim=1) != y) # Add Prompt로 올바르게 예측하지 못한 샘플 여부
         # batch_correct = (torch.argmax(preds_not_prompted, dim=1) == y)  # Not Add Prompt로 올바르게 예측한 샘플 여부
-        # batch_incorrect = (torch.argmax(preds_not_prompted, dim=1) != y)  # Not Add Promptfh 올바르게 예측하지 못한 샘플 여부
+        # batch_incorrect = (torch.argmax(preds_not_prompted, dim=1) != y)  # Not Add Prompt로 올바르게 예측하지 못한 샘플 여부
 
         # correct_indices = torch.nonzero(batch_correct, as_tuple=True)[0]
         # adv_loss = kl_divergence(preds[correct_indices], preds_not_prompted[correct_indices].clone().detach()) #kl_loss dim=0으로 변경해야함
@@ -462,8 +463,8 @@ class MAMLFewShotClassifier(nn.Module):
         # adv_loss = kl_divergence(feature_map_list[3][correct_indices], feature_map_list_not_prompted[3][correct_indices].clone().detach())
         # adv_loss =  compute_mse_loss(feature_map_list[3][correct_indices], feature_map_list_not_prompted[3][correct_indices].clone().detach())
         #
-        # lambda_adv = 0.1
-        # loss = loss - lambda_adv * adv_loss
+        # lambda_adv = 1
+        # loss = loss + lambda_adv * adv_loss
 
         # Visual Prompt 없이 맞췄지만, Prompt 추가 후 틀린 샘플 찾기
         # worse_samples = batch_correct & batch_incorrect_prompt  # Prompt 추가 후 오히려 틀린 샘플
