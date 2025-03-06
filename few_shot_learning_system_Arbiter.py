@@ -8,11 +8,12 @@ import torch.optim as optim
 
 from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
+# from inner_loop_optimizers_weightdecay import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 
 from utils.storage import save_statistics
 
 import arbiter
-from utils.basic import kl_divergence, LabelSmoothingCrossEntropy, gaussian_dropout, compute_mse_loss
+from utils.basic import kl_divergence, LabelSmoothingCrossEntropy, gaussian_dropout, logit_based_kd_loss
 from utils.contrastive_loss import soft_nearest_neighbors_loss_cos_similarity, soft_nearest_neighbors_loss_euclidean
 
 
@@ -74,9 +75,9 @@ class MAMLFewShotClassifier(nn.Module):
             self.inner_loop_optimizer.initialise(names_weights_dict=names_weights_copy,
                                                  prompted_weights_dict=prompted_weights_copy)
 
-            self.task_embedding_adaptive_learning_rate = nn.Parameter(
-                data=torch.ones(self.args.number_of_training_steps_per_iter + 1) * self.args.text_embedding_learning_rate,
-                requires_grad=True)
+            # self.task_embedding_adaptive_learning_rate = nn.Parameter(
+            #     data=torch.ones(self.args.number_of_training_steps_per_iter + 1) * self.args.text_embedding_learning_rate,
+            #     requires_grad=True)
         else:
             self.inner_loop_optimizer = GradientDescentLearningRule(device=device, args=self.args,
                                                                     learning_rate=self.task_learning_rate)
@@ -316,11 +317,13 @@ class MAMLFewShotClassifier(nn.Module):
                 if self.args.DropGrad:
                     context_grads = gaussian_dropout(context_grads, p=self.args.DropGrad_rate)
 
-                if self.args.learnable_per_layer_per_step_inner_loop_learning_rate:
-                    z = z - self.task_embedding_adaptive_learning_rate[num_step] * context_grads
-                    # z = (1 - self.task_embedding_adaptive_learning_rate[num_step]) * z - self.task_embedding_adaptive_learning_rate[num_step] * context_grads
-                else:
-                    z = z - self.args.text_embedding_learning_rate * context_grads
+                z = z - self.args.text_embedding_learning_rate * context_grads
+
+                # if self.args.learnable_per_layer_per_step_inner_loop_learning_rate:
+                #     z = z - self.task_embedding_adaptive_learning_rate[num_step] * context_grads
+                #     # z = (1 - self.task_embedding_adaptive_learning_rate[num_step]) * z - self.task_embedding_adaptive_learning_rate[num_step] * context_grads
+                # else:
+                #     z = z - self.args.text_embedding_learning_rate * context_grads
 
                 names_weights_copy = self.apply_inner_loop_update(loss=support_loss,
                                                                   names_weights_copy=names_weights_copy,
@@ -435,15 +438,15 @@ class MAMLFewShotClassifier(nn.Module):
 
         loss = F.cross_entropy(input=preds, target=y)
 
-        kl_loss = kl_divergence(feature_map_list[3], feature_map_list_not_prompted[3].clone().detach())
+        # kl_loss = kl_divergence(feature_map_list[3], feature_map_list_not_prompted[3].clone().detach())
+        kl_loss = logit_based_kd_loss(preds, preds_not_prompted.clone().detach())
         loss  = loss + kl_loss
 
         # embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
-        # embeddings = embeddings.mean(dim=[2, 3])  # shape: (batch_size, 64)
-        # # flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
-        #
-        # contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=embeddings, labels=y, temperature=0.1)
-        # # contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=embeddings, labels=y, temperature=0.1)
+        # # embeddings = embeddings.mean(dim=[2, 3])  # shape: (batch_size, 64)
+        # flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
+        # # contrastive_loss = soft_nearest_neighbors_loss_euclidean(features=embeddings, labels=y, temperature=0.1)
+        # contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=flatten_embedding, labels=y, temperature=0.1)
         # loss = loss + contrastive_loss
 
         '''Weighted loss'''
