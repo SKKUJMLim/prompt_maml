@@ -14,7 +14,6 @@ from utils.storage import save_statistics
 
 import arbiter
 from utils.basic import kl_divergence, LabelSmoothingCrossEntropy, gaussian_dropout, logit_based_kd_loss
-from utils.contrastive_loss import soft_nearest_neighbors_loss_cos_similarity, soft_nearest_neighbors_loss_euclidean
 
 
 def set_torch_seed(seed):
@@ -109,10 +108,10 @@ class MAMLFewShotClassifier(nn.Module):
             # self.optimizer = optim.Adam([
             #     {'params': self.classifier.parameters(), 'lr': args.meta_learning_rate},
             #     {'params': self.arbiter.parameters(), 'lr': args.outer_prompt_learning_rate},
-            #     {'params': self.task_embedding_adaptive_learning_rate, 'lr': args.meta_learning_rate},
             #     {'params': self.inner_loop_optimizer.parameters(), 'lr': args.meta_learning_rate},
+            #     # {'params': self.task_embedding_adaptive_learning_rate, 'lr': args.meta_learning_rate},
             # ], amsgrad=False)
-            self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False)
+            self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False, weight_decay=self.args.init_inner_loop_weight_decay)
         else:
             self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False)
 
@@ -300,7 +299,7 @@ class MAMLFewShotClassifier(nn.Module):
                 # z = z * mask # Binary Dropout
                 # z = gaussian_dropout(z, p=0.1) # Gaussian Dropout
 
-                ideal_prompt = self.arbiter(z)
+                ideal_prompt = self.arbiter(z, num_step)
                 prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
 
                 # Add prompt
@@ -441,10 +440,10 @@ class MAMLFewShotClassifier(nn.Module):
         loss = F.cross_entropy(input=preds, target=y)
         # loss_separate = F.cross_entropy(input=preds, target=y, reduction='none')
 
-        mse_loss = F.mse_loss(x, prompted_image, reduction='mean')
-        kl_loss = kl_divergence(feature_map_list[3], feature_map_list_not_prompted[3].clone().detach())
-
-        loss = loss + mse_loss + kl_loss
+        # mse_loss = F.mse_loss(x, prompted_image, reduction='mean')
+        # kl_loss = kl_divergence(feature_map_list[3], feature_map_list_not_prompted[3].clone().detach())
+        #
+        # loss = loss + mse_loss + kl_loss
 
         return loss, preds
 

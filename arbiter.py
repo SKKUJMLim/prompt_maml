@@ -3,6 +3,18 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+
+class Genearator_bias(nn.Module):
+    def __init__(self, args, nz=100, ngf=64, img_size=84, nc=3):
+        super(Genearator_bias, self).__init__()
+
+        self.multiplier_bias = nn.Parameter(torch.ones(1, nc, img_size, img_size))  # 1로 초기화
+        self.offset_bias = nn.Parameter(torch.zeros(1))
+    def forward(self, x):
+        out = self.multiplier_bias * x + self.offset_bias
+
+        return out
+
 class PromptGenerator(nn.Module):
 
     # https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/ebgan/ebgan.py 참조
@@ -10,7 +22,7 @@ class PromptGenerator(nn.Module):
     def __init__(self, args, nz=100, ngf=64, img_size=84, nc=3):
         super(PromptGenerator, self).__init__()
 
-        self.args=args
+        self.args = args
 
         self.init_size = img_size // 4
         self.l1 = nn.Sequential(nn.Linear(nz, ngf * 2 * self.init_size ** 2))
@@ -34,14 +46,20 @@ class PromptGenerator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
         )
 
-        self.multiplier_bias = nn.Parameter(torch.ones(1, nc, img_size, img_size))  # 1로 초기화
-        # self.multiplier_bias = nn.Parameter(torch.ones(1))  # 1로 초기화
-        self.offset_bias = nn.Parameter(torch.zeros(1))
+        num_steps = self.args.number_of_training_steps_per_iter
 
-    def forward(self, z):
+        self.step_bais = nn.ModuleList()
+
+        for i in range(num_steps):
+          self.step_bais.append(Genearator_bias(args=self.args, nz=100, ngf=64, img_size=84, nc=3))
+
+
+    def forward(self, z, num_step=0):
         out = self.l1(z)
         out = out.view(out.shape[0], -1, self.init_size, self.init_size)
         img = self.conv_blocks(out)
+
+        # img = self.step_bais[num_step](img)
 
         # img = self.multiplier_bias * img + self.offset_bias
         # Tanh의 출력값을 miniImageNet 정규화 범위로 변환
