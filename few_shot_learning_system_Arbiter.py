@@ -7,8 +7,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
-from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
-# from inner_loop_optimizers_weightdecay import GradientDescentLearningRule, LSLRGradientDescentLearningRule
+# from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
+from inner_loop_optimizers_weightdecay import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 
 from utils.storage import save_statistics
 
@@ -75,9 +75,9 @@ class MAMLFewShotClassifier(nn.Module):
             self.inner_loop_optimizer.initialise(names_weights_dict=names_weights_copy,
                                                  prompted_weights_dict=prompted_weights_copy)
 
-            # self.task_embedding_adaptive_learning_rate = nn.Parameter(
-            #     data=torch.ones(self.args.number_of_training_steps_per_iter + 1) * self.args.text_embedding_learning_rate,
-            #     requires_grad=True)
+            self.task_embedding_adaptive_learning_rate = nn.Parameter(
+                data=torch.ones(self.args.number_of_training_steps_per_iter + 1) * self.args.text_embedding_learning_rate,
+                requires_grad=True)
         else:
             self.inner_loop_optimizer = GradientDescentLearningRule(device=device, args=self.args,
                                                                     learning_rate=self.task_learning_rate)
@@ -215,6 +215,11 @@ class MAMLFewShotClassifier(nn.Module):
     def get_across_task_loss_metrics(self, total_losses, total_accuracies):
         losses = dict()
 
+        # total_losses = torch.stack(total_losses)
+        # weights = torch.nn.functional.softmax(total_losses, dim=0)
+        # weighted_loss  = torch.sum(weights * total_losses)
+        # losses['loss'] = weighted_loss
+
         losses['loss'] = torch.mean(torch.stack(total_losses))
         losses['accuracy'] = np.mean(total_accuracies)
 
@@ -320,8 +325,9 @@ class MAMLFewShotClassifier(nn.Module):
                 z = z - self.args.text_embedding_learning_rate * context_grads
 
                 # if self.args.learnable_per_layer_per_step_inner_loop_learning_rate:
-                #     z = z - self.task_embedding_adaptive_learning_rate[num_step] * context_grads
+                #     # z = z - self.task_embedding_adaptive_learning_rate[num_step] * context_grads
                 #     # z = (1 - self.task_embedding_adaptive_learning_rate[num_step]) * z - self.task_embedding_adaptive_learning_rate[num_step] * context_grads
+                #     z = z - self.args.text_embedding_learning_rate * context_grads
                 # else:
                 #     z = z - self.args.text_embedding_learning_rate * context_grads
 
@@ -369,6 +375,7 @@ class MAMLFewShotClassifier(nn.Module):
             _, predicted = torch.max(target_preds.data, 1)
 
             accuracy = predicted.float().eq(y_target_set_task.data.float()).cpu().float()
+
             task_losses = torch.sum(torch.stack(task_losses))
             total_losses.append(task_losses)
             total_accuracies.extend(accuracy)
@@ -431,26 +438,30 @@ class MAMLFewShotClassifier(nn.Module):
                                                      backup_running_statistics=backup_running_statistics,
                                                      num_step=num_step, prepend_prompt=True)
         # Not add prompt
-        preds_not_prompted, feature_map_list_not_prompted = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-                                                          training=training,
-                                                          backup_running_statistics=backup_running_statistics,
-                                                          num_step=num_step, prepend_prompt=False)
+        # preds_not_prompted, feature_map_list_not_prompted = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+        #                                                   training=training,
+        #                                                   backup_running_statistics=backup_running_statistics,
+        #                                                   num_step=num_step, prepend_prompt=False)
 
         loss = F.cross_entropy(input=preds, target=y)
 
         # kl_loss = kl_divergence(feature_map_list[3], feature_map_list_not_prompted[3].clone().detach())
-        kl_loss = logit_based_kd_loss(preds, preds_not_prompted.clone().detach())
-        loss  = loss + kl_loss
-
+        # # kl_loss = logit_based_kd_loss(preds, preds_not_prompted.clone().detach())
+        # # kl_loss = kl_divergence(preds, preds_not_prompted.clone().detach())
+        # loss  = loss + kl_loss
+        #
         # embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
-        # # embeddings = embeddings.mean(dim=[2, 3])  # shape: (batch_size, 64)
         # flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
-        # # contrastive_loss = soft_nearest_neighbors_loss_euclidean(features=embeddings, labels=y, temperature=0.1)
         # contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=flatten_embedding, labels=y, temperature=0.1)
         # loss = loss + contrastive_loss
 
         '''Weighted loss'''
         # loss_separate = F.cross_entropy(input=preds, target=y, reduction='none')
+        # loss_sum = loss_separate.sum()
+        # weights = loss_separate / loss_sum
+        # # 가중치를 적용한 최종 loss 계산
+        # loss = (weights * loss_separate).sum()  # loss 값을 weighted sum으로 계산
+
         # k = 0.01  # Scaling 계수
         # weights = torch.exp(k * loss_separate)  # Exponential Scaling 적용
         # loss = (weights * loss_separate).mean()
@@ -460,24 +471,28 @@ class MAMLFewShotClassifier(nn.Module):
         # batch_correct = (torch.argmax(preds_not_prompted, dim=1) == y)  # Not Add Prompt로 올바르게 예측한 샘플 여부
         # batch_incorrect = (torch.argmax(preds_not_prompted, dim=1) != y)  # Not Add Prompt로 올바르게 예측하지 못한 샘플 여부
 
+        # # 틀린 샘플 → Cross Entropy Loss
+        # if (~batch_correct).any():  # 틀린 샘플이 하나라도 있다면
+        #     ce_loss = F.cross_entropy(preds[~batch_correct], y[~batch_correct], reduction='mean')
+        # else:
+        #     ce_loss = torch.tensor(0.0, device=preds.device)
+        #
+        # # 맞춘 샘플 → KL Divergence Loss
+        # if batch_correct.any():  # 맞춘 샘플이 하나라도 있다면
+        #     kl_div_loss = logit_based_kd_loss(preds[batch_correct], preds_not_prompted[batch_correct])
+        # else:
+        #     kl_div_loss = torch.tensor(0.0, device=preds.device)
+        #
+        # loss = ce_loss + kl_div_loss
+
+
         # correct_indices = torch.nonzero(batch_correct, as_tuple=True)[0]
-        # adv_loss = kl_divergence(preds[correct_indices], preds_not_prompted[correct_indices].clone().detach()) #kl_loss dim=0으로 변경해야함
+        # adv_loss = kl_divergence(preds[correct_indices], preds_not_prompted[correct_indices].clone().detach())
         # adv_loss = compute_mse_loss(preds[correct_indices], preds_not_prompted[correct_indices].clone().detach())
         # adv_loss = kl_divergence(feature_map_list[3][correct_indices], feature_map_list_not_prompted[3][correct_indices].clone().detach())
         # adv_loss =  compute_mse_loss(feature_map_list[3][correct_indices], feature_map_list_not_prompted[3][correct_indices].clone().detach())
-        #
         # lambda_adv = 1
         # loss = loss + lambda_adv * adv_loss
-
-        # Visual Prompt 없이 맞췄지만, Prompt 추가 후 틀린 샘플 찾기
-        # worse_samples = batch_correct & batch_incorrect_prompt  # Prompt 추가 후 오히려 틀린 샘플
-        # worse_indice = torch.nonzero(worse_samples, as_tuple=True)[0]
-        #
-        # if len(worse_indice) != 0:
-        #     mse_loss = kl_divergence(feature_map_list[3][worse_indice], feature_map_list_not_prompted[3][worse_indice].clone().detach())
-        #     loss = loss + mse_loss
-        # if loss < 0:
-        #     print("Minus loss!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
 
         return loss, preds, feature_map_list

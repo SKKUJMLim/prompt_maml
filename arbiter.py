@@ -7,8 +7,10 @@ class PromptGenerator(nn.Module):
 
     # https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/ebgan/ebgan.py 참조
 
-    def __init__(self, args, nz=100, ngf=64, img_size=84, nc=3, ):
+    def __init__(self, args, nz=100, ngf=64, img_size=84, nc=3):
         super(PromptGenerator, self).__init__()
+
+        self.args=args
 
         self.init_size = img_size // 4
         self.l1 = nn.Sequential(nn.Linear(nz, ngf * 2 * self.init_size ** 2))
@@ -32,9 +34,8 @@ class PromptGenerator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
         )
 
-        # self.num_steps = args.number_of_training_steps_per_iter  # number of inner-loop steps
-
-        # self.multiplier_bias = nn.Parameter(torch.ones(1, nc, img_size, img_size))
+        # self.multiplier_bias = nn.Parameter(torch.ones(1, nc, img_size, img_size))  # 1로 초기화
+        # self.multiplier_bias = nn.Parameter(torch.ones(1))  # 1로 초기화
         # self.offset_bias = nn.Parameter(torch.zeros(1))
 
     def forward(self, z):
