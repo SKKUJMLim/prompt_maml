@@ -34,9 +34,9 @@ class PromptGenerator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
         )
 
-        # self.multiplier_bias = nn.Parameter(torch.ones(1, nc, img_size, img_size))  # 1로 초기화
+        self.multiplier_bias = nn.Parameter(torch.ones(1, nc, img_size, img_size))  # 1로 초기화
         # self.multiplier_bias = nn.Parameter(torch.ones(1))  # 1로 초기화
-        # self.offset_bias = nn.Parameter(torch.zeros(1))
+        self.offset_bias = nn.Parameter(torch.zeros(1))
 
     def forward(self, z):
         out = self.l1(z)
