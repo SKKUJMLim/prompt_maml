@@ -1107,13 +1107,11 @@ class ResNet12(nn.Module):
 
         out = x
 
+        prompted_image = None
         if self.args.prompter and prepend_prompt:
             # get_task_embeddings을 통해 호출될때는 prompt를 추가하지 않는다
-
-            if self.args.prompt_engineering == 'task_aware_attention':
-                out = self.prompt(x=out, prompted_params=prompted_params, task_embedding=task_embedding)
-            else:
-                out = self.prompt(x=out, prompted_params=prompted_params)
+            prompted_image = self.prompt(x=out, prompted_params=prompted_params)
+            out = prompted_image
 
         feature_list = []
 
@@ -1127,7 +1125,7 @@ class ResNet12(nn.Module):
         out = out.view(out.size(0), -1)
         out = self.layer_dict['linear'](out, param_dict['linear'])
 
-        return out, feature_list
+        return out, feature_list, prompted_image
 
     def zero_grad(self, params=None):
         if params is None:

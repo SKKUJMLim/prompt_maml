@@ -50,8 +50,8 @@ class PromptGenerator(nn.Module):
 
         self.step_bais = nn.ModuleList()
 
-        for i in range(num_steps):
-          self.step_bais.append(Genearator_bias(args=self.args, nz=100, ngf=64, img_size=84, nc=3))
+        # for i in range(num_steps):
+        #   self.step_bais.append(Genearator_bias(args=self.args, nz=100, ngf=64, img_size=84, nc=3))
 
 
     def forward(self, z, num_step=0):
