@@ -7,8 +7,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
-# from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
-from inner_loop_optimizers_weightdecay import GradientDescentLearningRule, LSLRGradientDescentLearningRule
+from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
+# from inner_loop_optimizers_weightdecay import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 
 from utils.storage import save_statistics
 
@@ -304,16 +304,16 @@ class MAMLFewShotClassifier(nn.Module):
                 prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
 
                 # Add prompt
-                support_loss, support_preds, support_feature_list = self.net_forward(x=x_support_set_task,
-                                                                                     y=y_support_set_task,
-                                                                                     weights=names_weights_copy,
-                                                                                     prompted_weights=prompted_weights_copy,
-                                                                                     prepend_prompt=True,
-                                                                                     backup_running_statistics=num_step == 0,
-                                                                                     training=True,
-                                                                                     num_step=num_step,
-                                                                                     training_phase=training_phase,
-                                                                                     epoch=epoch)
+                support_loss, support_preds = self.net_forward(x=x_support_set_task,
+                                                               y=y_support_set_task,
+                                                               weights=names_weights_copy,
+                                                               prompted_weights=prompted_weights_copy,
+                                                               prepend_prompt=True,
+                                                               backup_running_statistics=num_step == 0,
+                                                               training=True,
+                                                               num_step=num_step,
+                                                               training_phase=training_phase,
+                                                               epoch=epoch)
 
                 gradients = torch.autograd.grad(support_loss, (*names_weights_copy.values(), z), create_graph=use_second_order, retain_graph=True)
 
@@ -339,35 +339,30 @@ class MAMLFewShotClassifier(nn.Module):
                                                                   training_phase=training_phase)
 
                 if use_multi_step_loss_optimization and training_phase and epoch < self.args.multi_step_loss_num_epochs:
-                    target_loss, target_preds, _ = self.net_forward(x=x_target_set_task,
-                                                                    y=y_target_set_task,
-                                                                    weights=names_weights_copy,
-                                                                    prompted_weights=prompted_weights_copy,
-                                                                    backup_running_statistics=False, training=True,
-                                                                    num_step=num_step, training_phase=training_phase,
-                                                                    epoch=epoch)
+                    target_loss, target_preds = self.net_forward(x=x_target_set_task,
+                                                                 y=y_target_set_task,
+                                                                 weights=names_weights_copy,
+                                                                 prompted_weights=prompted_weights_copy,
+                                                                 backup_running_statistics=False, training=True,
+                                                                 num_step=num_step, training_phase=training_phase,
+                                                                 epoch=epoch)
 
                     task_losses.append(per_step_loss_importance_vectors[num_step] * target_loss)
 
                 else:
                     if num_step == (self.args.number_of_training_steps_per_iter - 1):
 
-                        # class_prototypes = compute_class_prototypes(preds=support_preds,
-                        #                                             target=y_support_set_task,
-                        #                                             num_classes=self.args.num_classes_per_set,
-                        #                                             device=self.device)
-
                         ideal_prompt = self.arbiter(z)
                         prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
 
-                        target_loss, target_preds, target_feature_list = self.net_forward(x=x_target_set_task,
-                                                                        y=y_target_set_task,
-                                                                        weights=names_weights_copy,
-                                                                        prompted_weights=prompted_weights_copy,
-                                                                        backup_running_statistics=False, training=True,
-                                                                        num_step=num_step,
-                                                                        training_phase=training_phase,
-                                                                        epoch=epoch)
+                        target_loss, target_preds = self.net_forward(x=x_target_set_task,
+                                                                     y=y_target_set_task,
+                                                                     weights=names_weights_copy,
+                                                                     prompted_weights=prompted_weights_copy,
+                                                                     backup_running_statistics=False, training=True,
+                                                                     num_step=num_step,
+                                                                     training_phase=training_phase,
+                                                                     epoch=epoch)
 
                         task_losses.append(target_loss)
 
@@ -433,69 +428,25 @@ class MAMLFewShotClassifier(nn.Module):
         :param num_step: An integer indicating the number of the step in the inner loop.
         :return: the crossentropy losses with respect to the given y, the predictions of the base model.
         """
-        preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+        preds, feature_map_list, prompted_image = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
                                                      training=training,
                                                      backup_running_statistics=backup_running_statistics,
                                                      num_step=num_step, prepend_prompt=True)
         # Not add prompt
-        # preds_not_prompted, feature_map_list_not_prompted = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-        #                                                   training=training,
-        #                                                   backup_running_statistics=backup_running_statistics,
-        #                                                   num_step=num_step, prepend_prompt=False)
+        preds_not_prompted, feature_map_list_not_prompted, _ = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+                                                          training=training,
+                                                          backup_running_statistics=backup_running_statistics,
+                                                          num_step=num_step, prepend_prompt=False)
 
         loss = F.cross_entropy(input=preds, target=y)
-
-        # kl_loss = kl_divergence(feature_map_list[3], feature_map_list_not_prompted[3].clone().detach())
-        # # kl_loss = logit_based_kd_loss(preds, preds_not_prompted.clone().detach())
-        # # kl_loss = kl_divergence(preds, preds_not_prompted.clone().detach())
-        # loss  = loss + kl_loss
-        #
-        # embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
-        # flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
-        # contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=flatten_embedding, labels=y, temperature=0.1)
-        # loss = loss + contrastive_loss
-
-        '''Weighted loss'''
         # loss_separate = F.cross_entropy(input=preds, target=y, reduction='none')
-        # loss_sum = loss_separate.sum()
-        # weights = loss_separate / loss_sum
-        # # 가중치를 적용한 최종 loss 계산
-        # loss = (weights * loss_separate).sum()  # loss 값을 weighted sum으로 계산
 
-        # k = 0.01  # Scaling 계수
-        # weights = torch.exp(k * loss_separate)  # Exponential Scaling 적용
-        # loss = (weights * loss_separate).mean()
+        mse_loss = F.mse_loss(x, prompted_image, reduction='mean')
+        kl_loss = kl_divergence(feature_map_list[3], feature_map_list_not_prompted[3].clone().detach())
 
-        # batch_correct_prompt = (torch.argmax(preds, dim=1) == y)   # Add Prompt로 올바르게 예측한 샘플 여부
-        # batch_incorrect_prompt = (torch.argmax(preds, dim=1) != y) # Add Prompt로 올바르게 예측하지 못한 샘플 여부
-        # batch_correct = (torch.argmax(preds_not_prompted, dim=1) == y)  # Not Add Prompt로 올바르게 예측한 샘플 여부
-        # batch_incorrect = (torch.argmax(preds_not_prompted, dim=1) != y)  # Not Add Prompt로 올바르게 예측하지 못한 샘플 여부
+        loss = loss + mse_loss + kl_loss
 
-        # # 틀린 샘플 → Cross Entropy Loss
-        # if (~batch_correct).any():  # 틀린 샘플이 하나라도 있다면
-        #     ce_loss = F.cross_entropy(preds[~batch_correct], y[~batch_correct], reduction='mean')
-        # else:
-        #     ce_loss = torch.tensor(0.0, device=preds.device)
-        #
-        # # 맞춘 샘플 → KL Divergence Loss
-        # if batch_correct.any():  # 맞춘 샘플이 하나라도 있다면
-        #     kl_div_loss = logit_based_kd_loss(preds[batch_correct], preds_not_prompted[batch_correct])
-        # else:
-        #     kl_div_loss = torch.tensor(0.0, device=preds.device)
-        #
-        # loss = ce_loss + kl_div_loss
-
-
-        # correct_indices = torch.nonzero(batch_correct, as_tuple=True)[0]
-        # adv_loss = kl_divergence(preds[correct_indices], preds_not_prompted[correct_indices].clone().detach())
-        # adv_loss = compute_mse_loss(preds[correct_indices], preds_not_prompted[correct_indices].clone().detach())
-        # adv_loss = kl_divergence(feature_map_list[3][correct_indices], feature_map_list_not_prompted[3][correct_indices].clone().detach())
-        # adv_loss =  compute_mse_loss(feature_map_list[3][correct_indices], feature_map_list_not_prompted[3][correct_indices].clone().detach())
-        # lambda_adv = 1
-        # loss = loss + lambda_adv * adv_loss
-
-
-        return loss, preds, feature_map_list
+        return loss, preds
 
 
     def trainable_parameters(self):
