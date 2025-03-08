@@ -442,8 +442,7 @@ class MAMLFewShotClassifier(nn.Module):
 
         # mse_loss = F.mse_loss(x, prompted_image, reduction='mean')
         # kl_loss = kl_divergence(feature_map_list[3], feature_map_list_not_prompted[3].clone().detach())
-        #
-        # loss = loss + mse_loss + kl_loss
+        # loss = loss + kl_loss
 
         return loss, preds
 
