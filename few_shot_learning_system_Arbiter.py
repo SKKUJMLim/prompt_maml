@@ -351,7 +351,7 @@ class MAMLFewShotClassifier(nn.Module):
                 else:
                     if num_step == (self.args.number_of_training_steps_per_iter - 1):
 
-                        ideal_prompt = self.arbiter(z)
+                        ideal_prompt = self.arbiter(z, num_step)
                         prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
 
                         target_loss, target_preds = self.net_forward(x=x_target_set_task,
