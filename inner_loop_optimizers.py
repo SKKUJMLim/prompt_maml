@@ -102,7 +102,7 @@ class LSLRGradientDescentLearningRule(nn.Module):
     will correspond to a stochastic gradient descent learning rule.
     """
 
-    def __init__(self, args, device, total_num_inner_loop_steps, use_learnable_learning_rates, init_learning_rate=1e-3):
+    def __init__(self, args, device, total_num_inner_loop_steps, use_learnable_learning_rates, init_learning_rate=1e-3, init_weight_decay=0.0005):
         """Creates a new learning rule object.
         Args:
             init_learning_rate: A postive scalar to scale gradient updates to the
@@ -119,6 +119,8 @@ class LSLRGradientDescentLearningRule(nn.Module):
         self.learning_rate = init_learning_rate
         self.total_num_inner_loop_steps = total_num_inner_loop_steps
         self.use_learnable_learning_rates = use_learnable_learning_rates
+
+        self.init_weight_decay = init_weight_decay * torch.ones(1).to(device)
 
     # def initialise(self, names_weights_dict):
     #     self.names_learning_rates_dict = nn.ParameterDict()
@@ -189,15 +191,13 @@ class LSLRGradientDescentLearningRule(nn.Module):
 
             for key in names_weights_dict.keys():
                 if 'linear' in key:
-                    if self.args.DropGrad:
-                        names_grads_wrt_params_dict[key] = gaussian_dropout(names_grads_wrt_params_dict[key], p=self.args.DropGrad_rate)
 
-                    updated_names_weights_dict[key] = names_weights_dict[key] \
-                                                      - self.names_learning_rates_dict[key.replace(".", "-")][num_step] \
-                                                      * names_grads_wrt_params_dict[key]
+                    # updated_names_weights_dict[key] = names_weights_dict[key] \
+                    #                                   - self.names_learning_rates_dict[key.replace(".", "-")][num_step] \
+                    #                                   * names_grads_wrt_params_dict[key]
 
-                    # updated_names_weights_dict[key] = (1 - self.names_learning_rates_dict[key.replace(".", "-")][num_step]) * names_weights_dict[key] \
-                    #                                   - self.names_learning_rates_dict[key.replace(".", "-")][num_step] * names_grads_wrt_params_dict[key]
+                    updated_names_weights_dict[key] = (1 - self.init_weight_decay * self.names_learning_rates_dict[key.replace(".", "-")][num_step]) * names_weights_dict[key] \
+                                                      - self.names_learning_rates_dict[key.replace(".", "-")][num_step] * names_grads_wrt_params_dict[key]
                 else:
                     updated_names_weights_dict[key] = names_weights_dict[key] \
                                                       - freeze_layer_step_size * \
