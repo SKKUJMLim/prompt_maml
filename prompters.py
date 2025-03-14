@@ -180,7 +180,7 @@ class SimpleConvolution(nn.Module):
         if self.use_bias:
             self.bias = nn.Parameter(torch.zeros(num_filters))
 
-    def forward(self, images, params=None):
+    def forward(self, x, params=None):
         if params is not None:
             params = extract_top_level_dict(current_dict=params)
             if self.use_bias:
@@ -189,6 +189,7 @@ class SimpleConvolution(nn.Module):
                 bias = bias.squeeze(0)
             else:
                 (weight) = params["weight"]
+                weight = weight.squeeze(0)
                 bias = None
         else:
             if self.use_bias:
@@ -197,7 +198,7 @@ class SimpleConvolution(nn.Module):
                 weight = self.weight
                 bias = None
 
-        out = F.conv2d(input=images, weight=weight, bias=bias, stride=self.stride,
+        out = F.conv2d(input=x, weight=weight, bias=bias, stride=self.stride,
                        padding=self.padding, dilation=self.dilation_rate, groups=self.groups)
 
         return out
@@ -234,6 +235,191 @@ class SimpleLinearLayer(nn.Module):
 
         out = F.linear(input=x, weight=weight, bias=bias)
         return out
+
+
+class PromptGenerator(nn.Module):
+    def __init__(self, args, device, nz=100, ngf=64, img_size=84, nc=3):
+        super(PromptGenerator, self).__init__()
+
+        self.args = args
+        self.device = device
+
+        self.nz = nz
+        self.ngf = ngf
+        self.nc = nc
+
+        self.input_shape = nc * img_size * img_size # input_shape: The image input shape in the form (b, c, h, w)
+
+        self.init_size = img_size // 4
+
+        self.build_network()
+
+        print("PromptGenerator params")
+        for name, param in self.named_parameters():
+            print(name, param.shape)
+
+    def build_network(self):
+
+        ngf = self.ngf
+        nz = self.nz
+        init_size = self.init_size
+        nc = self.nc
+
+        self.prompt_dict = nn.ModuleDict()
+
+        self.prompt_dict['l1'] = SimpleLinearLayer(args=self.args, output_size= ngf * 2 * init_size ** 2, num_filters=nz, use_bias=True)
+
+        self.batch_norm1 = nn.BatchNorm2d(ngf * 2)
+        self.upsampling1 = nn.Upsample(scale_factor=2)
+
+        self.prompt_dict['conv1'] = SimpleConvolution(args=self.args,
+                                       in_channels=ngf*2,
+                                       out_channels=ngf*2,
+                                       kernel_size=3,
+                                       stride=1,
+                                       padding=1,
+                                       use_bias=False)
+
+        self.batch_norm2 = nn.BatchNorm2d(ngf * 2)
+        self.leaky_relu2 = nn.LeakyReLU(0.2, inplace=True)
+        self.upsampling2 = nn.Upsample(scale_factor=2)
+
+        self.prompt_dict['conv2'] = SimpleConvolution(args=self.args,
+                                       in_channels=ngf*2,
+                                       out_channels=ngf,
+                                       kernel_size=3,
+                                       stride=1,
+                                       padding=1,
+                                       use_bias=False)
+
+        self.batch_norm3 = nn.BatchNorm2d(ngf)
+        self.leaky_relu3 = nn.LeakyReLU(0.2, inplace=True)
+
+        self.prompt_dict['conv3']  = SimpleConvolution(args=self.args,
+                                       in_channels=ngf,
+                                       out_channels=nc,
+                                       kernel_size=3,
+                                       stride=1,
+                                       padding=1,
+                                       use_bias=False)
+
+        self.leaky_relu4 = nn.LeakyReLU(0.2, inplace=True)
+
+    def forward(self, task_embedding, prompted_params=None):
+
+        print("prompted_params ==", prompted_params.keys())
+
+        if prompted_params is not None:
+            prompted_params = extract_top_level_dict(current_dict=prompted_params)
+        else:
+            print("prompted_params is None")
+
+        l1_param = prompted_params['l1']
+        conv1_param = prompted_params['conv1']
+        conv2_param = prompted_params['conv2']
+        conv3_param = prompted_params['conv3']
+
+        out = self.prompt_dict['l1'](x=task_embedding, params=l1_param)
+
+        # print("out shape == ", out.shape)
+
+        out = out.view(out.shape[0], -1, self.init_size, self.init_size)
+
+        out = self.batch_norm1(out)
+        out = self.upsampling1(out)
+
+        out = self.prompt_dict['conv1'](x=out, params=conv1_param)
+
+        out = self.batch_norm2(out)
+        out = self.leaky_relu2(out)
+        out = self.upsampling2(out)
+
+        out = self.prompt_dict['conv2'](x=out, params=conv2_param)
+
+        out = self.batch_norm3(out)
+        out = self.leaky_relu3(out)
+
+        out = self.prompt_dict['conv3'](x=out, params=conv3_param)
+        out = self.leaky_relu4(out)
+
+        return out
+
+
+    def zero_grad(self, params=None):
+        if params is None:
+            for param in self.parameters():
+                if param.requires_grad == True:
+                    if param.grad is not None:
+                        if torch.sum(param.grad) > 0:
+                            print(param.grad)
+                            param.grad.zero_()
+        else:
+            for name, param in params.items():
+                if param.requires_grad == True:
+                    if param.grad is not None:
+                        if torch.sum(param.grad) > 0:
+                            print(param.grad)
+                            param.grad.zero_()
+                            params[name].grad = None
+
+class StepPromptAdapter(nn.Module):
+    def __init__(self, input_dim, num_prompt_generator_layers, args, device):
+        super(StepPromptAdapter,self).__init__()
+
+        self.args = args
+        self.device = device
+        output_dim = num_prompt_generator_layers * 2  # 2 for weight and bias, another 2 for multiplier and offset
+
+        self.linear1 = nn.Linear(input_dim, input_dim)
+        self.activation = nn.ReLU(inplace=True)
+        self.linear2 = nn.Linear(input_dim, output_dim)
+
+        self.multiplier_bias = nn.Parameter(torch.zeros(output_dim // 2))
+        self.offset_bias = nn.Parameter(torch.zeros(output_dim) // 2)
+
+    def forward(self, task_embeddig, num_step, prompt_generator_params):
+
+        out = self.linear1(task_embeddig)
+        out = F.relu_(out)
+        out = self.linear2(out)
+
+        generated_multiplier, generated_offset = torch.chunk(out, chunks=2, dim=-1)
+
+        print("prompt_generator_params == ", prompt_generator_params.keys())
+        print("out == ", out.shape)
+        print("generated_multiplier == ", generated_multiplier.shape)
+        print("generated_offset == ", generated_offset.shape)
+
+        # i = 0
+        updated_prompted_weights = dict()
+        for key, val in prompt_generator_params.items():
+            # if 'step{}'.format(num_step) in key:
+
+            updated_prompted_weights[key] = (1 + self.multiplier_bias * generated_multiplier) * val + \
+                                            self.offset_bias * generated_offset
+
+            # updated_prompted_weights[key] = (1 + self.multiplier_bias[i] * generated_multiplier[i]) * val + \
+            #                             self.offset_bias[i] * generated_offset[i]
+            # i += 1
+
+        return updated_prompted_weights
+
+
+class PromptAdapter(nn.Module):
+    def __init__(self, input_dim, num_prompt_generator_layers, args, device):
+        super(PromptAdapter, self).__init__()
+
+        self.device = device
+        self.args = args
+
+        self.num_steps = args.number_of_training_steps_per_iter # number of inner-loop steps
+
+        self.loss_adapter = nn.ModuleList()
+        for i in range(self.num_steps):
+            self.loss_adapter.append(StepPromptAdapter(input_dim, num_prompt_generator_layers, args=args, device=device))
+
+    def forward(self, task_embeddig, num_step, prompt_generator_params):
+        return self.loss_adapter[num_step](task_embeddig, num_step, prompt_generator_params)
 
 
 class PromptConvolution(nn.Module):
