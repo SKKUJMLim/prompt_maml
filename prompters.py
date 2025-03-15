@@ -375,9 +375,11 @@ class StepPromptAdapter(nn.Module):
         self.linear2 = nn.Linear(input_dim, output_dim)
 
         self.multiplier_bias = nn.Parameter(torch.zeros(output_dim // 2))
-        self.offset_bias = nn.Parameter(torch.zeros(output_dim) // 2)
+        self.offset_bias = nn.Parameter(torch.zeros(output_dim // 2))
 
     def forward(self, task_embeddig, num_step, prompt_generator_params):
+
+        task_embeddig = task_embeddig.squeeze(0)
 
         out = self.linear1(task_embeddig)
         out = F.relu_(out)
@@ -387,13 +389,16 @@ class StepPromptAdapter(nn.Module):
 
         print("prompt_generator_params == ", prompt_generator_params.keys())
         print("out == ", out.shape)
+        print("self.multiplier_bias == ", self.multiplier_bias.shape)
         print("generated_multiplier == ", generated_multiplier.shape)
         print("generated_offset == ", generated_offset.shape)
+        print("self.offset_bias == ", self.offset_bias.shape)
 
         # i = 0
         updated_prompted_weights = dict()
         for key, val in prompt_generator_params.items():
             # if 'step{}'.format(num_step) in key:
+            print(f"val shape for {key}: {val.shape}")
 
             updated_prompted_weights[key] = (1 + self.multiplier_bias * generated_multiplier) * val + \
                                             self.offset_bias * generated_offset
