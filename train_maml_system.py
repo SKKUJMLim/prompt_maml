@@ -2,8 +2,8 @@ from data import MetaLearningSystemDataLoader
 
 from experiment_builder import ExperimentBuilder
 # from few_shot_learning_system import MAMLFewShotClassifier
-# from few_shot_learning_system_Arbiter import MAMLFewShotClassifier
-from few_shot_learning_system_Arbiter1 import MAMLFewShotClassifier
+from few_shot_learning_system_Arbiter import MAMLFewShotClassifier
+# from few_shot_learning_system_Arbiter1 import MAMLFewShotClassifier
 # from few_shot_learning_system_attention import MAMLFewShotClassifier
 # from few_shot_learning_system_Arbiter_bak import MAMLFewShotClassifier
 

@@ -57,8 +57,6 @@ class PromptGenerator(nn.Module):
     def forward(self, z, num_step=0):
         out = self.l1(z)
 
-        print("out shape == ", out.shape)
-
         out = out.view(out.shape[0], -1, self.init_size, self.init_size)
         img = self.conv_blocks(out)
 
