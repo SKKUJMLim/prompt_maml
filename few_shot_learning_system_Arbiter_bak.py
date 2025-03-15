@@ -86,7 +86,7 @@ class MAMLFewShotClassifier(nn.Module):
             nz = self.args.num_text_embedding_params  # + num_layers
             img_size = self.args.image_width
             channel = 3
-            self.arbiter = arbiter.PromptGenerator(nz=nz, ngf=64, img_size=img_size, nc=channel)
+            self.arbiter = arbiter.PromptGenerator(args=self.args, nz=nz, ngf=64, img_size=img_size, nc=channel)
 
         print("Inner Loop parameters")
         for key, value in self.inner_loop_optimizer.named_parameters():
@@ -303,7 +303,7 @@ class MAMLFewShotClassifier(nn.Module):
 
             if self.args.prompter and self.args.prompt_engineering == 'arbiter':
 
-                z = nn.Parameter(torch.randn([1, self.args.num_text_embedding_params]), requires_grad=True).to(
+                z = nn.Parameter(torch.zeros([1, self.args.num_text_embedding_params]), requires_grad=True).to(
                     self.device)
 
                 ideal_prompt = self.arbiter(z)
@@ -441,7 +441,7 @@ class MAMLFewShotClassifier(nn.Module):
         :param num_step: An integer indicating the number of the step in the inner loop.
         :return: the crossentropy losses with respect to the given y, the predictions of the base model.
         """
-        preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+        preds, feature_map_list, prompted_image = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
                                                      training=training,
                                                      backup_running_statistics=backup_running_statistics,
                                                      num_step=num_step, prepend_prompt=prepend_prompt)
