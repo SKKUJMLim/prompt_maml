@@ -307,8 +307,6 @@ class PromptGenerator(nn.Module):
 
     def forward(self, task_embedding, prompted_params=None):
 
-        print("prompted_params ==", prompted_params.keys())
-
         if prompted_params is not None:
             prompted_params = extract_top_level_dict(current_dict=prompted_params)
         else:
@@ -387,25 +385,13 @@ class StepPromptAdapter(nn.Module):
 
         generated_multiplier, generated_offset = torch.chunk(out, chunks=2, dim=-1)
 
-        print("prompt_generator_params == ", prompt_generator_params.keys())
-        print("out == ", out.shape)
-        print("self.multiplier_bias == ", self.multiplier_bias.shape)
-        print("generated_multiplier == ", generated_multiplier.shape)
-        print("generated_offset == ", generated_offset.shape)
-        print("self.offset_bias == ", self.offset_bias.shape)
-
-        # i = 0
+        i = 0
         updated_prompted_weights = dict()
         for key, val in prompt_generator_params.items():
             # if 'step{}'.format(num_step) in key:
-            print(f"val shape for {key}: {val.shape}")
-
-            updated_prompted_weights[key] = (1 + self.multiplier_bias * generated_multiplier) * val + \
-                                            self.offset_bias * generated_offset
-
-            # updated_prompted_weights[key] = (1 + self.multiplier_bias[i] * generated_multiplier[i]) * val + \
-            #                             self.offset_bias[i] * generated_offset[i]
-            # i += 1
+            updated_prompted_weights[key] = (1 + self.multiplier_bias[i] * generated_multiplier[i]) * val + \
+                                        self.offset_bias[i] * generated_offset[i]
+            i += 1
 
         return updated_prompted_weights
 
