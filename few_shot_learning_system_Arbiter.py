@@ -424,10 +424,10 @@ class MAMLFewShotClassifier(nn.Module):
                                                      backup_running_statistics=backup_running_statistics,
                                                      num_step=num_step, prepend_prompt=True)
         # Not add prompt
-        preds_not_prompted, feature_map_list_not_prompted, _ = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-                                                          training=training,
-                                                          backup_running_statistics=backup_running_statistics,
-                                                          num_step=num_step, prepend_prompt=False)
+        # preds_not_prompted, feature_map_list_not_prompted, _ = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+        #                                                   training=training,
+        #                                                   backup_running_statistics=backup_running_statistics,
+        #                                                   num_step=num_step, prepend_prompt=False)
 
         loss = F.cross_entropy(input=preds, target=y)
         # loss_separate = F.cross_entropy(input=preds, target=y, reduction='none')
