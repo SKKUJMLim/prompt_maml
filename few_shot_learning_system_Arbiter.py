@@ -289,9 +289,9 @@ class MAMLFewShotClassifier(nn.Module):
             x_target_set_task = x_target_set_task.view(-1, c, h, w)
             y_target_set_task = y_target_set_task.view(-1)
 
-            # z = nn.Parameter(torch.randn([1, self.args.num_text_embedding_params]), requires_grad=True).to(self.device)
+            z = nn.Parameter(torch.randn([1, self.args.num_text_embedding_params]), requires_grad=True).to(self.device)
             # z = nn.Parameter(torch.ones([1, self.args.num_text_embedding_params]), requires_grad=True).to(self.device)
-            z = torch.zeros(size=[1, self.args.num_text_embedding_params], requires_grad=True).to(self.device)
+            # z = torch.zeros(size=[1, self.args.num_text_embedding_params], requires_grad=True).to(self.device)
 
             for num_step in range(num_steps):
                 # mask_ratio = 0.1
@@ -300,14 +300,13 @@ class MAMLFewShotClassifier(nn.Module):
                 # z = gaussian_dropout(z, p=0.1) # Gaussian Dropout
 
                 ideal_prompt = self.arbiter(z, num_step)
-                prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
+                x_support_set_task = ideal_prompt + x_support_set_task
 
                 # Add prompt
                 support_loss, support_preds = self.net_forward(x=x_support_set_task,
                                                                y=y_support_set_task,
                                                                weights=names_weights_copy,
-                                                               prompted_weights=prompted_weights_copy,
-                                                               prepend_prompt=True,
+                                                               prepend_prompt=False,
                                                                backup_running_statistics=num_step == 0,
                                                                training=True,
                                                                num_step=num_step,
@@ -343,6 +342,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                  y=y_target_set_task,
                                                                  weights=names_weights_copy,
                                                                  prompted_weights=prompted_weights_copy,
+                                                                 prepend_prompt=False,
                                                                  backup_running_statistics=False, training=True,
                                                                  num_step=num_step, training_phase=training_phase,
                                                                  epoch=epoch)
@@ -353,12 +353,11 @@ class MAMLFewShotClassifier(nn.Module):
                     if num_step == (self.args.number_of_training_steps_per_iter - 1):
 
                         ideal_prompt = self.arbiter(z, num_step)
-                        prompted_weights_copy['prompt.prompt_dict.arbiter'] = ideal_prompt
+                        x_target_set_task = ideal_prompt + x_target_set_task
 
                         target_loss, target_preds = self.net_forward(x=x_target_set_task,
                                                                      y=y_target_set_task,
                                                                      weights=names_weights_copy,
-                                                                     prompted_weights=prompted_weights_copy,
                                                                      backup_running_statistics=False, training=True,
                                                                      num_step=num_step,
                                                                      training_phase=training_phase,
