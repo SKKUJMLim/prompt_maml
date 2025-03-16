@@ -48,7 +48,7 @@ class PromptGenerator(nn.Module):
 
         num_steps = self.args.number_of_training_steps_per_iter
 
-        self.step_bais = nn.ModuleList()
+        # self.step_bais = nn.ModuleList()
 
         # for i in range(num_steps):
         #   self.step_bais.append(Genearator_bias(args=self.args, nz=100, ngf=64, img_size=84, nc=3))
