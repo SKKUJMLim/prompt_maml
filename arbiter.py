@@ -46,7 +46,7 @@ class PromptGenerator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
         )
 
-        num_steps = self.args.number_of_training_steps_per_iter
+        # num_steps = self.args.number_of_training_steps_per_iter
 
         # self.step_bais = nn.ModuleList()
 
