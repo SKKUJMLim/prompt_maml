@@ -89,7 +89,8 @@ class MAMLFewShotClassifier(nn.Module):
             if param.requires_grad:
                 print(name, param.shape, param.device, param.requires_grad)
 
-        self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False, weight_decay=self.args.init_inner_loop_weight_decay)
+        self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False)
+        # self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False, weight_decay=self.args.init_inner_loop_weight_decay)
 
 
         # if self.args.prompter:
@@ -304,29 +305,17 @@ class MAMLFewShotClassifier(nn.Module):
             x_target_set_task = x_target_set_task.view(-1, c, h, w)
             y_target_set_task = y_target_set_task.view(-1)
 
-            task_embedding=None
-            if self.args.prompt_engineering == 'task_aware_attention':
-                task_embedding = nn.Parameter(torch.randn([1, self.args.num_text_embedding_params]), requires_grad=True).to(self.device)
-
             for num_step in range(num_steps):
 
                 support_loss, support_preds = self.net_forward(x=x_support_set_task,
                                                                y=y_support_set_task,
                                                                weights=names_weights_copy,
                                                                prompted_weights=prompted_weights_copy,
-                                                               task_embedding=task_embedding,
                                                                backup_running_statistics=num_step == 0,
                                                                training=True,
                                                                num_step=num_step,
                                                                training_phase=training_phase,
                                                                epoch=epoch)
-
-                if self.args.prompt_engineering == 'task_aware_attention':
-
-                    gradients = torch.autograd.grad(support_loss, (*names_weights_copy.values(), task_embedding),
-                                                    create_graph=use_second_order, retain_graph=True)
-                    grads, context_grads = gradients[:-1], gradients[-1]
-                    task_embedding = task_embedding - self.args.text_embedding_learning_rate * context_grads
 
                 names_weights_copy, prompted_weights_copy = self.apply_inner_loop_update(loss=support_loss,
                                                                   names_weights_copy=names_weights_copy,
@@ -341,7 +330,6 @@ class MAMLFewShotClassifier(nn.Module):
                                                                  y=y_target_set_task,
                                                                  weights=names_weights_copy,
                                                                  prompted_weights=prompted_weights_copy,
-                                                                 task_embedding=task_embedding,
                                                                  backup_running_statistics=False, training=True,
                                                                  num_step=num_step, training_phase=training_phase,
                                                                  epoch=epoch)
@@ -407,7 +395,7 @@ class MAMLFewShotClassifier(nn.Module):
 
         return losses, per_task_target_preds
 
-    def net_forward(self, x, y, weights, backup_running_statistics, training, num_step, training_phase, epoch, prompted_weights=None, task_embedding=None, prepend_prompt=True):
+    def net_forward(self, x, y, weights, backup_running_statistics, training, num_step, training_phase, epoch, prompted_weights=None, prepend_prompt=True):
         """
         A base model forward pass on some data points x. Using the parameters in the weights dictionary. Also requires
         boolean flags indicating whether to reset the running statistics at the end of the run (if at evaluation phase).
@@ -423,7 +411,7 @@ class MAMLFewShotClassifier(nn.Module):
         :return: the crossentropy losses with respect to the given y, the predictions of the base model.
         """
 
-        preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights, task_embedding=task_embedding,
+        preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
                                         training=training, backup_running_statistics=backup_running_statistics,
                                                      num_step=num_step, prepend_prompt=prepend_prompt)
 
