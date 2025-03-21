@@ -409,15 +409,15 @@ class MAMLFewShotClassifier(nn.Module):
         :param num_step: An integer indicating the number of the step in the inner loop.
         :return: the crossentropy losses with respect to the given y, the predictions of the base model.
         """
-        preds, feature_map_list, prompted_image = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+        preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
                                                      training=training,
                                                      backup_running_statistics=backup_running_statistics,
                                                      num_step=num_step, prepend_prompt=True)
         # Not add prompt
-        preds_not_prompted, feature_map_list_not_prompted, _ = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-                                                          training=training,
-                                                          backup_running_statistics=backup_running_statistics,
-                                                          num_step=num_step, prepend_prompt=False)
+        # preds_not_prompted, feature_map_list_not_prompted, _ = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+        #                                                   training=training,
+        #                                                   backup_running_statistics=backup_running_statistics,
+        #                                                   num_step=num_step, prepend_prompt=False)
 
         loss = F.cross_entropy(input=preds, target=y)
         # loss_separate = F.cross_entropy(input=preds, target=y, reduction='none')

@@ -966,7 +966,7 @@ class VGGReLUNormNetwork(nn.Module):
         out = out.view(out.size(0), -1)
         out = self.layer_dict['linear'](out, param_dict['linear'])
 
-        return out, feature_list, prompted_image
+        return out, feature_list
 
     def re_init(self):
         # for param in self.parameters():

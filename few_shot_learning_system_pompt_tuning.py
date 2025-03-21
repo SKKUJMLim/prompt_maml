@@ -82,11 +82,13 @@ class MAMLFewShotClassifier(nn.Module):
 
 
         if self.args.prompter and self.args.prompt_engineering == 'arbiter':
-            # num_layers = len(names_weights_copy) - 1
-            nz = self.args.num_text_embedding_params # + num_layers
-            img_size = self.args.image_width
-            channel = 3
-            self.arbiter = arbiter.PromptGenerator(args=self.args, nz=nz, ngf=64, img_size=img_size, nc=channel)
+            num_context_params = self.args.num_context_params
+            self.arbiter = nn.Sequential(
+                nn.Linear(num_context_params, num_context_params),
+                nn.ReLU(inplace=True),
+                nn.Linear(num_context_params, feature_size),
+                nn.Softplus()
+            ).to(device=self.device)
 
         print("Inner Loop parameters")
         for key, value in self.inner_loop_optimizer.named_parameters():
@@ -419,10 +421,10 @@ class MAMLFewShotClassifier(nn.Module):
         :param num_step: An integer indicating the number of the step in the inner loop.
         :return: the crossentropy losses with respect to the given y, the predictions of the base model.
         """
-        preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+        preds, feature_map_list, prompted_image = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
                                                      training=training,
                                                      backup_running_statistics=backup_running_statistics,
-                                                     num_step=num_step, prepend_prompt=prepend_prompt)
+                                                     num_step=num_step, prepend_prompt=True)
         # Not add prompt
         # preds_not_prompted, feature_map_list_not_prompted, _ = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
         #                                                   training=training,
