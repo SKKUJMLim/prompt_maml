@@ -89,8 +89,8 @@ class MAMLFewShotClassifier(nn.Module):
             if param.requires_grad:
                 print(name, param.shape, param.device, param.requires_grad)
 
-        self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False)
-        # self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False, weight_decay=self.args.init_inner_loop_weight_decay)
+        # self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False)
+        self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False, weight_decay=self.args.init_inner_loop_weight_decay)
 
 
         # if self.args.prompter:
@@ -235,6 +235,11 @@ class MAMLFewShotClassifier(nn.Module):
     def get_across_task_loss_metrics(self, total_losses, total_accuracies):
         losses = dict()
 
+        # total_losses = torch.stack(total_losses)
+        # weights = torch.nn.functional.softmax(total_losses, dim=0)
+        # weighted_loss  = torch.sum(weights * total_losses)
+        # losses['loss'] = weighted_loss
+
         losses['loss'] = torch.mean(torch.stack(total_losses))
         losses['accuracy'] = np.mean(total_accuracies)
 
@@ -312,6 +317,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                weights=names_weights_copy,
                                                                prompted_weights=prompted_weights_copy,
                                                                backup_running_statistics=num_step == 0,
+                                                               prepend_prompt=True,
                                                                training=True,
                                                                num_step=num_step,
                                                                training_phase=training_phase,
@@ -331,6 +337,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                  weights=names_weights_copy,
                                                                  prompted_weights=prompted_weights_copy,
                                                                  backup_running_statistics=False, training=True,
+                                                                 prepend_prompt=True,
                                                                  num_step=num_step, training_phase=training_phase,
                                                                  epoch=epoch)
                     
@@ -343,7 +350,6 @@ class MAMLFewShotClassifier(nn.Module):
                                                                      y=y_target_set_task,
                                                                      weights=names_weights_copy,
                                                                      prompted_weights=prompted_weights_copy,
-                                                                     task_embedding=task_embedding,
                                                                      backup_running_statistics=False, training=True,
                                                                      num_step=num_step, training_phase=training_phase,
                                                                      epoch=epoch)
