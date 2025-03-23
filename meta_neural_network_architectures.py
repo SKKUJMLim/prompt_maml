@@ -1109,7 +1109,6 @@ class ResNet12(nn.Module):
 
         prompted_image = None
         if self.args.prompter and prepend_prompt:
-            # get_task_embeddings을 통해 호출될때는 prompt를 추가하지 않는다
             prompted_image = self.prompt(x=out, prompted_params=prompted_params)
             out = prompted_image
 
