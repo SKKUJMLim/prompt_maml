@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import itertools
-
+import cv2
 
 def gaussian_dropout(x, p):
     std = (p / (1 - p)) ** 0.5  # 표준편차 계산
@@ -211,7 +211,9 @@ def image_denormalization(image, datasets="mini_imagenet"):
         raise ValueError(f"Unknown dataset: {datasets}")
 
     denom_image = image * std + mean
-    denom_image = np.clip(denom_image, 0, 1)
+    # denom_image = np.clip(denom_image, 0, 1)
+    denom_image = np.clip(255.0 * denom_image, 0, 255).astype(np.uint8)
+    # denom_image = cv2.cvtColor(denom_image, cv2.COLOR_BGR2RGB)
 
     return denom_image
 
