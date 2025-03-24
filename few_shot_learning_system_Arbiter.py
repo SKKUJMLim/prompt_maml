@@ -8,7 +8,7 @@ import torch.optim as optim
 
 from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 # from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
-from inner_loop_optimizers_weightdecay import GradientDescentLearningRule, LSLRGradientDescentLearningRule
+from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 from utils.storage import save_statistics
 
 import arbiter
@@ -73,9 +73,9 @@ class MAMLFewShotClassifier(nn.Module):
             self.inner_loop_optimizer.initialise(names_weights_dict=names_weights_copy,
                                                  prompted_weights_dict=prompted_weights_copy)
 
-            self.task_embedding_adaptive_learning_rate = nn.Parameter(
-                data=torch.ones(self.args.number_of_training_steps_per_iter + 1) * self.args.text_embedding_learning_rate,
-                requires_grad=True)
+            # self.task_embedding_adaptive_learning_rate = nn.Parameter(
+            #     data=torch.ones(self.args.number_of_training_steps_per_iter + 1) * self.args.text_embedding_learning_rate,
+            #     requires_grad=True)
         else:
             self.inner_loop_optimizer = GradientDescentLearningRule(device=device, args=self.args,
                                                                     learning_rate=self.task_learning_rate)
