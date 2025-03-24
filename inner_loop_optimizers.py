@@ -7,8 +7,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from utils.basic import gaussian_dropout
-
 
 class GradientDescentLearningRule(nn.Module):
     """Simple (stochastic) gradient descent learning rule.
