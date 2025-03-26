@@ -20,17 +20,22 @@ from multiprocessing import freeze_support
 ## python train_maml_system.py --name_of_args_json_file experiment_config/MAML/MAML_5way_5shot_filter64_FC100.json --gpu_to_use 0
 
 '''MAML+Prompt experiment'''
-## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
-## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_fixed_patch_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
-## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_random_patch_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
+## miniImageNet
 
-## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_convolution_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
-## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_cross_attention_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
-## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_task_aware_attention_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_1shot_filter64_miniImagenet.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_1shot_filter64_tieredImagenet.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_5shot_filter64_tieredImagenet.json --gpu_to_use 0
 
-## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_arbiter_5way_1shot_filter64_miniImagenet.json --gpu_to_use 0
-## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_arbiter_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_fixed_patch_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_random_patch_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_convolution_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_cross_attention_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_task_aware_attention_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_arbiter_5way_1shot_filter64_miniImagenet.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_arbiter_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
 
+## tieredImagenet
 ## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_arbiter_5way_1shot_filter64_tieredImagenet.json --gpu_to_use 0
 ## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_arbiter_5way_5shot_filter64_tieredImagenet.json --gpu_to_use 0
 
