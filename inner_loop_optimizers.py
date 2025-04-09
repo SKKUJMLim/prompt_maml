@@ -69,7 +69,6 @@ class GradientDescentLearningRule(nn.Module):
                     # print("updated_prompt_weights_dict[key] == ", updated_prompt_weights_dict[key])
                     # print("prompted_grads_wrt_params_dict[key] == ", prompted_grads_wrt_params_dict[key])
         else:
-            ## MAML
             for key in names_weights_dict.keys():
                 if self.args.ANIL:
                     if 'linear' in key:
@@ -79,7 +78,15 @@ class GradientDescentLearningRule(nn.Module):
                         updated_names_weights_dict[key] = names_weights_dict[key] - freeze_layer_step_size * \
                                                           names_grads_wrt_params_dict[key]
 
-                else:
+                elif self.args.BOIL:
+                    if 'linear' in key:
+                        updated_names_weights_dict[key] = names_weights_dict[key] - freeze_layer_step_size * \
+                                                          names_grads_wrt_params_dict[key]
+                    else:
+                        updated_names_weights_dict[key] = names_weights_dict[key] - self.learning_rate * \
+                                                          names_grads_wrt_params_dict[key]
+
+                else: ## MAML
                     updated_names_weights_dict[key] = names_weights_dict[key] - self.learning_rate * \
                                                   names_grads_wrt_params_dict[key]
 

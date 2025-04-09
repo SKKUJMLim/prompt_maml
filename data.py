@@ -110,6 +110,38 @@ def get_transforms_for_dataset(dataset_name, args, k):
 
             transforms.ToTensor(), transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])]
 
+
+    elif 'CUB' in dataset_name:
+        transform_train = [transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((104 / 255.0, 117 / 255.0, 128 / 255.0),
+                                 (1 / 255.0, 1 / 255.0, 1 / 255.0))
+        ])]
+
+        transform_evaluate = [transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((104 / 255.0, 117 / 255.0, 128 / 255.0),
+                                 (1 / 255.0, 1 / 255.0, 1 / 255.0))
+        ])]
+
+        # transform_evaluate = [transforms.ToTensor()]
+    elif 'Cars' in dataset_name:
+        transform_train = [transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.470, 0.460, 0.455), (0.267, 0.266, 0.270))
+        ])]
+
+        transform_evaluate = [transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.470, 0.460, 0.455), (0.267, 0.266, 0.270))
+        ])]
+
+        # transform_evaluate = [transforms.ToTensor()]
+
+    else:
+        raise NotImplementedError('The other datasets are not supported yet.')
+
+
     return transform_train, transform_evaluate
 
 
@@ -124,6 +156,16 @@ class FewShotLearningDatasetParallel(Dataset):
         """
         self.data_path = args.dataset_path
         self.dataset_name = args.dataset_name
+
+
+        try:
+            self.data_path = 'datasets/' + os.environ['TEST_DATASET']
+            self.dataset_name = os.environ['TEST_DATASET']
+        except:
+            self.data_path = args.dataset_path
+            self.dataset_name = args.dataset_name
+
+
         self.data_loaded_in_memory = False
         self.image_height, self.image_width, self.image_channel = args.image_height, args.image_width, args.image_channels
         self.args = args
