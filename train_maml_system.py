@@ -19,7 +19,8 @@ from multiprocessing import freeze_support
 ## python train_maml_system.py --name_of_args_json_file experiment_config/MAML/ANIL_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
 ## python train_maml_system.py --name_of_args_json_file experiment_config/MAML/BOIL_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
 
-## python train_maml_system.py --name_of_args_json_file experiment_config/ALFA/ALFA_5way_5shot_CUB.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/L2F/L2F_5way_5shot_miniImagenet.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/ALFA/ALFA_5way_5shot_miniImagenet.json --gpu_to_use 0
 
 
 '''MAML+Prompt experiment'''
@@ -31,6 +32,7 @@ from multiprocessing import freeze_support
 
 
 # python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_5shot_filter64_CUB.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_fixed_patch_5way_5shot_filter64_CUB.json --gpu_to_use 0
 
 # python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_fixed_patch_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
 
