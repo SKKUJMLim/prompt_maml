@@ -9,7 +9,7 @@
   "dataset_name":"CUB",
   "dataset_path":"CUB",
   "reset_stored_paths":false,
-  "experiment_name":"ALFA_5way_5shot_miniImagenet",
+  "experiment_name":"ALFA_5way_5shot_CUB",
   "train_seed": 0, "val_seed": 0,
   "indexes_of_folders_indicating_class": [-3, -2],
   "sets_are_pre_split": true,
@@ -36,7 +36,7 @@
 
   "dropout_rate_value":0.0,
   "min_learning_rate":0.001,
-  "meta_learning_rate":0.001,   "total_epochs_before_pause": 100,
+  "meta_learning_rate":0.001,   "total_epochs_before_pause": 101,
   "first_order_to_second_order_epoch":-1,
   "weight_decay": 0.0,
 
