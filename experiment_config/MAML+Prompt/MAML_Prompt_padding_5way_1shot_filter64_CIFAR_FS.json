@@ -1,5 +1,5 @@
 {
-  "batch_size":2,
+  "batch_size":4,
   "image_height":84,
   "image_width":84,
   "image_channels":3,
@@ -48,7 +48,7 @@
   "number_of_evaluation_steps_per_iter":5,
   "cnn_blocks_per_stage":1,
   "num_classes_per_set":5,
-  "num_samples_per_class":5,
+  "num_samples_per_class":1,
   "num_target_samples": 15,
 
   "second_order": true,
