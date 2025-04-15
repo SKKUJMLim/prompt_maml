@@ -35,6 +35,25 @@ def CIFAR_FS():
 
     shutil.rmtree('cifar100')
 
+def FC100():
+    phase_list = ['train', 'val', 'test']
+
+    with zipfile.ZipFile('cifar100.zip', 'r') as zip_ref:
+        zip_ref.extractall()
+
+    for phase in phase_list:
+        os.makedirs('FC100/{}'.format(phase))
+
+    for phase in phase_list:
+        classes_info_dir = 'preprocess/FC100_split_{}.txt'.format(phase)
+        f = open(classes_info_dir, 'r')
+        for line in f.readlines():
+            class_name = line.strip()
+            shutil.move('cifar100/data/{}'.format(class_name), 'FC100/{}/{}'.format(phase, class_name))
+
+    shutil.rmtree('cifar100')
+
+
 
 def CUB():
     phase_list = ['train', 'val', 'test']
@@ -93,7 +112,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--datasets', type=str, nargs='+', 
-                        choices=['mini_imagenet', 'tiered_imagenet', 'CIFAR_FS', 'CUB', 'StandfordCars'],
+                        choices=['mini_imagenet', 'tiered_imagenet', 'CIFAR_FS', 'FC100' ,'CUB', 'StandfordCars'],
                         help='Dataset name to preprocess.')
     args = parser.parse_args()
 
