@@ -433,6 +433,39 @@ class MAMLFewShotClassifier(nn.Module):
         return loss, preds
 
 
+    def net_forward_feature_extractor(self, x, y, weights, backup_running_statistics, training, num_step, training_phase, epoch, prompted_weights=None, prepend_prompt=True):
+        """
+        A base model forward pass on some data points x. Using the parameters in the weights dictionary. Also requires
+        boolean flags indicating whether to reset the running statistics at the end of the run (if at evaluation phase).
+        A flag indicating whether this is the training session and an int indicating the current step's number in the
+        inner loop.
+        :param x: A data batch of shape b, c, h, w
+        :param y: A data targets batch of shape b, n_classes
+        :param weights: A dictionary containing the weights to pass to the network.
+        :param backup_running_statistics: A flag indicating whether to reset the batch norm running statistics to their
+         previous values after the run (only for evaluation)
+        :param training: A flag indicating whether the current process phase is a training or evaluation.
+        :param num_step: An integer indicating the number of the step in the inner loop.
+        :return: the crossentropy losses with respect to the given y, the predictions of the base model.
+        """
+
+        preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+                                        training=training, backup_running_statistics=backup_running_statistics,
+                                                     num_step=num_step, prepend_prompt=prepend_prompt)
+
+        loss = F.cross_entropy(input=preds, target=y)
+
+        # embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
+        # # embeddings = embeddings.mean(dim=[2, 3])  # shape: (batch_size, 64)
+        # flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
+        #
+        # contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=flatten_embedding, labels=y, temperature=0.1)
+        # loss = loss + contrastive_loss
+
+        return loss, preds, feature_map_list
+
+
+
     # def trainable_prompt_parameters(self):
     #     """
     #     Returns an iterator over the trainable parameters of the model.
