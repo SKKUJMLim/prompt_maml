@@ -61,13 +61,13 @@ class GradientDescentLearningRule(nn.Module):
                     updated_names_weights_dict[key] = names_weights_dict[key] - freeze_layer_step_size * \
                                                       names_grads_wrt_params_dict[key]
 
-            if self.args.prompt_engineering != 'arbiter':
-                for key in prompted_weights_dict.keys():
-                    updated_prompt_weights_dict[key] = prompted_weights_dict[key] - self.args.inner_prompt_learning_rate * \
-                                                       prompted_grads_wrt_params_dict[key]
-                    # print("prompted_weights_dict[key] == ", prompted_weights_dict[key])
-                    # print("updated_prompt_weights_dict[key] == ", updated_prompt_weights_dict[key])
-                    # print("prompted_grads_wrt_params_dict[key] == ", prompted_grads_wrt_params_dict[key])
+            # if self.args.prompt_engineering != 'arbiter':
+            #     for key in prompted_weights_dict.keys():
+            #         updated_prompt_weights_dict[key] = prompted_weights_dict[key] - self.args.inner_prompt_learning_rate * \
+            #                                            prompted_grads_wrt_params_dict[key]
+            #         # print("prompted_weights_dict[key] == ", prompted_weights_dict[key])
+            #         # print("updated_prompt_weights_dict[key] == ", updated_prompt_weights_dict[key])
+            #         # print("prompted_grads_wrt_params_dict[key] == ", prompted_grads_wrt_params_dict[key])
         else:
             for key in names_weights_dict.keys():
                 if self.args.ANIL:
