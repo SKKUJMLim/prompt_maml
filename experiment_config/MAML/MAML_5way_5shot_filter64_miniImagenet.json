@@ -57,5 +57,6 @@
   "prompt_engineering": "not",
   "prompt_size" : 0,
   "image_size" : 0,
-  "ANIL": false
+  "ANIL": false,
+  "BOIL": false
 }
