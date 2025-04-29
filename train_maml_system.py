@@ -24,7 +24,10 @@ from multiprocessing import freeze_support
 
 
 '''MAML+Prompt experiment'''
-## miniImageNet
+## miniImageNet filter 128
+# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/filter128/MAML_Prompt_fixed_patch_5way_5shot_filter128_miniImagenet.json --gpu_to_use 0
+
+## miniImageNet filter 64
 # python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_1shot_filter64_miniImagenet.json --gpu_to_use 0
 # python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
 # python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_1shot_filter64_tieredImagenet.json --gpu_to_use 0
