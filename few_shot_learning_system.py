@@ -11,7 +11,7 @@ from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDesce
 
 from utils.storage import save_statistics
 
-from utils.contrastive_loss import soft_nearest_neighbors_loss_cos_similarity
+from utils.contrastive_loss import soft_nearest_neighbors_loss_cos_similarity, info_nce_loss
 
 
 def set_torch_seed(seed):
@@ -61,6 +61,7 @@ class MAMLFewShotClassifier(nn.Module):
         prompted_weights_copy = {}
         if self.args.prompter:
             prompted_weights_copy = {key: value for key, value in names_weights_copy.items() if 'prompt' in key}
+
         names_weights_copy = {key: value for key, value in names_weights_copy.items() if 'layer_dict' in key}
 
         if self.args.learnable_per_layer_per_step_inner_loop_learning_rate:
@@ -422,6 +423,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                      num_step=num_step, prepend_prompt=prepend_prompt)
 
         loss = F.cross_entropy(input=preds, target=y)
+
 
         # embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
         # # embeddings = embeddings.mean(dim=[2, 3])  # shape: (batch_size, 64)

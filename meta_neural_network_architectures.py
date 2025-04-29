@@ -870,10 +870,16 @@ class VGGReLUNormNetwork(nn.Module):
             self.conv_stride = 2
         self.meta_classifier = meta_classifier
 
+        self.build_network()
+
         if self.args.prompter:
             self.prompt = prompters.__dict__[args.prompt_engineering](args).to(device)
 
-        self.build_network()
+            # self.mapper = nn.Sequential(
+            #     nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),  # (B, 64, 84, 84)
+            #     nn.AdaptiveAvgPool2d((5, 5))  # (B, 64, 5, 5)
+            # )
+
         print("meta network params")
         # for name, param in self.named_parameters():
         #     print(name, param.shape)
@@ -963,6 +969,9 @@ class VGGReLUNormNetwork(nn.Module):
         if not self.args.max_pooling:
             out = F.avg_pool2d(out, out.shape[2])
 
+        # shortcut = self.mapper(prompted_image)
+        # out = out + shortcut
+
         out = out.view(out.size(0), -1)
         out = self.layer_dict['linear'](out, param_dict['linear'])
 
@@ -1032,6 +1041,11 @@ class ResNet12(nn.Module):
 
         if self.args.prompter:
             self.prompt = prompters.__dict__[args.prompt_engineering](args).to(device)
+
+            # self.mapper = nn.Sequential(
+            #     nn.Conv2d(3, 512, kernel_size=3, stride=1, padding=1),  # (B, 512, 84, 84)
+            #     nn.AdaptiveAvgPool2d((11, 11))  # (B, 512, 11, 11)
+            # )
 
         self.build_network()
         print("meta network params")
@@ -1119,6 +1133,9 @@ class ResNet12(nn.Module):
                                                        backup_running_statistics=backup_running_statistics,
                                                        num_step=num_step)
             feature_list.append(out)
+
+        # shortcut = self.mapper(prompted_image)
+        # out = out + shortcut
 
         out = F.adaptive_avg_pool2d(out, (1, 1))
         out = out.view(out.size(0), -1)
