@@ -875,11 +875,6 @@ class VGGReLUNormNetwork(nn.Module):
         if self.args.prompter:
             self.prompt = prompters.__dict__[args.prompt_engineering](args).to(device)
 
-            # self.mapper = nn.Sequential(
-            #     nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),  # (B, 64, 84, 84)
-            #     nn.AdaptiveAvgPool2d((5, 5))  # (B, 64, 5, 5)
-            # )
-
         print("meta network params")
         # for name, param in self.named_parameters():
         #     print(name, param.shape)
@@ -891,6 +886,9 @@ class VGGReLUNormNetwork(nn.Module):
         sets output shapes for each layer.
         """
         x = torch.zeros(self.input_shape)
+
+        identity = x
+
         out = x
         self.layer_dict = nn.ModuleDict()
         self.upscale_shapes.append(x.shape)
@@ -912,6 +910,18 @@ class VGGReLUNormNetwork(nn.Module):
 
         if not self.args.max_pooling:
             out = F.avg_pool2d(out, out.shape[2])
+
+        if self.args.prompter:
+            self.layer_dict['skip_connection_conv'] = MetaConv2dLayer(in_channels=identity.shape[1],
+                                                                      out_channels=out.shape[1],
+                                                                      kernel_size=1,
+                                                                      stride=1, padding=0, use_bias=True)
+
+            shortcut = self.layer_dict['skip_connection_conv'](identity)
+            shortcut = F.relu(shortcut)
+            shortcut = F.adaptive_avg_pool2d(shortcut, out.shape[2])
+            out = out + shortcut
+
 
         self.encoder_features_shape = list(out.shape)
         out = out.view(out.shape[0], -1)
@@ -969,8 +979,11 @@ class VGGReLUNormNetwork(nn.Module):
         if not self.args.max_pooling:
             out = F.avg_pool2d(out, out.shape[2])
 
-        # shortcut = self.mapper(prompted_image)
-        # out = out + shortcut
+        if self.args.prompter:
+            shortcut = self.layer_dict['skip_connection_conv'](prompted_image, param_dict['skip_connection_conv'])
+            shortcut = F.relu(shortcut)
+            shortcut = F.adaptive_avg_pool2d(shortcut, out.shape[2])
+            out = out + shortcut
 
         out = out.view(out.size(0), -1)
         out = self.layer_dict['linear'](out, param_dict['linear'])
@@ -1042,11 +1055,6 @@ class ResNet12(nn.Module):
         if self.args.prompter:
             self.prompt = prompters.__dict__[args.prompt_engineering](args).to(device)
 
-            # self.mapper = nn.Sequential(
-            #     nn.Conv2d(3, 512, kernel_size=3, stride=1, padding=1),  # (B, 512, 84, 84)
-            #     nn.AdaptiveAvgPool2d((11, 11))  # (B, 512, 11, 11)
-            # )
-
         self.build_network()
         print("meta network params")
         for name, param in self.named_parameters():
@@ -1059,6 +1067,8 @@ class ResNet12(nn.Module):
         sets output shapes for each layer.
         """
         x = torch.zeros(self.input_shape)
+        identity = x
+
         out = x
         self.layer_dict = nn.ModuleDict()
         self.upscale_shapes.append(x.shape)
@@ -1083,6 +1093,18 @@ class ResNet12(nn.Module):
             out = self.layer_dict['layer{}'.format(i)](out, training=True, num_step=0)
 
         out = F.adaptive_avg_pool2d(out, (1, 1))
+
+        if self.args.prompter:
+            self.layer_dict['skip_connection_conv'] = MetaConv2dLayer(in_channels=identity.shape[1],
+                                                                      out_channels=out.shape[1],
+                                                                      kernel_size=1,
+                                                                      stride=1, padding=0, use_bias=True)
+
+            shortcut = self.layer_dict['skip_connection_conv'](identity)
+            shortcut = F.relu(shortcut)
+            shortcut = F.adaptive_avg_pool2d(shortcut, out.shape[2])
+            out = out + shortcut
+
 
         out = out.view(out.shape[0], -1)
 
@@ -1138,6 +1160,13 @@ class ResNet12(nn.Module):
         # out = out + shortcut
 
         out = F.adaptive_avg_pool2d(out, (1, 1))
+
+        if self.args.prompter:
+            shortcut = self.layer_dict['skip_connection_conv'](prompted_image, param_dict['skip_connection_conv'])
+            shortcut = F.relu(shortcut)
+            shortcut = F.adaptive_avg_pool2d(shortcut, out.shape[2])
+            out = out + shortcut
+
         out = out.view(out.size(0), -1)
         out = self.layer_dict['linear'](out, param_dict['linear'])
 
