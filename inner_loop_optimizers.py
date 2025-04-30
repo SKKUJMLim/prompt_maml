@@ -151,7 +151,7 @@ class LSLRGradientDescentLearningRule(nn.Module):
                         requires_grad=self.use_learnable_learning_rates)
 
         for idx, (key, param) in enumerate(names_weights_dict.items()):
-            if 'linear' in key or 'skip_connection_conv' in key:
+            if 'linear' in key:
                 self.names_learning_rates_dict[key.replace(".", "-")] = nn.Parameter(
                     data=torch.ones(self.total_num_inner_loop_steps + 1) * self.init_learning_rate,
                     requires_grad=self.use_learnable_learning_rates)
@@ -185,7 +185,7 @@ class LSLRGradientDescentLearningRule(nn.Module):
                     #                                    * prompted_grads_wrt_params_dict[key]
 
             for key in names_weights_dict.keys():
-                if 'linear' in key or 'skip_connection_conv' in key:
+                if 'linear' in key:
                     updated_names_weights_dict[key] = names_weights_dict[key] \
                                                       - self.names_learning_rates_dict[key.replace(".", "-")][num_step] \
                                                       * names_grads_wrt_params_dict[key]

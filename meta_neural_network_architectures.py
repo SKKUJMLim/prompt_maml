@@ -911,16 +911,16 @@ class VGGReLUNormNetwork(nn.Module):
         if not self.args.max_pooling:
             out = F.avg_pool2d(out, out.shape[2])
 
-        if self.args.prompter:
-            self.layer_dict['skip_connection_conv'] = MetaConv2dLayer(in_channels=identity.shape[1],
-                                                                      out_channels=out.shape[1],
-                                                                      kernel_size=1,
-                                                                      stride=1, padding=0, use_bias=True)
-
-            shortcut = self.layer_dict['skip_connection_conv'](identity)
-            shortcut = F.relu(shortcut)
-            shortcut = F.adaptive_avg_pool2d(shortcut, out.shape[2])
-            out = out + shortcut
+        # if self.args.prompter:
+        #     self.layer_dict['skip_connection_conv'] = MetaConv2dLayer(in_channels=identity.shape[1],
+        #                                                               out_channels=out.shape[1],
+        #                                                               kernel_size=1,
+        #                                                               stride=1, padding=0, use_bias=True)
+        #
+        #     shortcut = self.layer_dict['skip_connection_conv'](identity)
+        #     shortcut = F.relu(shortcut)
+        #     shortcut = F.adaptive_avg_pool2d(shortcut, out.shape[2])
+        #     out = out + shortcut
 
 
         self.encoder_features_shape = list(out.shape)
@@ -979,11 +979,11 @@ class VGGReLUNormNetwork(nn.Module):
         if not self.args.max_pooling:
             out = F.avg_pool2d(out, out.shape[2])
 
-        if self.args.prompter:
-            shortcut = self.layer_dict['skip_connection_conv'](prompted_image, param_dict['skip_connection_conv'])
-            shortcut = F.relu(shortcut)
-            shortcut = F.adaptive_avg_pool2d(shortcut, out.shape[2])
-            out = out + shortcut
+        # if self.args.prompter:
+        #     shortcut = self.layer_dict['skip_connection_conv'](prompted_image, param_dict['skip_connection_conv'])
+        #     shortcut = F.relu(shortcut)
+        #     shortcut = F.adaptive_avg_pool2d(shortcut, out.shape[2])
+        #     out = out + shortcut
 
         out = out.view(out.size(0), -1)
         out = self.layer_dict['linear'](out, param_dict['linear'])
@@ -1094,16 +1094,16 @@ class ResNet12(nn.Module):
 
         out = F.adaptive_avg_pool2d(out, (1, 1))
 
-        if self.args.prompter:
-            self.layer_dict['skip_connection_conv'] = MetaConv2dLayer(in_channels=identity.shape[1],
-                                                                      out_channels=out.shape[1],
-                                                                      kernel_size=1,
-                                                                      stride=1, padding=0, use_bias=True)
-
-            shortcut = self.layer_dict['skip_connection_conv'](identity)
-            shortcut = F.relu(shortcut)
-            shortcut = F.adaptive_avg_pool2d(shortcut, out.shape[2])
-            out = out + shortcut
+        # if self.args.prompter:
+        #     self.layer_dict['skip_connection_conv'] = MetaConv2dLayer(in_channels=identity.shape[1],
+        #                                                               out_channels=out.shape[1],
+        #                                                               kernel_size=1,
+        #                                                               stride=1, padding=0, use_bias=True)
+        #
+        #     shortcut = self.layer_dict['skip_connection_conv'](identity)
+        #     shortcut = F.relu(shortcut)
+        #     shortcut = F.adaptive_avg_pool2d(shortcut, out.shape[2])
+        #     out = out + shortcut
 
 
         out = out.view(out.shape[0], -1)
@@ -1161,11 +1161,11 @@ class ResNet12(nn.Module):
 
         out = F.adaptive_avg_pool2d(out, (1, 1))
 
-        if self.args.prompter:
-            shortcut = self.layer_dict['skip_connection_conv'](prompted_image, param_dict['skip_connection_conv'])
-            shortcut = F.relu(shortcut)
-            shortcut = F.adaptive_avg_pool2d(shortcut, out.shape[2])
-            out = out + shortcut
+        # if self.args.prompter:
+        #     shortcut = self.layer_dict['skip_connection_conv'](prompted_image, param_dict['skip_connection_conv'])
+        #     shortcut = F.relu(shortcut)
+        #     shortcut = F.adaptive_avg_pool2d(shortcut, out.shape[2])
+        #     out = out + shortcut
 
         out = out.view(out.size(0), -1)
         out = self.layer_dict['linear'](out, param_dict['linear'])
