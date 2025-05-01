@@ -424,13 +424,28 @@ class MAMLFewShotClassifier(nn.Module):
 
         loss = F.cross_entropy(input=preds, target=y)
 
+        if torch.rand(1) < 0.5:
+            x_aug = torch.flip(x, dims=[3])
+        else:
+            x_aug = torch.flip(x, dims=[2])
 
-        # embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
-        # # embeddings = embeddings.mean(dim=[2, 3])  # shape: (batch_size, 64)
-        # flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
-        #
-        # contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=flatten_embedding, labels=y, temperature=0.1)
-        # loss = loss + contrastive_loss
+        aug_preds, aug_feature_map_list = self.classifier.forward(x=x_aug, params=weights, prompted_params=prompted_weights,
+                                                          training=training,
+                                                          backup_running_statistics=backup_running_statistics,
+                                                          num_step=num_step, prepend_prompt=prepend_prompt)
+
+        aug_loss = F.cross_entropy(input=aug_preds, target=y)
+
+        '''
+        x_hflipped = torch.flip(x, dims=[3])
+        aug_preds, aug_feature_map_list = self.classifier.forward(x=x_hflipped, params=weights, prompted_params=prompted_weights,
+                                                          training=training,
+                                                          backup_running_statistics=backup_running_statistics,
+                                                          num_step=num_step, prepend_prompt=prepend_prompt)
+        aug_loss = F.cross_entropy(input=aug_preds, target=y)
+        '''
+
+        loss = (loss + aug_loss) / 2
 
         return loss, preds
 
