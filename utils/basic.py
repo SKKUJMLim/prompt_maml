@@ -4,6 +4,21 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import itertools
+
+
+def mixup_data(x, y, alpha=0.4):
+    """
+    이미지를 MixUp하고, 섞인 label 쌍과 lambda 반환
+    x: (B, C, H, W), y: (B,)
+    """
+    lam = np.random.beta(alpha, alpha)
+    batch_size = x.size(0)
+    index = torch.randperm(batch_size)
+
+    mixed_x = lam * x + (1 - lam) * x[index]
+    y_a, y_b = y, y[index]
+    return mixed_x, y_a, y_b, lam
+
 def gaussian_dropout(x, p):
     std = (p / (1 - p)) ** 0.5  # 표준편차 계산
     noise = torch.randn_like(x) * std + 1  # 1 + N(0, std^2)
