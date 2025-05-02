@@ -55,9 +55,10 @@
   "use_multi_step_loss_optimization":false,
   "prompter": true,
   "prompt_engineering": "padding",
-  "prompt_size" : 10,
+  "prompt_size" : 5,
   "image_size" : 84,
   "prompt_random_init": false,
   "outer_prompt_learning_rate": 0.001,
-  "inner_prompt_learning_rate": 0.01
+  "inner_prompt_learning_rate": 0.01,
+  "data_aug" : "random"
 }
