@@ -10,7 +10,7 @@ from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 
 from utils.storage import save_statistics
-from utils.basic import mixup_data
+from utils.basic import mixup_data, mixup_data_per_sample
 
 
 def set_torch_seed(seed):
@@ -425,7 +425,8 @@ class MAMLFewShotClassifier(nn.Module):
 
         aug_loss = 0
         if self.args.data_aug == "Mixup":
-            x_mixed, y_a, y_b, lam = mixup_data(x, y, alpha=0.4)
+            # x_mixed, y_a, y_b, lam = mixup_data(x, y, alpha=0.4)
+            x_mixed, y_a, y_b, lam = mixup_data_per_sample(x, y, alpha=0.4)
             aug_preds, _ = self.classifier.forward(x=x_mixed, params=weights, prompted_params=prompted_weights,
                                                               training=training,
                                                               backup_running_statistics=backup_running_statistics,
