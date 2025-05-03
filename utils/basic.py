@@ -6,6 +6,24 @@ import torch.nn.functional as F
 import itertools
 
 
+def mixup_data_per_sample(x, y, alpha=0.4):
+    """
+    배치의 각 샘플마다 서로 다른 비율로 MixUp 적용
+    x: (B, C, H, W), y: (B,)
+    """
+    batch_size = x.size(0)
+    # 각 샘플마다 개별적으로 lam 생성
+    lam = np.random.beta(alpha, alpha, size=batch_size)
+    lam = torch.from_numpy(lam).float().to(x.device)  # (B,)
+    lam = lam.view(batch_size, 1, 1, 1)  # broadcasting용 reshape
+
+    index = torch.randperm(batch_size).to(x.device)
+
+    mixed_x = lam * x + (1 - lam) * x[index]
+    y_a, y_b = y, y[index]
+    return mixed_x, y_a, y_b, lam.view(-1)  # lam은 shape (B,)로 반환
+
+
 def mixup_data(x, y, alpha=0.4):
     """
     이미지를 MixUp하고, 섞인 label 쌍과 lambda 반환
