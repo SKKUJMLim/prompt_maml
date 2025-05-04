@@ -5,24 +5,48 @@ import torch
 import torch.nn.functional as F
 import itertools
 
-
-def mixup_data_per_sample(x, y, alpha=0.4):
+def rand_bbox(size, lam):
     """
-    배치의 각 샘플마다 서로 다른 비율로 MixUp 적용
+    랜덤 박스 좌표를 생성 (size: (B, C, H, W), lam: lambda)
+    """
+    W = size[2]
+    H = size[3]
+    cut_rat = np.sqrt(1. - lam)  # 비율로 자름
+    cut_w = int(W * cut_rat)
+    cut_h = int(H * cut_rat)
+
+    # 중앙 위치 무작위 선정
+    cx = np.random.randint(W)
+    cy = np.random.randint(H)
+
+    bbx1 = np.clip(cx - cut_w // 2, 0, W)
+    bby1 = np.clip(cy - cut_h // 2, 0, H)
+    bbx2 = np.clip(cx + cut_w // 2, 0, W)
+    bby2 = np.clip(cy + cut_h // 2, 0, H)
+
+    return bbx1, bby1, bbx2, bby2
+
+
+def cutmix_data(x, y, alpha=1.0):
+    """
+    CutMix를 적용한 이미지, 라벨쌍, lambda 반환
     x: (B, C, H, W), y: (B,)
     """
+    lam = np.random.beta(alpha, alpha)
     batch_size = x.size(0)
-    # 각 샘플마다 개별적으로 lam 생성
-    lam = np.random.beta(alpha, alpha, size=batch_size)
-    lam = torch.from_numpy(lam).float().to(x.device)  # (B,)
-    lam = lam.view(batch_size, 1, 1, 1)  # broadcasting용 reshape
+    index = torch.randperm(batch_size)
 
-    index = torch.randperm(batch_size).to(x.device)
+    y_a = y
+    y_b = y[index]
 
-    mixed_x = lam * x + (1 - lam) * x[index]
-    y_a, y_b = y, y[index]
-    return mixed_x, y_a, y_b, lam.view(-1)  # lam은 shape (B,)로 반환
+    bbx1, bby1, bbx2, bby2 = rand_bbox(x.size(), lam)
+    x_cutmix = x.clone()
+    x_cutmix[:, :, bbx1:bbx2, bby1:bby2] = x[index, :, bbx1:bbx2, bby1:bby2]
 
+    # 실제 lambda 보정 (잘린 영역 비율)
+    lam = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (x.size(-1) * x.size(-2)))
+
+    return x_cutmix, y_a, y_b, lam
 
 def mixup_data(x, y, alpha=0.4):
     """
@@ -36,6 +60,9 @@ def mixup_data(x, y, alpha=0.4):
     mixed_x = lam * x + (1 - lam) * x[index]
     y_a, y_b = y, y[index]
     return mixed_x, y_a, y_b, lam
+
+def random_flip(x):
+    return torch.flip(x, dims=[3]) if torch.rand(1) < 0.5 else torch.flip(x, dims=[2])
 
 def gaussian_dropout(x, p):
     std = (p / (1 - p)) ** 0.5  # 표준편차 계산

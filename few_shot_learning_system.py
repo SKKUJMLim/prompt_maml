@@ -10,7 +10,7 @@ from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 
 from utils.storage import save_statistics
-from utils.basic import mixup_data, mixup_data_per_sample
+from utils.basic import mixup_data, cutmix_data, random_flip
 
 
 def set_torch_seed(seed):
@@ -424,46 +424,31 @@ class MAMLFewShotClassifier(nn.Module):
         loss = F.cross_entropy(input=preds, target=y)
 
         aug_loss = 0
-        if self.args.data_aug == "Mixup":
-            # x_mixed, y_a, y_b, lam = mixup_data(x, y, alpha=0.4)
-            x_mixed, y_a, y_b, lam = mixup_data_per_sample(x, y, alpha=0.4)
-            aug_preds, _ = self.classifier.forward(x=x_mixed, params=weights, prompted_params=prompted_weights,
-                                                              training=training,
-                                                              backup_running_statistics=backup_running_statistics,
-                                                              num_step=num_step, prepend_prompt=prepend_prompt)
+        if self.args.data_aug in ["Mixup", "Cutmix"]:
+            if self.args.data_aug == "Mixup":
+                x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=0.4)
+            else:
+                x_aug, y_a, y_b, lam = cutmix_data(x, y)
 
+            aug_preds, _ = self.classifier.forward(x=x_aug, params=weights, prompted_params=prompted_weights,
+                                                   training=training,
+                                                   backup_running_statistics=backup_running_statistics,
+                                                   num_step=num_step, prepend_prompt=prepend_prompt)
             aug_loss = lam * F.cross_entropy(aug_preds, y_a) + (1 - lam) * F.cross_entropy(aug_preds, y_b)
 
-        elif self.args.data_aug == "horizontal_flip":
-            x_hflipped = torch.flip(x, dims=[3])
-            aug_preds, aug_feature_map_list = self.classifier.forward(x=x_hflipped, params=weights,
-                                                                      prompted_params=prompted_weights,
-                                                                      training=training,
-                                                                      backup_running_statistics=backup_running_statistics,
-                                                                      num_step=num_step, prepend_prompt=prepend_prompt)
-            aug_loss = F.cross_entropy(input=aug_preds, target=y)
-
-        elif self.args.data_aug == "vertical_flip":
-            x_vflipped = torch.flip(x, dims=[2])
-            aug_preds, aug_feature_map_list = self.classifier.forward(x=x_vflipped, params=weights,
-                                                                      prompted_params=prompted_weights,
-                                                                      training=training,
-                                                                      backup_running_statistics=backup_running_statistics,
-                                                                      num_step=num_step, prepend_prompt=prepend_prompt)
-            aug_loss = F.cross_entropy(input=aug_preds, target=y)
-
-        elif self.args.data_aug == "random":
-            if torch.rand(1) < 0.5:
+        elif self.args.data_aug in ["horizontal_flip", "vertical_flip", "random"]:
+            if self.args.data_aug == "horizontal_flip":
                 x_aug = torch.flip(x, dims=[3])
-            else:
+            elif self.args.data_aug == "vertical_flip":
                 x_aug = torch.flip(x, dims=[2])
+            else:
+                x_aug = random_flip(x)
 
-            aug_preds, aug_feature_map_list = self.classifier.forward(x=x_aug, params=weights,
-                                                                      prompted_params=prompted_weights,
-                                                                      training=training,
-                                                                      backup_running_statistics=backup_running_statistics,
-                                                                      num_step=num_step, prepend_prompt=prepend_prompt)
-            aug_loss = F.cross_entropy(input=aug_preds, target=y)
+            aug_preds, _ = self.classifier.forward(x=x_aug, params=weights, prompted_params=prompted_weights,
+                                                   training=training,
+                                                   backup_running_statistics=backup_running_statistics,
+                                                   num_step=num_step, prepend_prompt=prepend_prompt)
+            aug_loss = F.cross_entropy(aug_preds, y)
 
         else:
             aug_loss = loss
