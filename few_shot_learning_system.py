@@ -421,22 +421,26 @@ class MAMLFewShotClassifier(nn.Module):
                                         training=training, backup_running_statistics=backup_running_statistics,
                                                      num_step=num_step, prepend_prompt=prepend_prompt)
 
-        loss = F.cross_entropy(input=preds, target=y)
 
-        aug_loss = 0
+
+        loss = 0
         if self.args.data_aug in ["Mixup", "Cutmix"]:
             if self.args.data_aug == "Mixup":
                 x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=0.4)
             else:
-                x_aug, y_a, y_b, lam = cutmix_data(x, y)
+                x_aug, y_a, y_b, lam = cutmix_data(x, y, alpha=1.0)
 
             aug_preds, _ = self.classifier.forward(x=x_aug, params=weights, prompted_params=prompted_weights,
                                                    training=training,
                                                    backup_running_statistics=backup_running_statistics,
                                                    num_step=num_step, prepend_prompt=prepend_prompt)
-            aug_loss = lam * F.cross_entropy(aug_preds, y_a) + (1 - lam) * F.cross_entropy(aug_preds, y_b)
+
+            loss = lam * F.cross_entropy(aug_preds, y_a) + (1 - lam) * F.cross_entropy(aug_preds, y_b)
 
         elif self.args.data_aug in ["horizontal_flip", "vertical_flip", "random"]:
+
+            loss = F.cross_entropy(input=preds, target=y)
+
             if self.args.data_aug == "horizontal_flip":
                 x_aug = torch.flip(x, dims=[3])
             elif self.args.data_aug == "vertical_flip":
@@ -449,11 +453,10 @@ class MAMLFewShotClassifier(nn.Module):
                                                    backup_running_statistics=backup_running_statistics,
                                                    num_step=num_step, prepend_prompt=prepend_prompt)
             aug_loss = F.cross_entropy(aug_preds, y)
+            loss = (loss + aug_loss) / 2
 
         else:
-            aug_loss = loss
-
-        loss = (loss + aug_loss) / 2
+            loss = F.cross_entropy(input=preds, target=y)
 
         return loss, preds
 
