@@ -424,9 +424,9 @@ class MAMLFewShotClassifier(nn.Module):
 
         loss = F.cross_entropy(input=preds, target=y)
 
-        if self.args.data_aug in ["Mixup", "Cutmix"]:
-            if self.args.data_aug == "Mixup":
-                x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=10.0)
+        if self.args.data_aug in ["mixup", "cutmix"]:
+            if self.args.data_aug == "mixup":
+                x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=1.0)
             else:
                 x_aug, y_a, y_b, lam = cutmix_data(x, y, alpha=1.0)
 
@@ -453,7 +453,7 @@ class MAMLFewShotClassifier(nn.Module):
             aug_loss = F.cross_entropy(aug_preds, y)
 
         else:
-            aug_loss = loss
+            raise ValueError(f"Unsupported augmentation type: {self.args.data_aug}")
 
         loss = (loss + aug_loss) / 2
 
