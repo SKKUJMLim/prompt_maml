@@ -417,47 +417,55 @@ class MAMLFewShotClassifier(nn.Module):
         :return: the crossentropy losses with respect to the given y, the predictions of the base model.
         """
 
-        preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-                                                          training=training,
-                                                          backup_running_statistics=backup_running_statistics,
-                                                          num_step=num_step, prepend_prompt=prepend_prompt)
-
-        loss = F.cross_entropy(input=preds, target=y)
-
         if self.args.data_aug in ["mixup", "cutmix"]:
+
             if self.args.data_aug == "mixup":
-                x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=1.0)
-            else:
-                x_aug, y_a, y_b, lam = cutmix_data(x, y, alpha=1.0)
+                mixup_x, part_y_a, part_y_b, lam = mixup_data(x, y, alpha=1.0)
+            elif self.args.data_aug == "cutmix":
+                mixup_x, part_y_a, part_y_b, lam = cutmix_data(x, y, alpha=1.0)
 
-            aug_preds, _ = self.classifier.forward(x=x_aug, params=weights, prompted_params=prompted_weights,
-                                                   training=training,
-                                                   backup_running_statistics=backup_running_statistics,
-                                                   num_step=num_step, prepend_prompt=prepend_prompt)
+            x = torch.cat([x, mixup_x], dim=0)
+            y_a = torch.cat([y, part_y_a])
+            y_b = torch.cat([y, part_y_b])
 
-            aug_loss = lam * F.cross_entropy(aug_preds, y_a) + (1 - lam) * F.cross_entropy(aug_preds, y_b)
+            preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+                                                              training=training,
+                                                              backup_running_statistics=backup_running_statistics,
+                                                              num_step=num_step, prepend_prompt=prepend_prompt)
+
+
+            loss = lam * F.cross_entropy(input=preds, target=y_a) + (1 - lam) * F.cross_entropy(input=preds, target=y_b)
+
+            preds_original = preds[:x.size(0) // 2]
+
+            return loss, preds_original
 
         elif self.args.data_aug in ["horizontal_flip", "vertical_flip", "random"]:
+
             if self.args.data_aug == "horizontal_flip":
-                x_aug = torch.flip(x, dims=[3])
+                aug_x = torch.flip(x, dims=[3])
             elif self.args.data_aug == "vertical_flip":
-                x_aug = torch.flip(x, dims=[2])
+                aug_x = torch.flip(x, dims=[2])
             else:
-                x_aug = random_flip(x)
+                aug_x = random_flip(x)
 
-            aug_preds, _ = self.classifier.forward(x=x_aug, params=weights, prompted_params=prompted_weights,
-                                                   training=training,
-                                                   backup_running_statistics=backup_running_statistics,
-                                                   num_step=num_step, prepend_prompt=prepend_prompt)
+            x = torch.cat([x, aug_x], dim=0)
+            y = torch.cat([y, y])
 
-            aug_loss = F.cross_entropy(aug_preds, y)
+            preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+                                                              training=training,
+                                                              backup_running_statistics=backup_running_statistics,
+                                                              num_step=num_step, prepend_prompt=prepend_prompt)
+
+            loss = F.cross_entropy(input=preds, target=y)
+
+            preds_original = preds[:x.size(0) // 2]
+
+            return loss, preds_original
 
         else:
             raise ValueError(f"Unsupported augmentation type: {self.args.data_aug}")
 
-        loss = (loss + aug_loss) / 2
-
-        return loss, preds
 
     def net_forward_feature_extractor(self, x, y, weights, backup_running_statistics, training, num_step,
                                       training_phase, epoch, prompted_weights=None, prepend_prompt=True):
