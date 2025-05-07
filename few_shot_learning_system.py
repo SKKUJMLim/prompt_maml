@@ -432,13 +432,13 @@ class MAMLFewShotClassifier(nn.Module):
         if self.args.data_aug in ["mixup", "cutmix"]:
 
             if self.args.data_aug == "mixup":
-                aug_x, y_a, y_b, lam = mixup_data(x, y, alpha=0.4)
+                mixup_x, part_y_a, part_y_b, lam = mixup_data(x, y, alpha=0.4)
             elif self.args.data_aug == "cutmix":
-                aug_x, y_a, y_b, lam = cutmix_data(x, y)
+                mixup_x, part_y_a, part_y_b, lam = cutmix_data(x, y)
 
-            x = torch.cat([x, aug_x], dim=0)
-            y_a = torch.cat([y, y_a])
-            y_b = torch.cat([y, y_b])
+            x = torch.cat([x, mixup_x], dim=0)
+            y_a = torch.cat([y, part_y_a])
+            y_b = torch.cat([y, part_y_b])
 
             preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
                                                               training=training,
@@ -459,7 +459,7 @@ class MAMLFewShotClassifier(nn.Module):
                 aug_x = random_flip(x)
 
             x = torch.cat([x, aug_x], dim=0)
-            y = torch.cat([y, y], dim=0)
+            y = torch.cat([y, y])
 
             preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
                                                               training=training,
