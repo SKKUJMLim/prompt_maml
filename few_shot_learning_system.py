@@ -417,62 +417,47 @@ class MAMLFewShotClassifier(nn.Module):
         :return: the crossentropy losses with respect to the given y, the predictions of the base model.
         """
 
-        if num_step == self.args.number_of_evaluation_steps_per_iter-1:
-            # Query set은 data 증강을 하지 않는다
+        preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+                                                          training=training,
+                                                          backup_running_statistics=backup_running_statistics,
+                                                          num_step=num_step, prepend_prompt=prepend_prompt)
 
-            preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-                                                              training=training,
-                                                              backup_running_statistics=backup_running_statistics,
-                                                              num_step=num_step, prepend_prompt=prepend_prompt)
+        loss = F.cross_entropy(input=preds, target=y)
 
-            loss = F.cross_entropy(input=preds, target=y)
+        if self.args.data_aug in ["Mixup", "Cutmix"]:
+            if self.args.data_aug == "Mixup":
+                x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=10.0)
+            else:
+                x_aug, y_a, y_b, lam = cutmix_data(x, y, alpha=1.0)
 
-            return loss, preds
+            aug_preds, _ = self.classifier.forward(x=x_aug, params=weights, prompted_params=prompted_weights,
+                                                   training=training,
+                                                   backup_running_statistics=backup_running_statistics,
+                                                   num_step=num_step, prepend_prompt=prepend_prompt)
 
-        if self.args.data_aug in ["mixup", "cutmix"]:
-
-            if self.args.data_aug == "mixup":
-                mixup_x, part_y_a, part_y_b, lam = mixup_data(x, y, alpha=0.4)
-            elif self.args.data_aug == "cutmix":
-                mixup_x, part_y_a, part_y_b, lam = cutmix_data(x, y)
-
-            x = torch.cat([x, mixup_x], dim=0)
-            y_a = torch.cat([y, part_y_a])
-            y_b = torch.cat([y, part_y_b])
-
-            preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-                                                              training=training,
-                                                              backup_running_statistics=backup_running_statistics,
-                                                              num_step=num_step, prepend_prompt=prepend_prompt)
-
-            loss = lam * F.cross_entropy(input=preds, target=y_a) + (1 - lam) * F.cross_entropy(input=preds, target=y_b)
-
-            return loss, preds
+            aug_loss = lam * F.cross_entropy(aug_preds, y_a) + (1 - lam) * F.cross_entropy(aug_preds, y_b)
 
         elif self.args.data_aug in ["horizontal_flip", "vertical_flip", "random"]:
-
             if self.args.data_aug == "horizontal_flip":
-                aug_x = torch.flip(x, dims=[3])
+                x_aug = torch.flip(x, dims=[3])
             elif self.args.data_aug == "vertical_flip":
-                aug_x = torch.flip(x, dims=[2])
+                x_aug = torch.flip(x, dims=[2])
             else:
-                aug_x = random_flip(x)
+                x_aug = random_flip(x)
 
-            x = torch.cat([x, aug_x], dim=0)
-            y = torch.cat([y, y])
+            aug_preds, _ = self.classifier.forward(x=x_aug, params=weights, prompted_params=prompted_weights,
+                                                   training=training,
+                                                   backup_running_statistics=backup_running_statistics,
+                                                   num_step=num_step, prepend_prompt=prepend_prompt)
 
-            preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-                                                              training=training,
-                                                              backup_running_statistics=backup_running_statistics,
-                                                              num_step=num_step, prepend_prompt=prepend_prompt)
-
-            loss = F.cross_entropy(input=preds, target=y)
-
-            return loss, preds
+            aug_loss = F.cross_entropy(aug_preds, y)
 
         else:
-            raise ValueError(f"Unsupported augmentation type: {self.args.data_aug}")
+            aug_loss = loss
 
+        loss = (loss + aug_loss) / 2
+
+        return loss, preds
 
     def net_forward_feature_extractor(self, x, y, weights, backup_running_statistics, training, num_step,
                                       training_phase, epoch, prompted_weights=None, prepend_prompt=True):
