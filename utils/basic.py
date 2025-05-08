@@ -4,6 +4,87 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import itertools
+import random
+from torchvision.transforms import functional as TF
+
+
+
+class TensorAugMix:
+    def __init__(self, mean, std, k=3, alpha=1.0, depth=-1, device='cpu'):
+        """
+        Args:
+            mean, std: normalization values for un/normalize (list of 3 floats)
+            k: number of augmentation chains (width)
+            alpha: Dirichlet and Beta parameter
+            depth: depth of each chain (set -1 for random [1,3])
+        """
+        self.mean = torch.tensor(mean).view(3, 1, 1).to(device)
+        self.std = torch.tensor(std).view(3, 1, 1).to(device)
+        self.k = k
+        self.alpha = alpha
+        self.depth = depth
+        self.device = device
+        self.kl = nn.KLDivLoss(reduction='batchmean')
+
+    def unnormalize(self, x):
+        return x * self.std + self.mean
+
+    def renormalize(self, x):
+        return (x - self.mean) / self.std
+
+    def _augment(self, x):
+        """Apply a random sequence of augmentations to x (C, H, W)"""
+        ops = [self._hflip, self._vflip, self._grayscale, self._rotate, self._blur]
+        depth = self.depth if self.depth > 0 else random.randint(1, 3)
+        for _ in range(depth):
+            op = random.choice(ops)
+            x = op(x)
+        return x
+
+    # Augmentations (pure tensor-based)
+    def _hflip(self, x): return TF.hflip(x)
+    def _vflip(self, x): return TF.vflip(x)
+    def _grayscale(self, x): return TF.rgb_to_grayscale(x, num_output_channels=3)
+    def _rotate(self, x): return TF.rotate(x, angle=random.uniform(-30, 30))
+    def _blur(self, x): return TF.gaussian_blur(x, kernel_size=(3, 3), sigma=(0.1, 2.0))
+
+    def __call__(self, x_norm):
+        """
+        Args:
+            x_norm: (B, C, H, W) normalized input
+        Returns:
+            x_aug: AugMix-processed and normalized tensor (B, C, H, W)
+        """
+        B = x_norm.size(0)
+        x_aug_list = []
+
+        for i in range(B):
+            x = x_norm[i]
+            x = self.unnormalize(x)  # → [0,1] space
+
+            ws = torch.tensor(torch.distributions.Dirichlet(torch.ones(self.k) * self.alpha).sample(),
+                              device=x.device)
+            m = torch.distributions.Beta(self.alpha, self.alpha).sample().to(x.device)
+
+            mix = torch.zeros_like(x)
+            for j in range(self.k):
+                x_aug = x.clone()
+                x_aug = self._augment(x_aug)
+                mix += ws[j] * x_aug
+
+            x_final = (1 - m) * x + m * mix
+            x_aug_list.append(self.renormalize(x_final))
+
+        return torch.stack(x_aug_list)
+
+    def jensen_shannon(self, logits1, logits2, logits3):
+        p1 = F.softmax(logits1, dim=1)
+        p2 = F.softmax(logits2, dim=1)
+        p3 = F.softmax(logits3, dim=1)
+        M = torch.clamp((p1 + p2 + p3) / 3., 1e-7, 1.)
+        js = (self.kl(M.log(), p1) + self.kl(M.log(), p2) + self.kl(M.log(), p3)) / 3.
+        return js
+
 
 def rand_bbox(size, lam):
     """
