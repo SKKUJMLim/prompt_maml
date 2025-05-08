@@ -311,7 +311,10 @@ class MAMLFewShotClassifier(nn.Module):
             x_target_set_task = x_target_set_task.view(-1, c, h, w)
             y_target_set_task = y_target_set_task.view(-1)
 
+            print("inner-loop start")
             for num_step in range(num_steps):
+
+                print("num_step == ", num_step)
 
                 support_loss, support_preds = self.net_forward(x=x_support_set_task,
                                                                y=y_support_set_task,
@@ -322,7 +325,8 @@ class MAMLFewShotClassifier(nn.Module):
                                                                training=True,
                                                                num_step=num_step,
                                                                training_phase=training_phase,
-                                                               epoch=epoch)
+                                                               epoch=epoch,
+                                                               inner_loop=True)
 
                 names_weights_copy, prompted_weights_copy = self.apply_inner_loop_update(loss=support_loss,
                                                                                          names_weights_copy=names_weights_copy,
@@ -352,7 +356,8 @@ class MAMLFewShotClassifier(nn.Module):
                                                                      prompted_weights=prompted_weights_copy,
                                                                      backup_running_statistics=False, training=True,
                                                                      num_step=num_step, training_phase=training_phase,
-                                                                     epoch=epoch)
+                                                                     epoch=epoch,
+                                                                     inner_loop=False)
                         task_losses.append(target_loss)
 
             per_task_target_preds[task_id] = target_preds.detach().cpu().numpy()
@@ -401,7 +406,7 @@ class MAMLFewShotClassifier(nn.Module):
         return losses, per_task_target_preds
 
     def net_forward(self, x, y, weights, backup_running_statistics, training, num_step, training_phase, epoch,
-                    prompted_weights=None, prepend_prompt=True):
+                    prompted_weights=None, prepend_prompt=True, inner_loop=True):
         """
         A base model forward pass on some data points x. Using the parameters in the weights dictionary. Also requires
         boolean flags indicating whether to reset the running statistics at the end of the run (if at evaluation phase).
@@ -424,8 +429,11 @@ class MAMLFewShotClassifier(nn.Module):
 
         loss = F.cross_entropy(input=preds, target=y)
 
-        aug_loss = 0
+        if inner_loop is False:
+            return loss, preds
+
         if self.args.data_aug in ["mixup", "cutmix"]:
+
             if self.args.data_aug == "mixup":
                 x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=0.4)
             else:
@@ -435,7 +443,6 @@ class MAMLFewShotClassifier(nn.Module):
                                                    training=training,
                                                    backup_running_statistics=backup_running_statistics,
                                                    num_step=num_step, prepend_prompt=prepend_prompt)
-
             aug_loss = lam * F.cross_entropy(aug_preds, y_a) + (1 - lam) * F.cross_entropy(aug_preds, y_b)
 
         elif self.args.data_aug in ["horizontal_flip", "vertical_flip", "random"]:
@@ -451,7 +458,9 @@ class MAMLFewShotClassifier(nn.Module):
                                                    backup_running_statistics=backup_running_statistics,
                                                    num_step=num_step, prepend_prompt=prepend_prompt)
             aug_loss = F.cross_entropy(aug_preds, y)
+
         else:
+            aug_loss = loss
             raise ValueError(f"Unsupported augmentation type: {self.args.data_aug}")
 
         loss = (loss + aug_loss) / 2
