@@ -434,7 +434,7 @@ class MAMLFewShotClassifier(nn.Module):
             if self.args.data_aug == "mixup":
                 x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=0.4)
             else:
-                x_aug, y_a, y_b, lam = cutmix_data(x, y)
+                x_aug, y_a, y_b, lam = cutmix_data(x, y, alpha=1.0)
 
             aug_preds, _ = self.classifier.forward(x=x_aug, params=weights, prompted_params=prompted_weights,
                                                    training=training,
