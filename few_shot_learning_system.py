@@ -505,25 +505,25 @@ class MAMLFewShotClassifier(nn.Module):
             # js_loss = jensen_shannon(preds, aug_preds)
 
             # Feature JS divergence 계산 (layer-wise)
-            feature_js_list = []
-            for f1, f2 in zip(feature_map_list, aug_feature_map_list):
-
-                # 옵션 1: Flatten 후 softmax (전 feature를 하나의 분포로 간주)
-                f1 = f1.view(f1.size(0), -1)
-                f2 = f2.view(f2.size(0), -1)
-                js = jensen_shannon(f1, f2, dim=1)
-
-                # 옵션 2: dim=1로 softmax (채널별 분포를 비교)
-                # js = jensen_shannon(f1, f2, dim=1)  # 채널 차원 기준
-
-                # 옵션 3: dim=(2, 3)로 softmax (spatial-wise 분포 비교)
-                # js = jensen_shannon(f1, f2, dim=(2, 3))
-
-                feature_js_list.append(js)
-
-            feature_js_loss = torch.stack(feature_js_list).mean()
-
-            loss = (loss + aug_loss + feature_js_loss) / 3
+            # feature_js_list = []
+            # for f1, f2 in zip(feature_map_list, aug_feature_map_list):
+            #
+            #     # 옵션 1: Flatten 후 softmax (전 feature를 하나의 분포로 간주)
+            #     f1 = f1.view(f1.size(0), -1)
+            #     f2 = f2.view(f2.size(0), -1)
+            #     js = jensen_shannon(f1, f2, dim=1)
+            #
+            #     # 옵션 2: dim=1로 softmax (채널별 분포를 비교)
+            #     # js = jensen_shannon(f1, f2, dim=1)  # 채널 차원 기준
+            #
+            #     # 옵션 3: dim=(2, 3)로 softmax (spatial-wise 분포 비교)
+            #     # js = jensen_shannon(f1, f2, dim=(2, 3))
+            #
+            #     feature_js_list.append(js)
+            #
+            # feature_js_loss = torch.stack(feature_js_list).mean()
+            #
+            # loss = (loss + aug_loss + feature_js_loss) / 3
 
 
         # --------- No augmentation ---------
