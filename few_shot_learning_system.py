@@ -11,7 +11,7 @@ from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDesce
 # from inner_loop_optimizers_weightdecay import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 
 from utils.storage import save_statistics
-from utils.basic import mixup_data, cutmix_data, random_flip, TensorAugMix, jensen_shannon
+from data_augmentation import mixup_data, cutmix_data, random_flip, TensorAugMix
 
 
 def set_torch_seed(seed):
