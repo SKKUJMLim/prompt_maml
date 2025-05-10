@@ -429,23 +429,25 @@ class MAMLFewShotClassifier(nn.Module):
 
         # --------- Mixup / Cutmix ---------
         if self.args.data_aug in ["mixup", "cutmix"]:
+
+            preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+                                                              training=training,
+                                                              backup_running_statistics=backup_running_statistics,
+                                                              num_step=num_step, prepend_prompt=prepend_prompt)
+            loss = F.cross_entropy(preds, y)
+
             if self.args.data_aug == "cutmix":
-                mixup_x, y_a, y_b, lam = cutmix_data(x, y, alpha=1.0)
+                x_aug, y_a, y_b, lam = cutmix_data(x, y, alpha=0.4)
             else:
-                mixup_x, y_a, y_b, lam = mixup_data(x, y, alpha=1.0)
+                x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=1.0)
 
-            x_all = torch.cat([x, mixup_x], dim=0)
-            y_a_all = torch.cat([y, y_a])
-            y_b_all = torch.cat([y, y_b])
+            aug_preds, _ = self.classifier.forward(x=x_aug, params=weights, prompted_params=prompted_weights,
+                                                   training=training,
+                                                   backup_running_statistics=backup_running_statistics,
+                                                   num_step=num_step, prepend_prompt=prepend_prompt)
+            aug_loss = lam * F.cross_entropy(aug_preds, y_a) + (1 - lam) * F.cross_entropy(aug_preds, y_b)
 
-            preds_all, feature_map_list = self.classifier.forward(
-                x=x_all, params=weights, prompted_params=prompted_weights,
-                training=training, backup_running_statistics=backup_running_statistics,
-                num_step=num_step, prepend_prompt=prepend_prompt
-            )
-
-            loss = lam * F.cross_entropy(preds_all, y_a_all) + (1 - lam) * F.cross_entropy(preds_all, y_b_all)
-            preds = preds_all[:x.size(0)]  # 원본 x의 예측 반환
+            loss = (loss + aug_loss) / 2
 
         # --------- AugMix (JSD Loss) ---------
         elif self.args.data_aug == "augmix":
@@ -503,28 +505,6 @@ class MAMLFewShotClassifier(nn.Module):
 
             ## pred js
             # js_loss = jensen_shannon(preds, aug_preds)
-
-            # Feature JS divergence 계산 (layer-wise)
-            # feature_js_list = []
-            # for f1, f2 in zip(feature_map_list, aug_feature_map_list):
-            #
-            #     # 옵션 1: Flatten 후 softmax (전 feature를 하나의 분포로 간주)
-            #     f1 = f1.view(f1.size(0), -1)
-            #     f2 = f2.view(f2.size(0), -1)
-            #     js = jensen_shannon(f1, f2, dim=1)
-            #
-            #     # 옵션 2: dim=1로 softmax (채널별 분포를 비교)
-            #     # js = jensen_shannon(f1, f2, dim=1)  # 채널 차원 기준
-            #
-            #     # 옵션 3: dim=(2, 3)로 softmax (spatial-wise 분포 비교)
-            #     # js = jensen_shannon(f1, f2, dim=(2, 3))
-            #
-            #     feature_js_list.append(js)
-            #
-            # feature_js_loss = torch.stack(feature_js_list).mean()
-            #
-            # loss = (loss + aug_loss + feature_js_loss) / 3
-
 
         # --------- No augmentation ---------
         else:
