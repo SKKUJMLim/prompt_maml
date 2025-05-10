@@ -191,12 +191,12 @@ def logit_based_kd_loss(student_logits, teacher_logits, temperature=3.0):
     return kd_loss
 
 
-def jensen_shannon(logits1, logits2):
+def jensen_shannon(logits1, logits2, dim=1):
 
     kl = nn.KLDivLoss(reduction='batchmean')
 
-    p1 = F.softmax(logits1, dim=1)
-    p2 = F.softmax(logits2, dim=1)
+    p1 = F.softmax(logits1, dim)
+    p2 = F.softmax(logits2, dim)
     M = torch.clamp((p1 + p2) / 2., 1e-7, 1.)
 
     js = (kl(M.log(), p1) + kl(M.log(), p2)) / 2.
