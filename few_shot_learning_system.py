@@ -10,7 +10,7 @@ from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 
 from utils.storage import save_statistics
-from utils.basic import mixup_data, cutmix_data, random_flip, TensorAugMix
+from utils.basic import mixup_data, cutmix_data, random_flip, TensorAugMix, jensen_shannon
 
 
 def set_torch_seed(seed):
@@ -500,6 +500,9 @@ class MAMLFewShotClassifier(nn.Module):
                                                    num_step=num_step, prepend_prompt=prepend_prompt)
             aug_loss = F.cross_entropy(aug_preds, y)
             loss = (loss + aug_loss) / 2
+
+            # js_loss = jensen_shannon(preds, aug_preds)
+            # loss = (loss + aug_loss + js_loss) / 3
 
         # --------- No augmentation ---------
         else:

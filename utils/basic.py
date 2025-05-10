@@ -191,6 +191,20 @@ def logit_based_kd_loss(student_logits, teacher_logits, temperature=3.0):
     return kd_loss
 
 
+def jensen_shannon(logits1, logits2):
+
+    kl = nn.KLDivLoss(reduction='batchmean')
+
+    p1 = F.softmax(logits1, dim=1)
+    p2 = F.softmax(logits2, dim=1)
+    M = torch.clamp((p1 + p2) / 2., 1e-7, 1.)
+
+    js = (kl(M.log(), p1) + kl(M.log(), p2)) / 2.
+    #js = (kl(p1.log(), M) + kl(p2.log(), M)) / 2.
+
+    return js
+
+
 def kl_divergence(feat1, feat2):
 
     p = F.softmax(feat1, dim=1)  # channel-dimension에서 softmax 적용
