@@ -7,8 +7,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
-from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
-# from inner_loop_optimizers_weightdecay import GradientDescentLearningRule, LSLRGradientDescentLearningRule
+# from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
+from inner_loop_optimizers_weightdecay import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 
 from utils.storage import save_statistics
 from data_augmentation import mixup_data, cutmix_data, random_flip, TensorAugMix
@@ -438,7 +438,7 @@ class MAMLFewShotClassifier(nn.Module):
             loss = F.cross_entropy(preds, y)
 
             if self.args.data_aug == "cutmix":
-                x_aug, y_a, y_b, lam = cutmix_data(x, y, alpha=0.4)
+                x_aug, y_a, y_b, lam = cutmix_data(x, y, alpha=1.0)
             else:
                 x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=1.0)
 
