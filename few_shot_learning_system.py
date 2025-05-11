@@ -515,6 +515,21 @@ class MAMLFewShotClassifier(nn.Module):
                                                               num_step=num_step, prepend_prompt=prepend_prompt)
             loss = F.cross_entropy(preds, y)
 
+
+        '''
+        ## if semi-suervised learning
+        query_preds, feature_map_list = self.classifier.forward(x=x_t, params=weights, prompted_params=prompted_weights,
+                                                              training=training,
+                                                              backup_running_statistics=backup_running_statistics,
+                                                              num_step=num_step, prepend_prompt=prepend_prompt)
+        
+        # 1. softmax로 확률값으로 변환                                 
+        probs = F.softmax(query_preds, dim=1)  # shape: [B, C]                                                              
+        # 2. entropy 계산: -sum(p * log(p)) across class dimension
+        entropy = -torch.sum(probs * torch.log(probs + 1e-12), dim=1)  # shape: [B]
+                                       
+        '''
+
         return loss, preds
 
     def net_forward_feature_extractor(self, x, y, weights, backup_running_statistics, training, num_step,
