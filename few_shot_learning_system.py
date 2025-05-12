@@ -440,13 +440,28 @@ class MAMLFewShotClassifier(nn.Module):
             if self.args.data_aug == "cutmix":
                 x_aug, y_a, y_b, lam = cutmix_data(x, y, alpha=1.0)
             else:
-                x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=1.0)
+                x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=0.4)
 
             aug_preds, _ = self.classifier.forward(x=x_aug, params=weights, prompted_params=prompted_weights,
                                                    training=training,
                                                    backup_running_statistics=backup_running_statistics,
                                                    num_step=num_step, prepend_prompt=prepend_prompt)
-            aug_loss = lam * F.cross_entropy(aug_preds, y_a) + (1 - lam) * F.cross_entropy(aug_preds, y_b)
+
+            if self.args.entropy_loss_weight:
+                aug_loss = lam * F.cross_entropy(aug_preds, y_a) + (1 - lam) * F.cross_entropy(aug_preds, y_b)
+                # Entropy 기반 confidence weight 계산
+                # with torch.no_grad():
+                #     probs = F.softmax(aug_preds, dim=1)  # [B, C]
+                #     entropy = -torch.sum(probs * torch.log(probs + 1e-12), dim=1)  # [B]
+                #     entropy_norm = entropy / np.log(probs.size(1))  # 정규화된 entropy (0~1)
+                #     weights = 1.0 - entropy_norm  # confident할수록 weight ↑
+                #
+                # # sample별 CrossEntropy loss
+                # loss_a = F.cross_entropy(aug_preds, y_a, reduction='none')  # [B]
+                # loss_b = F.cross_entropy(aug_preds, y_b, reduction='none')  # [B]
+                # aug_loss = (weights * (lam * loss_a + (1 - lam) * loss_b)).mean()
+            else:
+                aug_loss = lam * F.cross_entropy(aug_preds, y_a) + (1 - lam) * F.cross_entropy(aug_preds, y_b)
 
             loss = (loss + aug_loss) / 2
 
@@ -501,6 +516,12 @@ class MAMLFewShotClassifier(nn.Module):
                                                    training=training,
                                                    backup_running_statistics=backup_running_statistics,
                                                    num_step=num_step, prepend_prompt=prepend_prompt)
+
+            # entropy = -torch.sum(F.softmax(aug_preds, dim=1) * F.log_softmax(aug_preds, dim=1), dim=1)  # shape: [B]
+            # entropy_norm = entropy / np.log(aug_preds.size(1))  # normalize between 0 and 1
+            # confidence_weight = 1.0 - entropy_norm  # high confidence → high weight
+            # aug_loss = (confidence_weight * F.cross_entropy(aug_preds, y, reduction='none')).mean()
+
             aug_loss = F.cross_entropy(aug_preds, y)
             loss = (loss + aug_loss) / 2
 
