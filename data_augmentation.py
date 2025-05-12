@@ -52,6 +52,7 @@ def uniform_noise(x, range_val=0.1):
     noise = torch.empty_like(x).uniform_(-range_val, range_val)
     x_aug = x + noise
     return torch.clamp(x_aug, 0, 1)
+
 def rand_bbox(size, lam):
     """
     랜덤 박스 좌표를 생성 (size: (B, C, H, W), lam: lambda)
