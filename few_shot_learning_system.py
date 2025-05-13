@@ -431,29 +431,27 @@ class MAMLFewShotClassifier(nn.Module):
         # --------- Mixup / Cutmix ---------
         if self.args.data_aug in ["mixup", "cutmix"]:
 
-            # preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-            #                                                   training=training,
-            #                                                   backup_running_statistics=backup_running_statistics,
-            #                                                   num_step=num_step, prepend_prompt=prepend_prompt)
-            # loss = F.cross_entropy(preds, y)
-
-            # loss = (loss + aug_loss) / 2
+            preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+                                                              training=training,
+                                                              backup_running_statistics=backup_running_statistics,
+                                                              num_step=num_step, prepend_prompt=prepend_prompt)
+            loss_clean  = F.cross_entropy(preds, y)
 
             if self.args.data_aug == "cutmix":
                 x_aug, y_a, y_b, lam = cutmix_data(x, y, alpha=1.0)
             else:
                 x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=1.0)
 
-            x = torch.cat([x, x_aug], dim=0)
-            y_a = torch.cat([y, y_a])
-            y_b = torch.cat([y, y_b])
-
-            preds, _ = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+            preds_aug, _ = self.classifier.forward(x=x_aug, params=weights, prompted_params=prompted_weights,
                                                    training=training,
                                                    backup_running_statistics=backup_running_statistics,
                                                    num_step=num_step, prepend_prompt=prepend_prompt)
 
-            loss = lam * F.cross_entropy(preds, y_a) + (1 - lam) * F.cross_entropy(preds, y_b)
+            loss_aug  = lam * F.cross_entropy(preds_aug, y_a) + (1 - lam) * F.cross_entropy(preds_aug, y_b)
+
+            loss = (loss_clean  + loss_aug ) / 2
+
+            # loss = (1 - gamma) * loss_clean + gamma * loss_aug
 
 
         # --------- AugMix (JSD Loss) ---------
