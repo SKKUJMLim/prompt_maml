@@ -431,39 +431,30 @@ class MAMLFewShotClassifier(nn.Module):
         # --------- Mixup / Cutmix ---------
         if self.args.data_aug in ["mixup", "cutmix"]:
 
-            preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-                                                              training=training,
-                                                              backup_running_statistics=backup_running_statistics,
-                                                              num_step=num_step, prepend_prompt=prepend_prompt)
-            loss = F.cross_entropy(preds, y)
+            # preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+            #                                                   training=training,
+            #                                                   backup_running_statistics=backup_running_statistics,
+            #                                                   num_step=num_step, prepend_prompt=prepend_prompt)
+            # loss = F.cross_entropy(preds, y)
+
+            # loss = (loss + aug_loss) / 2
 
             if self.args.data_aug == "cutmix":
                 x_aug, y_a, y_b, lam = cutmix_data(x, y, alpha=1.0)
             else:
-                x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=0.4)
+                x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=1.0)
 
-            aug_preds, _ = self.classifier.forward(x=x_aug, params=weights, prompted_params=prompted_weights,
+            x = torch.cat([x, x_aug], dim=0)
+            y_a = torch.cat([y, y_a])
+            y_b = torch.cat([y, y_b])
+
+            preds, _ = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
                                                    training=training,
                                                    backup_running_statistics=backup_running_statistics,
                                                    num_step=num_step, prepend_prompt=prepend_prompt)
 
-            if self.args.entropy_loss_weight:
-                aug_loss = lam * F.cross_entropy(aug_preds, y_a) + (1 - lam) * F.cross_entropy(aug_preds, y_b)
-                # Entropy 기반 confidence weight 계산
-                # with torch.no_grad():
-                #     probs = F.softmax(aug_preds, dim=1)  # [B, C]
-                #     entropy = -torch.sum(probs * torch.log(probs + 1e-12), dim=1)  # [B]
-                #     entropy_norm = entropy / np.log(probs.size(1))  # 정규화된 entropy (0~1)
-                #     weights = 1.0 - entropy_norm  # confident할수록 weight ↑
-                #
-                # # sample별 CrossEntropy loss
-                # loss_a = F.cross_entropy(aug_preds, y_a, reduction='none')  # [B]
-                # loss_b = F.cross_entropy(aug_preds, y_b, reduction='none')  # [B]
-                # aug_loss = (weights * (lam * loss_a + (1 - lam) * loss_b)).mean()
-            else:
-                aug_loss = lam * F.cross_entropy(aug_preds, y_a) + (1 - lam) * F.cross_entropy(aug_preds, y_b)
+            loss = lam * F.cross_entropy(preds, y_a) + (1 - lam) * F.cross_entropy(preds, y_b)
 
-            loss = (loss + aug_loss) / 2
 
         # --------- AugMix (JSD Loss) ---------
         elif self.args.data_aug == "augmix":
@@ -517,11 +508,6 @@ class MAMLFewShotClassifier(nn.Module):
                                                    backup_running_statistics=backup_running_statistics,
                                                    num_step=num_step, prepend_prompt=prepend_prompt)
 
-            # entropy = -torch.sum(F.softmax(aug_preds, dim=1) * F.log_softmax(aug_preds, dim=1), dim=1)  # shape: [B]
-            # entropy_norm = entropy / np.log(aug_preds.size(1))  # normalize between 0 and 1
-            # confidence_weight = 1.0 - entropy_norm  # high confidence → high weight
-            # aug_loss = (confidence_weight * F.cross_entropy(aug_preds, y, reduction='none')).mean()
-
             aug_loss = F.cross_entropy(aug_preds, y)
             loss = (loss + aug_loss) / 2
 
@@ -535,21 +521,6 @@ class MAMLFewShotClassifier(nn.Module):
                                                               backup_running_statistics=backup_running_statistics,
                                                               num_step=num_step, prepend_prompt=prepend_prompt)
             loss = F.cross_entropy(preds, y)
-
-
-        '''
-        ## if semi-suervised learning
-        query_preds, feature_map_list = self.classifier.forward(x=x_t, params=weights, prompted_params=prompted_weights,
-                                                              training=training,
-                                                              backup_running_statistics=backup_running_statistics,
-                                                              num_step=num_step, prepend_prompt=prepend_prompt)
-        
-        # 1. softmax로 확률값으로 변환                                 
-        probs = F.softmax(query_preds, dim=1)  # shape: [B, C]                                                              
-        # 2. entropy 계산: -sum(p * log(p)) across class dimension
-        entropy = -torch.sum(probs * torch.log(probs + 1e-12), dim=1)  # shape: [B]
-                                       
-        '''
 
         return loss, preds
 
