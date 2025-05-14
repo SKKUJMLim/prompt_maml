@@ -452,10 +452,8 @@ class MAMLFewShotClassifier(nn.Module):
             loss_aug  = lam * F.cross_entropy(preds_aug, y_a) + (1 - lam) * F.cross_entropy(preds_aug, y_b)
 
             # 최종 loss: clean + weighted augmented
-            loss = loss_clean + loss_aug
-
-            # gamma = 0.5  # 또는 하이퍼파라미터로 설정
-            # loss = (1 - gamma) * loss_clean + gamma * loss_aug
+            gamma = 0.5  # 또는 하이퍼파라미터로 설정
+            loss = (1 - gamma) * loss_clean + gamma * loss_aug
 
 
         # --------- AugMix (JSD Loss) ---------
