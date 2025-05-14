@@ -11,7 +11,7 @@ from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 from inner_loop_optimizers_weightdecay import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 
 from utils.storage import save_statistics
-from data_augmentation import mixup_data, cutmix_data, random_flip, TensorAugMix
+from data_augmentation import mixup_data, cutmix_data, class_aware_mixup_data, random_flip, TensorAugMix
 
 
 def set_torch_seed(seed):
@@ -439,8 +439,10 @@ class MAMLFewShotClassifier(nn.Module):
 
             if self.args.data_aug == "cutmix":
                 x_aug, y_a, y_b, lam = cutmix_data(x, y, alpha=1.0)
+            elif self.args.data_aug == "class_aware_mixup":
+                x_aug, y_a, y_b, lam = class_aware_mixup_data(x, y, alpha=10.0)
             else:
-                x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=1.0)
+                x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=10.0)
 
             preds_aug, _ = self.classifier.forward(x=x_aug, params=weights, prompted_params=prompted_weights,
                                                    training=training,
@@ -449,8 +451,10 @@ class MAMLFewShotClassifier(nn.Module):
 
             loss_aug  = lam * F.cross_entropy(preds_aug, y_a) + (1 - lam) * F.cross_entropy(preds_aug, y_b)
 
-            loss = (loss_clean  + loss_aug ) / 2
+            # 최종 loss: clean + weighted augmented
+            loss = loss_clean + loss_aug
 
+            # gamma = 0.5  # 또는 하이퍼파라미터로 설정
             # loss = (1 - gamma) * loss_clean + gamma * loss_aug
 
 
@@ -492,7 +496,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                               training=training,
                                                               backup_running_statistics=backup_running_statistics,
                                                               num_step=num_step, prepend_prompt=prepend_prompt)
-            loss = F.cross_entropy(preds, y)
+            loss_clean = F.cross_entropy(preds, y)
 
             if self.args.data_aug == "horizontal_flip":
                 x_aug = torch.flip(x, dims=[3])
@@ -506,11 +510,11 @@ class MAMLFewShotClassifier(nn.Module):
                                                    backup_running_statistics=backup_running_statistics,
                                                    num_step=num_step, prepend_prompt=prepend_prompt)
 
-            aug_loss = F.cross_entropy(aug_preds, y)
-            loss = (loss + aug_loss) / 2
+            loss_aug = F.cross_entropy(aug_preds, y)
 
-            ## pred js
-            # js_loss = jensen_shannon(preds, aug_preds)
+            # 최종 loss: clean + weighted augmented
+            gamma = 0.5
+            loss = (1 - gamma) * loss_clean + gamma * loss_aug
 
         # --------- No augmentation ---------
         else:
@@ -521,39 +525,6 @@ class MAMLFewShotClassifier(nn.Module):
             loss = F.cross_entropy(preds, y)
 
         return loss, preds
-
-    def net_forward_feature_extractor(self, x, y, weights, backup_running_statistics, training, num_step,
-                                      training_phase, epoch, prompted_weights=None, prepend_prompt=True):
-        """
-        A base model forward pass on some data points x. Using the parameters in the weights dictionary. Also requires
-        boolean flags indicating whether to reset the running statistics at the end of the run (if at evaluation phase).
-        A flag indicating whether this is the training session and an int indicating the current step's number in the
-        inner loop.
-        :param x: A data batch of shape b, c, h, w
-        :param y: A data targets batch of shape b, n_classes
-        :param weights: A dictionary containing the weights to pass to the network.
-        :param backup_running_statistics: A flag indicating whether to reset the batch norm running statistics to their
-         previous values after the run (only for evaluation)
-        :param training: A flag indicating whether the current process phase is a training or evaluation.
-        :param num_step: An integer indicating the number of the step in the inner loop.
-        :return: the crossentropy losses with respect to the given y, the predictions of the base model.
-        """
-
-        preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-                                                          training=training,
-                                                          backup_running_statistics=backup_running_statistics,
-                                                          num_step=num_step, prepend_prompt=prepend_prompt)
-
-        loss = F.cross_entropy(input=preds, target=y)
-
-        # embeddings = feature_map_list[3] # shape: (batch_size, channel, height, weight) # ex: (B=25, C=64, H=5, W=5)
-        # # embeddings = embeddings.mean(dim=[2, 3])  # shape: (batch_size, 64)
-        # flatten_embedding = embeddings.view(embeddings.size(0), -1)  # shape: (batch_size, 1600)
-        #
-        # contrastive_loss = soft_nearest_neighbors_loss_cos_similarity(features=flatten_embedding, labels=y, temperature=0.1)
-        # loss = loss + contrastive_loss
-
-        return loss, preds, feature_map_list
 
     # def trainable_prompt_parameters(self):
     #     """
