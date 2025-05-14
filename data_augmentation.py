@@ -95,6 +95,22 @@ def cutmix_data(x, y, alpha=1.0):
 
     return x_cutmix, y_a, y_b, lam
 
+
+def class_aware_mixup_data(x, y, alpha=0.4):
+    lam = np.random.beta(alpha, alpha)
+    batch_size = x.size(0)
+    index = torch.randperm(batch_size).to(x.device)
+
+    # 다른 클래스가 될 때까지 반복 (단순하지만 느림)
+    for i in range(batch_size):
+        while y[i] == y[index[i]]:
+            index[i] = torch.randint(0, batch_size, (1,), device=x.device)
+
+    mixed_x = lam * x + (1 - lam) * x[index]
+    y_a, y_b = y, y[index]
+    return mixed_x, y_a, y_b, lam
+
+
 def mixup_data(x, y, alpha=0.4):
     """
     이미지를 MixUp하고, 섞인 label 쌍과 lambda 반환
