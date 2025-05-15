@@ -508,7 +508,8 @@ class MAMLFewShotClassifier(nn.Module):
                                                    backup_running_statistics=backup_running_statistics,
                                                    num_step=num_step, prepend_prompt=prepend_prompt)
 
-            loss_aug = F.cross_entropy(aug_preds, y)
+            # loss_aug = F.cross_entropy(aug_preds, y)
+            loss_aug = lam * F.cross_entropy(aug_preds, y_a) + (1 - lam) * F.cross_entropy(aug_preds, y_b)
 
             # 최종 loss: clean + weighted augmented
             gamma = 0.5
