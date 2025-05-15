@@ -439,10 +439,8 @@ class MAMLFewShotClassifier(nn.Module):
 
             if self.args.data_aug == "cutmix":
                 x_aug, y_a, y_b, lam = cutmix_data(x, y, alpha=1.0)
-            elif self.args.data_aug == "class_aware_mixup":
-                x_aug, y_a, y_b, lam = class_aware_mixup_data(x, y, alpha=10.0)
             else:
-                x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=10.0)
+                x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=1.0)
 
             preds_aug, _ = self.classifier.forward(x=x_aug, params=weights, prompted_params=prompted_weights,
                                                    training=training,
@@ -502,6 +500,8 @@ class MAMLFewShotClassifier(nn.Module):
                 x_aug = torch.flip(x, dims=[2])
             else:
                 x_aug = random_flip(x)
+
+            x_aug, y_a, y_b, lam = mixup_data(x_aug, y, alpha=10.0)
 
             aug_preds, aug_feature_map_list = self.classifier.forward(x=x_aug, params=weights, prompted_params=prompted_weights,
                                                    training=training,
