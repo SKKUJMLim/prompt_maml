@@ -11,7 +11,7 @@ from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 from inner_loop_optimizers_weightdecay import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 
 from utils.storage import save_statistics
-from data_augmentation import mixup_data, cutmix_data, class_aware_mixup_data, random_flip, TensorAugMix
+from data_augmentation import mixup_data, cutmix_data, random_flip, random_flip_like_torchvision
 
 
 def set_torch_seed(seed):
@@ -348,6 +348,10 @@ class MAMLFewShotClassifier(nn.Module):
 
                 else:
                     if num_step == (self.args.number_of_training_steps_per_iter - 1):
+
+                        if training_phase is True and self.args.data_aug is not None:
+                            x_target_set_task = random_flip_like_torchvision(x_target_set_task)
+
                         target_loss, target_preds = self.net_forward(x=x_target_set_task,
                                                                      y=y_target_set_task,
                                                                      weights=names_weights_copy,
@@ -428,92 +432,28 @@ class MAMLFewShotClassifier(nn.Module):
             loss = F.cross_entropy(input=preds, target=y)
             return loss, preds
 
-        # --------- Mixup / Cutmix ---------
-        if self.args.data_aug in ["mixup", "cutmix"]:
 
-            preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-                                                              training=training,
-                                                              backup_running_statistics=backup_running_statistics,
-                                                              num_step=num_step, prepend_prompt=prepend_prompt)
-            loss_clean  = F.cross_entropy(preds, y)
-
-            if self.args.data_aug == "cutmix":
-                x_aug, y_a, y_b, lam = cutmix_data(x, y, alpha=1.0)
-            else:
-                x_aug, y_a, y_b, lam = mixup_data(x, y, alpha=1.0)
-
-            preds_aug, _ = self.classifier.forward(x=x_aug, params=weights, prompted_params=prompted_weights,
-                                                   training=training,
-                                                   backup_running_statistics=backup_running_statistics,
-                                                   num_step=num_step, prepend_prompt=prepend_prompt)
-
-            loss_aug  = lam * F.cross_entropy(preds_aug, y_a) + (1 - lam) * F.cross_entropy(preds_aug, y_b)
-
-            # 최종 loss: clean + weighted augmented
-            gamma = 0.5  # 또는 하이퍼파라미터로 설정
-            loss = (1 - gamma) * loss_clean + gamma * loss_aug
-
-
-        # --------- AugMix (JSD Loss) ---------
-        elif self.args.data_aug == "augmix":
-            if self.args.dataset_name == "mini_imagenet_full_size":
-                mean = [0.485, 0.456, 0.406]
-                std = [0.229, 0.224, 0.225]
-            else:
-                mean = [0.4914, 0.4822, 0.4465]
-                std = [0.2023, 0.1994, 0.2010]
-
-            augmix = TensorAugMix(mean, std, device=x.device)
-            x_aug1 = augmix(x)
-            x_aug2 = augmix(x)
-
-            preds_clean, _ = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-                                                     training=training,
-                                                     backup_running_statistics=backup_running_statistics,
-                                                     num_step=num_step, prepend_prompt=prepend_prompt)
-            preds_aug1, _ = self.classifier.forward(x=x_aug1, params=weights, prompted_params=prompted_weights,
-                                                    training=training,
-                                                    backup_running_statistics=backup_running_statistics,
-                                                    num_step=num_step, prepend_prompt=prepend_prompt)
-            preds_aug2, _ = self.classifier.forward(x=x_aug2, params=weights, prompted_params=prompted_weights,
-                                                    training=training,
-                                                    backup_running_statistics=backup_running_statistics,
-                                                    num_step=num_step, prepend_prompt=prepend_prompt)
-
-            ce_loss = F.cross_entropy(preds_clean, y)
-            js_loss = augmix.jensen_shannon(preds_clean, preds_aug1, preds_aug2)
-            # augmix_jsd_weight = 1.0
-            loss = (ce_loss + js_loss) / 2
-            preds = preds_clean
-
-        # --------- Flip / Random ---------
-        elif self.args.data_aug in ["horizontal_flip", "vertical_flip", "random"]:
+        if self.args.data_aug == "mixup":
             preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
                                                               training=training,
                                                               backup_running_statistics=backup_running_statistics,
                                                               num_step=num_step, prepend_prompt=prepend_prompt)
             loss_clean = F.cross_entropy(preds, y)
 
-            if self.args.data_aug == "horizontal_flip":
-                x_aug = torch.flip(x, dims=[3])
-            elif self.args.data_aug == "vertical_flip":
-                x_aug = torch.flip(x, dims=[2])
-            else:
-                x_aug = random_flip(x)
+            x_aug= random_flip_like_torchvision(x)
+            x_mix, y_a, y_b, lam = mixup_data(x_aug, y, alpha=10.0)
 
-            x_aug, y_a, y_b, lam = mixup_data(x_aug, y, alpha=10.0)
-
-            aug_preds, aug_feature_map_list = self.classifier.forward(x=x_aug, params=weights, prompted_params=prompted_weights,
+            preds_mix, aug_feature_map_list = self.classifier.forward(x=x_mix, params=weights, prompted_params=prompted_weights,
                                                    training=training,
                                                    backup_running_statistics=backup_running_statistics,
                                                    num_step=num_step, prepend_prompt=prepend_prompt)
 
             # loss_aug = F.cross_entropy(aug_preds, y)
-            loss_aug = lam * F.cross_entropy(aug_preds, y_a) + (1 - lam) * F.cross_entropy(aug_preds, y_b)
+            loss_mix = lam * F.cross_entropy(preds_mix, y_a) + (1 - lam) * F.cross_entropy(preds_mix, y_b)
 
             # 최종 loss: clean + weighted augmented
             gamma = 0.5
-            loss = (1 - gamma) * loss_clean + gamma * loss_aug
+            loss = (1 - gamma) * loss_clean + gamma * loss_mix
 
         # --------- No augmentation ---------
         else:
