@@ -440,7 +440,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                               num_step=num_step, prepend_prompt=prepend_prompt)
             loss_clean = F.cross_entropy(preds, y)
 
-            x_aug= random_flip_like_torchvision(x)
+            x_aug = random_flip_like_torchvision(x)
             x_mix, y_a, y_b, lam = mixup_data(x_aug, y, alpha=5.0)
 
             preds_mix, aug_feature_map_list = self.classifier.forward(x=x_mix, params=weights, prompted_params=prompted_weights,
