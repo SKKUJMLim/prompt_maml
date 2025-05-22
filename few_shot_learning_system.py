@@ -350,7 +350,8 @@ class MAMLFewShotClassifier(nn.Module):
                     if num_step == (self.args.number_of_training_steps_per_iter - 1):
 
                         if training_phase is True and self.args.data_aug is not None:
-                            x_target_set_task = random_flip_like_torchvision(x_target_set_task)
+                            pass
+                            # x_target_set_task = random_flip_like_torchvision(x_target_set_task)
 
                         target_loss, target_preds = self.net_forward(x=x_target_set_task,
                                                                      y=y_target_set_task,
@@ -441,7 +442,7 @@ class MAMLFewShotClassifier(nn.Module):
             loss_clean = F.cross_entropy(preds, y)
 
             x_aug= random_flip_like_torchvision(x)
-            x_mix, y_a, y_b, lam = mixup_data(x_aug, y, alpha=10.0)
+            x_mix, y_a, y_b, lam = mixup_data(x_aug, y, alpha=5.0)
 
             preds_mix, aug_feature_map_list = self.classifier.forward(x=x_mix, params=weights, prompted_params=prompted_weights,
                                                    training=training,
