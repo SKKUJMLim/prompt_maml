@@ -350,8 +350,7 @@ class MAMLFewShotClassifier(nn.Module):
                     if num_step == (self.args.number_of_training_steps_per_iter - 1):
 
                         if training_phase is True and self.args.data_aug is not None:
-                            pass
-                            # x_target_set_task = random_flip_like_torchvision(x_target_set_task)
+                            x_target_set_task = random_flip_like_torchvision(x_target_set_task)
 
                         target_loss, target_preds = self.net_forward(x=x_target_set_task,
                                                                      y=y_target_set_task,
