@@ -1,136 +1,70 @@
 import torch.nn as nn
-import matplotlib.pyplot as plt
-import numpy as np
 import torch
 import torch.nn.functional as F
 import itertools
-from sklearn.manifold import TSNE
-import matplotlib.pyplot as plt
-import numpy as np
-import matplotlib.cm as cm
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.manifold import TSNE
-import matplotlib.cm as cm
-
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 import matplotlib.cm as cm
 import os
 
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.manifold import TSNE
-import matplotlib.cm as cm
-import os
-
-def plot_tsne_support_query_before_after(
-    support_before, query_before,
-    support_after, query_after,
-    y_support, y_query,
+def plot_query_before_after_2d_fixed_axes(
+    query_before, query_after, y_query,
     save_dir="./tsne_images",
     task_index=0,
-    title_prefix="t-SNE Support+Query"
+    title_prefix="Query Feature Map",
+    marker_size=80
 ):
     os.makedirs(save_dir, exist_ok=True)
-
-    # ----- t-SNE BEFORE -----
-    all_feats_before = np.concatenate([support_before, query_before], axis=0)
-    tsne_before = TSNE(n_components=2, perplexity=30, random_state=0).fit_transform(all_feats_before)
-
-    # ----- t-SNE AFTER -----
-    all_feats_after = np.concatenate([support_after, query_after], axis=0)
-    tsne_after = TSNE(n_components=2, perplexity=30, random_state=0).fit_transform(all_feats_after)
-
-    n_supp = len(support_before)
-    n_query = len(query_before)
-    unique_classes = np.unique(np.concatenate([y_support, y_query]))
-    colors = cm.get_cmap('tab10', len(unique_classes))
-
-    # ----- Plot BEFORE -----
-    plt.figure(figsize=(8, 6))
-    for i, cls in enumerate(unique_classes):
-        color = colors(i)
-        supp_idx = np.where(y_support == cls)[0]
-        query_idx = np.where(y_query == cls)[0]
-
-        plt.scatter(tsne_before[supp_idx, 0], tsne_before[supp_idx, 1],
-                    marker='o', color=color, alpha=0.6, label=f'Class {cls} (support-before)')
-        plt.scatter(tsne_before[n_supp + query_idx, 0], tsne_before[n_supp + query_idx, 1],
-                    marker='x', color=color, alpha=0.9, label=f'Class {cls} (query-before)')
-
-    plt.title(f"{title_prefix} - Before Adaptation")
-    plt.grid(True)
-    plt.tight_layout()
-    plt.legend()
-    plt.savefig(os.path.join(save_dir, f"task{task_index:03d}_support_query_before.png"))
-    plt.close()
-
-    # ----- Plot AFTER -----
-    plt.figure(figsize=(8, 6))
-    for i, cls in enumerate(unique_classes):
-        color = colors(i)
-        supp_idx = np.where(y_support == cls)[0]
-        query_idx = np.where(y_query == cls)[0]
-
-        plt.scatter(tsne_after[supp_idx, 0], tsne_after[supp_idx, 1],
-                    marker='o', color=color, alpha=0.6, label=f'Class {cls} (support-after)')
-        plt.scatter(tsne_after[n_supp + query_idx, 0], tsne_after[n_supp + query_idx, 1],
-                    marker='x', color=color, alpha=0.9, label=f'Class {cls} (query-after)')
-
-    plt.title(f"{title_prefix} - After Adaptation")
-    plt.grid(True)
-    plt.tight_layout()
-    plt.legend()
-    plt.savefig(os.path.join(save_dir, f"task{task_index:03d}_support_query_after.png"))
-    plt.close()
-
-
-def plot_tsne_query_only_before_after(
-    query_before, query_after,
-    y_query,
-    save_dir="./tsne_images",
-    task_index=0,
-    title_prefix="t-SNE Query Only"
-):
-    os.makedirs(save_dir, exist_ok=True)
-
-    all_feats = np.concatenate([query_before, query_after], axis=0)
-    tsne = TSNE(n_components=2, perplexity=30, random_state=0).fit_transform(all_feats)
-
-    n_query = len(query_before)
     unique_classes = np.unique(y_query)
     colors = cm.get_cmap('tab10', len(unique_classes))
+    markers = ['o', 's', 'D', '^', 'v', 'p', '*', 'X', '+', 'x']
 
+    # Step 1: 공통 t-SNE 임베딩
+    combined = np.concatenate([query_before, query_after], axis=0)
+    tsne = TSNE(n_components=2, perplexity=30, random_state=0).fit_transform(combined)
+    tsne_before = tsne[:len(query_before)]
+    tsne_after  = tsne[len(query_before):]
+
+    # Step 2: x/y 축 범위 계산
+    x_min, x_max = tsne[:, 0].min(), tsne[:, 0].max()
+    y_min, y_max = tsne[:, 1].min(), tsne[:, 1].max()
+
+    # Step 3: Query BEFORE plot
     plt.figure(figsize=(8, 6))
     for i, cls in enumerate(unique_classes):
         color = colors(i)
+        marker = markers[i % len(markers)]
         idx = np.where(y_query == cls)[0]
-
-        # query-before
-        plt.scatter(tsne[idx, 0], tsne[idx, 1],
-                    marker='x', color=color, alpha=0.7, label=f'Class {cls} (before)')
-
-        # query-after
-        plt.scatter(tsne[n_query + idx, 0], tsne[n_query + idx, 1],
-                    marker='+', color=color, alpha=0.9, label=f'Class {cls} (after)')
-
-    plt.title(f"{title_prefix} - Query Before vs After")
+        plt.scatter(tsne_before[idx, 0], tsne_before[idx, 1],
+                    marker=marker, color=color, alpha=0.8,
+                    s=marker_size, label=f'Class {cls}')
+    plt.title(f"{title_prefix} - Before Adaptation")
+    plt.xlim(x_min, x_max)
+    plt.ylim(y_min, y_max)
     plt.grid(True)
-    plt.tight_layout()
     plt.legend()
-    plt.savefig(os.path.join(save_dir, f"task{task_index:03d}_query_only_before_after.png"))
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, f"task{task_index:03d}_query_before_fixed_2d.png"))
     plt.close()
 
-
-
-def make_folder(folder_path):
-    # 폴더가 존재하는지 확인하고, 없으면 생성
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
+    # Step 4: Query AFTER plot
+    plt.figure(figsize=(8, 6))
+    for i, cls in enumerate(unique_classes):
+        color = colors(i)
+        marker = markers[i % len(markers)]
+        idx = np.where(y_query == cls)[0]
+        plt.scatter(tsne_after[idx, 0], tsne_after[idx, 1],
+                    marker=marker, color=color, alpha=0.8,
+                    s=marker_size, label=f'Class {cls}')
+    plt.title(f"{title_prefix} - After Adaptation")
+    plt.xlim(x_min, x_max)
+    plt.ylim(y_min, y_max)
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, f"task{task_index:03d}_query_after_fixed_2d.png"))
+    plt.close()
 
 
 def gap(x):
