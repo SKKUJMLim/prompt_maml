@@ -8,29 +8,43 @@ from sklearn.manifold import TSNE
 import matplotlib.cm as cm
 import os
 
-def plot_query_before_after_2d_fixed_axes(
+
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
+from matplotlib import cm
+
+def plot_query_before_after_separate(
     query_before, query_after, y_query,
     save_dir="./tsne_images",
     task_index=0,
     title_prefix="Query Feature Map",
-    marker_size=80
+    marker_size=100,
+    perplexity=20,
+    random_state=0
 ):
     os.makedirs(save_dir, exist_ok=True)
+
+    assert query_before.shape[0] == len(y_query), "query_before와 y_query의 길이가 다릅니다."
+    assert query_after.shape[0] == len(y_query), "query_after와 y_query의 길이가 다릅니다."
+
     unique_classes = np.unique(y_query)
     colors = cm.get_cmap('tab10', len(unique_classes))
     markers = ['o', 's', 'D', '^', 'v', 'p', '*', 'X', '+', 'x']
 
-    # Step 1: 공통 t-SNE 임베딩
-    combined = np.concatenate([query_before, query_after], axis=0)
-    tsne = TSNE(n_components=2, perplexity=30, random_state=0).fit_transform(combined)
-    tsne_before = tsne[:len(query_before)]
-    tsne_after  = tsne[len(query_before):]
+    # t-SNE: 각각 독립적으로 변환
+    tsne_before = TSNE(n_components=2, perplexity=perplexity, random_state=random_state, init='pca') \
+                    .fit_transform(query_before)
+    tsne_after  = TSNE(n_components=2, perplexity=perplexity, random_state=random_state, init='pca') \
+                    .fit_transform(query_after)
 
-    # Step 2: x/y 축 범위 계산
-    x_min, x_max = tsne[:, 0].min(), tsne[:, 0].max()
-    y_min, y_max = tsne[:, 1].min(), tsne[:, 1].max()
+    # 공통 x/y 범위 고정
+    combined = np.vstack([tsne_before, tsne_after])
+    x_min, x_max = combined[:, 0].min(), combined[:, 0].max()
+    y_min, y_max = combined[:, 1].min(), combined[:, 1].max()
 
-    # Step 3: Query BEFORE plot
+    # ----------- BEFORE (No Prompt) ----------
     plt.figure(figsize=(8, 6))
     for i, cls in enumerate(unique_classes):
         color = colors(i)
@@ -39,16 +53,16 @@ def plot_query_before_after_2d_fixed_axes(
         plt.scatter(tsne_before[idx, 0], tsne_before[idx, 1],
                     marker=marker, color=color, alpha=0.8,
                     s=marker_size, label=f'Class {cls}')
-    plt.title(f"{title_prefix} - Before Adaptation")
+    plt.title(f"{title_prefix} - w/o Prompt")
     plt.xlim(x_min, x_max)
     plt.ylim(y_min, y_max)
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, f"task{task_index:03d}_query_before_fixed_2d.png"))
+    plt.savefig(os.path.join(save_dir, f"task{task_index:03d}_query_without_prompt.png"))
     plt.close()
 
-    # Step 4: Query AFTER plot
+    # ----------- AFTER (With Prompt) ----------
     plt.figure(figsize=(8, 6))
     for i, cls in enumerate(unique_classes):
         color = colors(i)
@@ -57,14 +71,15 @@ def plot_query_before_after_2d_fixed_axes(
         plt.scatter(tsne_after[idx, 0], tsne_after[idx, 1],
                     marker=marker, color=color, alpha=0.8,
                     s=marker_size, label=f'Class {cls}')
-    plt.title(f"{title_prefix} - After Adaptation")
+    plt.title(f"{title_prefix} - w/ Prompt")
     plt.xlim(x_min, x_max)
     plt.ylim(y_min, y_max)
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, f"task{task_index:03d}_query_after_fixed_2d.png"))
+    plt.savefig(os.path.join(save_dir, f"task{task_index:03d}_query_with_prompt.png"))
     plt.close()
+
 
 
 def gap(x):
@@ -72,6 +87,9 @@ def gap(x):
     Global Average Pooling: [B, C, H, W] → [B, C]
     """
     return x.mean(dim=[2, 3])
+
+def flatten_feature_map(fm: torch.Tensor) -> torch.Tensor:
+    return fm.view(fm.size(0), -1)  # (B, C, H, W) → (B, C×H×W)
 
 class LabelSmoothingCrossEntropy(nn.Module):
     """
