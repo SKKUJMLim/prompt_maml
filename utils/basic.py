@@ -4,151 +4,94 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import itertools
-import random
-from torchvision.transforms import functional as TF
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
+import numpy as np
+import matplotlib.cm as cm
 
 
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
+import matplotlib.cm as cm
 
-class TensorAugMix:
-    def __init__(self, mean, std, k=3, alpha=1.0, depth=-1, device='cpu'):
-        """
-        Args:
-            mean, std: normalization values for un/normalize (list of 3 floats)
-            k: number of augmentation chains (width)
-            alpha: Dirichlet and Beta parameter
-            depth: depth of each chain (set -1 for random [1,3])
-        """
-        self.mean = torch.tensor(mean).view(3, 1, 1).to(device)
-        self.std = torch.tensor(std).view(3, 1, 1).to(device)
-        self.k = k
-        self.alpha = alpha
-        self.depth = depth
-        self.device = device
-        self.kl = nn.KLDivLoss(reduction='batchmean')
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
+import matplotlib.cm as cm
+import os
 
-    def unnormalize(self, x):
-        return x * self.std + self.mean
+def plot_tsne_support_query_split(
+    support_before, support_after, query_after,
+    y_support, y_query,
+    title_prefix="t-SNE", save_dir="./tsne_plots", task_index=0
+):
+    os.makedirs(save_dir, exist_ok=True)
 
-    def renormalize(self, x):
-        return (x - self.mean) / self.std
+    all_feats_before = np.concatenate([support_before, query_after], axis=0)
+    all_feats_after = np.concatenate([support_after, query_after], axis=0)
 
-    def _augment(self, x):
-        """Apply a random sequence of augmentations to x (C, H, W)"""
-        ops = [self._hflip, self._vflip, self._grayscale, self._rotate, self._blur]
-        depth = self.depth if self.depth > 0 else random.randint(1, 3)
-        for _ in range(depth):
-            op = random.choice(ops)
-            x = op(x)
-        return x
+    tsne_before = TSNE(n_components=2, perplexity=30, random_state=0).fit_transform(all_feats_before)
+    tsne_after  = TSNE(n_components=2, perplexity=30, random_state=0).fit_transform(all_feats_after)
 
-    # Augmentations (pure tensor-based)
-    def _hflip(self, x): return TF.hflip(x)
-    def _vflip(self, x): return TF.vflip(x)
-    def _grayscale(self, x): return TF.rgb_to_grayscale(x, num_output_channels=3)
-    def _rotate(self, x): return TF.rotate(x, angle=random.uniform(-30, 30))
-    def _blur(self, x): return TF.gaussian_blur(x, kernel_size=(3, 3), sigma=(0.1, 2.0))
+    n_supp = len(support_before)
+    n_query = len(query_after)
 
-    def __call__(self, x_norm):
-        """
-        Args:
-            x_norm: (B, C, H, W) normalized input
-        Returns:
-            x_aug: AugMix-processed and normalized tensor (B, C, H, W)
-        """
-        B = x_norm.size(0)
-        x_aug_list = []
+    unique_classes = np.unique(np.concatenate([y_support, y_query]))
+    colors = cm.get_cmap('tab10', len(unique_classes))
 
-        for i in range(B):
-            x = x_norm[i]
-            x = self.unnormalize(x)  # → [0,1] space
+    # 🔹 1. Support-Before + Query
+    plt.figure(figsize=(8, 6))
+    for i, cls in enumerate(unique_classes):
+        color = colors(i)
+        supp_idx = np.where(y_support == cls)[0]
+        query_idx = np.where(y_query == cls)[0]
 
-            ws = torch.tensor(torch.distributions.Dirichlet(torch.ones(self.k) * self.alpha).sample(),
-                              device=x.device)
-            m = torch.distributions.Beta(self.alpha, self.alpha).sample().to(x.device)
+        plt.scatter(tsne_before[supp_idx, 0], tsne_before[supp_idx, 1],
+                    marker='o', color=color, alpha=0.5, label=f'Class {cls} (support-before)')
+        plt.scatter(tsne_before[n_supp + query_idx, 0], tsne_before[n_supp + query_idx, 1],
+                    marker='x', color=color, alpha=0.8, label=f'Class {cls} (query)')
 
-            mix = torch.zeros_like(x)
-            for j in range(self.k):
-                x_aug = x.clone()
-                x_aug = self._augment(x_aug)
-                mix += ws[j] * x_aug
+    plt.title(f"{title_prefix} (Support-Before + Query)")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    save_path_before = os.path.join(save_dir, f"task{task_index:03d}_support_before_query.png")
+    plt.savefig(save_path_before)
+    plt.close()
 
-            x_final = (1 - m) * x + m * mix
-            x_aug_list.append(self.renormalize(x_final))
+    # 🔹 2. Support-After + Query
+    plt.figure(figsize=(8, 6))
+    for i, cls in enumerate(unique_classes):
+        color = colors(i)
+        supp_idx = np.where(y_support == cls)[0]
+        query_idx = np.where(y_query == cls)[0]
 
-        return torch.stack(x_aug_list)
+        plt.scatter(tsne_after[supp_idx, 0], tsne_after[supp_idx, 1],
+                    marker='^', color=color, alpha=0.5, label=f'Class {cls} (support-after)')
+        plt.scatter(tsne_after[n_supp + query_idx, 0], tsne_after[n_supp + query_idx, 1],
+                    marker='x', color=color, alpha=0.8, label=f'Class {cls} (query)')
 
-    def jensen_shannon(self, logits1, logits2, logits3):
-        p1 = F.softmax(logits1, dim=1)
-        p2 = F.softmax(logits2, dim=1)
-        p3 = F.softmax(logits3, dim=1)
-        M = torch.clamp((p1 + p2 + p3) / 3., 1e-7, 1.)
-        js = (self.kl(M.log(), p1) + self.kl(M.log(), p2) + self.kl(M.log(), p3)) / 3.
-        return js
+    plt.title(f"{title_prefix} (Support-After + Query)")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    save_path_after = os.path.join(save_dir, f"task{task_index:03d}_support_after_query.png")
+    plt.savefig(save_path_after)
+    plt.close()
 
 
-def rand_bbox(size, lam):
+def make_folder(folder_path):
+    # 폴더가 존재하는지 확인하고, 없으면 생성
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+
+
+def gap(x):
     """
-    랜덤 박스 좌표를 생성 (size: (B, C, H, W), lam: lambda)
+    Global Average Pooling: [B, C, H, W] → [B, C]
     """
-    W = size[2]
-    H = size[3]
-    cut_rat = np.sqrt(1. - lam)  # 비율로 자름
-    cut_w = int(W * cut_rat)
-    cut_h = int(H * cut_rat)
-
-    # 중앙 위치 무작위 선정
-    cx = np.random.randint(W)
-    cy = np.random.randint(H)
-
-    bbx1 = np.clip(cx - cut_w // 2, 0, W)
-    bby1 = np.clip(cy - cut_h // 2, 0, H)
-    bbx2 = np.clip(cx + cut_w // 2, 0, W)
-    bby2 = np.clip(cy + cut_h // 2, 0, H)
-
-    return bbx1, bby1, bbx2, bby2
-
-
-def cutmix_data(x, y, alpha=1.0):
-    """
-    CutMix를 적용한 이미지, 라벨쌍, lambda 반환
-    x: (B, C, H, W), y: (B,)
-    """
-    lam = np.random.beta(alpha, alpha)
-    batch_size = x.size(0)
-    index = torch.randperm(batch_size)
-
-    y_a = y
-    y_b = y[index]
-
-    bbx1, bby1, bbx2, bby2 = rand_bbox(x.size(), lam)
-    x_cutmix = x.clone()
-    x_cutmix[:, :, bbx1:bbx2, bby1:bby2] = x[index, :, bbx1:bbx2, bby1:bby2]
-
-    # 실제 lambda 보정 (잘린 영역 비율)
-    lam = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (x.size(-1) * x.size(-2)))
-
-    return x_cutmix, y_a, y_b, lam
-
-def mixup_data(x, y, alpha=0.4):
-    """
-    이미지를 MixUp하고, 섞인 label 쌍과 lambda 반환
-    x: (B, C, H, W), y: (B,)
-    """
-    lam = np.random.beta(alpha, alpha)
-    batch_size = x.size(0)
-    index = torch.randperm(batch_size)
-
-    mixed_x = lam * x + (1 - lam) * x[index]
-    y_a, y_b = y, y[index]
-    return mixed_x, y_a, y_b, lam
-
-def random_flip(x):
-    return torch.flip(x, dims=[3]) if torch.rand(1) < 0.5 else torch.flip(x, dims=[2])
-
-def gaussian_dropout(x, p):
-    std = (p / (1 - p)) ** 0.5  # 표준편차 계산
-    noise = torch.randn_like(x) * std + 1  # 1 + N(0, std^2)
-    return x * noise
+    return x.mean(dim=[2, 3])
 
 class LabelSmoothingCrossEntropy(nn.Module):
     """
