@@ -21,26 +21,36 @@ from sklearn.manifold import TSNE
 import matplotlib.cm as cm
 import os
 
-def plot_tsne_support_query_split(
-    support_before, support_after, query_after,
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
+import matplotlib.cm as cm
+import os
+
+def plot_tsne_support_query_before_after(
+    support_before, query_before,
+    support_after, query_after,
     y_support, y_query,
-    title_prefix="t-SNE", save_dir="./tsne_plots", task_index=0
+    save_dir="./tsne_images",
+    task_index=0,
+    title_prefix="t-SNE Support+Query"
 ):
     os.makedirs(save_dir, exist_ok=True)
 
-    all_feats_before = np.concatenate([support_before, query_after], axis=0)
-    all_feats_after = np.concatenate([support_after, query_after], axis=0)
-
+    # ----- t-SNE BEFORE -----
+    all_feats_before = np.concatenate([support_before, query_before], axis=0)
     tsne_before = TSNE(n_components=2, perplexity=30, random_state=0).fit_transform(all_feats_before)
-    tsne_after  = TSNE(n_components=2, perplexity=30, random_state=0).fit_transform(all_feats_after)
+
+    # ----- t-SNE AFTER -----
+    all_feats_after = np.concatenate([support_after, query_after], axis=0)
+    tsne_after = TSNE(n_components=2, perplexity=30, random_state=0).fit_transform(all_feats_after)
 
     n_supp = len(support_before)
-    n_query = len(query_after)
-
+    n_query = len(query_before)
     unique_classes = np.unique(np.concatenate([y_support, y_query]))
     colors = cm.get_cmap('tab10', len(unique_classes))
 
-    # 🔹 1. Support-Before + Query
+    # ----- Plot BEFORE -----
     plt.figure(figsize=(8, 6))
     for i, cls in enumerate(unique_classes):
         color = colors(i)
@@ -48,19 +58,18 @@ def plot_tsne_support_query_split(
         query_idx = np.where(y_query == cls)[0]
 
         plt.scatter(tsne_before[supp_idx, 0], tsne_before[supp_idx, 1],
-                    marker='o', color=color, alpha=0.5, label=f'Class {cls} (support-before)')
+                    marker='o', color=color, alpha=0.6, label=f'Class {cls} (support-before)')
         plt.scatter(tsne_before[n_supp + query_idx, 0], tsne_before[n_supp + query_idx, 1],
-                    marker='x', color=color, alpha=0.8, label=f'Class {cls} (query)')
+                    marker='x', color=color, alpha=0.9, label=f'Class {cls} (query-before)')
 
-    plt.title(f"{title_prefix} (Support-Before + Query)")
+    plt.title(f"{title_prefix} - Before Adaptation")
     plt.grid(True)
-    plt.legend()
     plt.tight_layout()
-    save_path_before = os.path.join(save_dir, f"task{task_index:03d}_support_before_query.png")
-    plt.savefig(save_path_before)
+    plt.legend()
+    plt.savefig(os.path.join(save_dir, f"task{task_index:03d}_support_query_before.png"))
     plt.close()
 
-    # 🔹 2. Support-After + Query
+    # ----- Plot AFTER -----
     plt.figure(figsize=(8, 6))
     for i, cls in enumerate(unique_classes):
         color = colors(i)
@@ -68,17 +77,54 @@ def plot_tsne_support_query_split(
         query_idx = np.where(y_query == cls)[0]
 
         plt.scatter(tsne_after[supp_idx, 0], tsne_after[supp_idx, 1],
-                    marker='^', color=color, alpha=0.5, label=f'Class {cls} (support-after)')
+                    marker='o', color=color, alpha=0.6, label=f'Class {cls} (support-after)')
         plt.scatter(tsne_after[n_supp + query_idx, 0], tsne_after[n_supp + query_idx, 1],
-                    marker='x', color=color, alpha=0.8, label=f'Class {cls} (query)')
+                    marker='x', color=color, alpha=0.9, label=f'Class {cls} (query-after)')
 
-    plt.title(f"{title_prefix} (Support-After + Query)")
+    plt.title(f"{title_prefix} - After Adaptation")
     plt.grid(True)
-    plt.legend()
     plt.tight_layout()
-    save_path_after = os.path.join(save_dir, f"task{task_index:03d}_support_after_query.png")
-    plt.savefig(save_path_after)
+    plt.legend()
+    plt.savefig(os.path.join(save_dir, f"task{task_index:03d}_support_query_after.png"))
     plt.close()
+
+
+def plot_tsne_query_only_before_after(
+    query_before, query_after,
+    y_query,
+    save_dir="./tsne_images",
+    task_index=0,
+    title_prefix="t-SNE Query Only"
+):
+    os.makedirs(save_dir, exist_ok=True)
+
+    all_feats = np.concatenate([query_before, query_after], axis=0)
+    tsne = TSNE(n_components=2, perplexity=30, random_state=0).fit_transform(all_feats)
+
+    n_query = len(query_before)
+    unique_classes = np.unique(y_query)
+    colors = cm.get_cmap('tab10', len(unique_classes))
+
+    plt.figure(figsize=(8, 6))
+    for i, cls in enumerate(unique_classes):
+        color = colors(i)
+        idx = np.where(y_query == cls)[0]
+
+        # query-before
+        plt.scatter(tsne[idx, 0], tsne[idx, 1],
+                    marker='x', color=color, alpha=0.7, label=f'Class {cls} (before)')
+
+        # query-after
+        plt.scatter(tsne[n_query + idx, 0], tsne[n_query + idx, 1],
+                    marker='+', color=color, alpha=0.9, label=f'Class {cls} (after)')
+
+    plt.title(f"{title_prefix} - Query Before vs After")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.legend()
+    plt.savefig(os.path.join(save_dir, f"task{task_index:03d}_query_only_before_after.png"))
+    plt.close()
+
 
 
 def make_folder(folder_path):
