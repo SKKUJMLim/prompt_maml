@@ -2,11 +2,11 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as F
 import itertools
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
-import matplotlib.cm as cm
-import os
+from matplotlib import cm
 
 
 import os
@@ -15,8 +15,100 @@ import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 from matplotlib import cm
 
-def plot_query_before_after_separate(
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from mpl_toolkits.mplot3d import Axes3D
+
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
+
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+def plot_3d_pca_query_comparison(
+    query_before,
+    query_after,
+    y_query,
+    acc_before,
+    acc_after,
+    save_dir,
+    task_index,
+    title_prefix="Effect of Prompt on Query Features",
+    marker_size=100
+):
+    os.makedirs(save_dir, exist_ok=True)
+
+    # PCA on combined query features
+    all_query = np.concatenate([query_before, query_after], axis=0)
+    pca = PCA(n_components=3)
+    all_query_pca = pca.fit_transform(all_query)
+
+    N = query_before.shape[0]
+    query_before_pca = all_query_pca[:N]
+    query_after_pca = all_query_pca[N:]
+
+    fig = plt.figure(figsize=(14, 6))
+
+    # BEFORE
+    ax1 = fig.add_subplot(1, 2, 1, projection='3d')
+    for label in np.unique(y_query):
+        idx = (y_query == label)
+        ax1.scatter(query_before_pca[idx, 0], query_before_pca[idx, 1], query_before_pca[idx, 2],
+                    label=f"Class {label}", s=marker_size)
+    ax1.set_title(f"{title_prefix} (Before)\nAcc: {acc_before*100:.2f}%", fontsize=12)
+    ax1.set_xlabel("PC1")
+    ax1.set_ylabel("PC2")
+    ax1.set_zlabel("PC3")
+    ax1.legend()
+
+    # AFTER
+    ax2 = fig.add_subplot(1, 2, 2, projection='3d')
+    for label in np.unique(y_query):
+        idx = (y_query == label)
+        ax2.scatter(query_after_pca[idx, 0], query_after_pca[idx, 1], query_after_pca[idx, 2],
+                    label=f"Class {label}", s=marker_size)
+    ax2.set_title(f"{title_prefix} (After)\nAcc: {acc_after*100:.2f}%", fontsize=12)
+    ax2.set_xlabel("PC1")
+    ax2.set_ylabel("PC2")
+    ax2.set_zlabel("PC3")
+    ax2.legend()
+
+    plt.tight_layout()
+    save_path = os.path.join(save_dir, f"task_{task_index}_3d_pca.png")
+    plt.savefig(save_path)
+    plt.close()
+
+
+
+
+def compute_intra_inter_class_variance(features, labels):
+    unique_labels = np.unique(labels)
+    overall_mean = features.mean(axis=0)
+
+    intra_var = 0
+    inter_var = 0
+
+    for cls in unique_labels:
+        cls_features = features[labels == cls]
+        cls_mean = cls_features.mean(axis=0)
+        intra_var += ((cls_features - cls_mean) ** 2).sum()
+        inter_var += len(cls_features) * ((cls_mean - overall_mean) ** 2).sum()
+
+    return intra_var / len(features), inter_var / len(features)
+
+
+def plot_query_before_after_separate_with_accuracy(
     query_before, query_after, y_query,
+    acc_before, acc_after,
     save_dir="./tsne_images",
     task_index=0,
     title_prefix="Query Feature Map",
@@ -26,34 +118,38 @@ def plot_query_before_after_separate(
 ):
     os.makedirs(save_dir, exist_ok=True)
 
-    assert query_before.shape[0] == len(y_query), "query_before와 y_query의 길이가 다릅니다."
-    assert query_after.shape[0] == len(y_query), "query_after와 y_query의 길이가 다릅니다."
+    assert query_before.shape[0] == len(y_query)
+    assert query_after.shape[0] == len(y_query)
 
     unique_classes = np.unique(y_query)
     colors = cm.get_cmap('tab10', len(unique_classes))
     markers = ['o', 's', 'D', '^', 'v', 'p', '*', 'X', '+', 'x']
 
-    # t-SNE: 각각 독립적으로 변환
+    # t-SNE 임베딩
     tsne_before = TSNE(n_components=2, perplexity=perplexity, random_state=random_state, init='pca') \
                     .fit_transform(query_before)
-    tsne_after  = TSNE(n_components=2, perplexity=perplexity, random_state=random_state, init='pca') \
+    tsne_after = TSNE(n_components=2, perplexity=perplexity, random_state=random_state, init='pca') \
                     .fit_transform(query_after)
 
-    # 공통 x/y 범위 고정
+    # Variance 계산
+    intra_before, inter_before = compute_intra_inter_class_variance(tsne_before, y_query)
+    intra_after, inter_after = compute_intra_inter_class_variance(tsne_after, y_query)
+    ratio_before = inter_before / (intra_before + 1e-8)
+    ratio_after = inter_after / (intra_after + 1e-8)
+
+    # 공통 axis 범위 계산
     combined = np.vstack([tsne_before, tsne_after])
     x_min, x_max = combined[:, 0].min(), combined[:, 0].max()
     y_min, y_max = combined[:, 1].min(), combined[:, 1].max()
 
-    # ----------- BEFORE (No Prompt) ----------
+    # BEFORE
     plt.figure(figsize=(8, 6))
     for i, cls in enumerate(unique_classes):
-        color = colors(i)
-        marker = markers[i % len(markers)]
         idx = np.where(y_query == cls)[0]
         plt.scatter(tsne_before[idx, 0], tsne_before[idx, 1],
-                    marker=marker, color=color, alpha=0.8,
-                    s=marker_size, label=f'Class {cls}')
-    plt.title(f"{title_prefix} - w/o Prompt")
+                    c=[colors(i)], marker=markers[i % len(markers)],
+                    label=f'Class {cls}', s=marker_size, alpha=0.8)
+    plt.title(f"{title_prefix} (No Prompt)\nAccuracy: {acc_before:.2%} | Inter/Intra: {ratio_before:.2f}")
     plt.xlim(x_min, x_max)
     plt.ylim(y_min, y_max)
     plt.grid(True)
@@ -62,16 +158,14 @@ def plot_query_before_after_separate(
     plt.savefig(os.path.join(save_dir, f"task{task_index:03d}_query_without_prompt.png"))
     plt.close()
 
-    # ----------- AFTER (With Prompt) ----------
+    # AFTER
     plt.figure(figsize=(8, 6))
     for i, cls in enumerate(unique_classes):
-        color = colors(i)
-        marker = markers[i % len(markers)]
         idx = np.where(y_query == cls)[0]
         plt.scatter(tsne_after[idx, 0], tsne_after[idx, 1],
-                    marker=marker, color=color, alpha=0.8,
-                    s=marker_size, label=f'Class {cls}')
-    plt.title(f"{title_prefix} - w/ Prompt")
+                    c=[colors(i)], marker=markers[i % len(markers)],
+                    label=f'Class {cls}', s=marker_size, alpha=0.8)
+    plt.title(f"{title_prefix} (With Prompt)\nAccuracy: {acc_after:.2%} | Inter/Intra: {ratio_after:.2f}")
     plt.xlim(x_min, x_max)
     plt.ylim(y_min, y_max)
     plt.grid(True)
@@ -79,6 +173,78 @@ def plot_query_before_after_separate(
     plt.tight_layout()
     plt.savefig(os.path.join(save_dir, f"task{task_index:03d}_query_with_prompt.png"))
     plt.close()
+
+
+def plot_support_query_before_after_fixed_axes(
+    support_before, query_before,
+    support_after, query_after,
+    y_support, y_query,
+    save_dir, task_index, title_prefix="Feature Distribution", perplexity=30
+):
+    os.makedirs(save_dir, exist_ok=True)
+
+    # 모든 feature 합치기
+    all_features = np.concatenate([
+        support_before, query_before,
+        support_after, query_after
+    ], axis=0)
+
+    # t-SNE 임베딩
+    tsne = TSNE(n_components=2, perplexity=perplexity, n_iter=1000, random_state=42)
+    tsne_result = tsne.fit_transform(all_features)
+
+    # 분리
+    N1 = support_before.shape[0]
+    N2 = query_before.shape[0]
+    N3 = support_after.shape[0]
+    N4 = query_after.shape[0]
+
+    sb = tsne_result[:N1]
+    qb = tsne_result[N1:N1+N2]
+    sa = tsne_result[N1+N2:N1+N2+N3]
+    qa = tsne_result[N1+N2+N3:]
+
+    # 축 고정
+    x_min, x_max = tsne_result[:, 0].min() - 5, tsne_result[:, 0].max() + 5
+    y_min, y_max = tsne_result[:, 1].min() - 5, tsne_result[:, 1].max() + 5
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+    # 색상 고정 (최대 10 class)
+    import matplotlib.cm as cm
+    num_classes = len(np.unique(np.concatenate([y_support, y_query])))
+    cmap = cm.get_cmap("tab10", num_classes)
+    class_colors = {cls: cmap(cls) for cls in range(num_classes)}
+
+    # Plot Before
+    for cls in np.unique(y_support):
+        axes[0].scatter(sb[y_support == cls, 0], sb[y_support == cls, 1],
+                        marker='o', s=60, label=f'Class {cls} (S)', color=class_colors[cls], alpha=0.7, edgecolor='k')
+        axes[0].scatter(qb[y_query == cls, 0], qb[y_query == cls, 1],
+                        marker='x', s=60, label=f'Class {cls} (Q)', color=class_colors[cls], alpha=0.7)
+
+    axes[0].set_xlim(x_min, x_max)
+    axes[0].set_ylim(y_min, y_max)
+    axes[0].set_title(f"{title_prefix} (Before Adaptation)")
+    axes[0].legend(fontsize=8)
+
+    # Plot After
+    for cls in np.unique(y_support):
+        axes[1].scatter(sa[y_support == cls, 0], sa[y_support == cls, 1],
+                        marker='o', s=60, label=f'Class {cls} (S)', color=class_colors[cls], alpha=0.7, edgecolor='k')
+        axes[1].scatter(qa[y_query == cls, 0], qa[y_query == cls, 1],
+                        marker='x', s=60, label=f'Class {cls} (Q)', color=class_colors[cls], alpha=0.7)
+
+    axes[1].set_xlim(x_min, x_max)
+    axes[1].set_ylim(y_min, y_max)
+    axes[1].set_title(f"{title_prefix} (After Adaptation)")
+    axes[1].legend(fontsize=8)
+
+    plt.tight_layout()
+    save_path = os.path.join(save_dir, f"task{task_index:03d}_tsne_fixed_axes.png")
+    plt.savefig(save_path, dpi=300)
+    plt.close()
+
 
 
 
