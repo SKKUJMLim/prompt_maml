@@ -27,18 +27,13 @@ from multiprocessing import freeze_support
 ## (filter 128) miniImageNet
 # python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/filter128/MAML_Prompt_padding_5way_1shot_filter128_miniImagenet.json --gpu_to_use 0
 # python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/filter128/MAML_Prompt_padding_5way_5shot_filter128_miniImagenet.json --gpu_to_use 0
-# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/filter128/MAML_Prompt_padding_5way_5shot_filter128_cifarfs.json --gpu_to_use 0
-
+# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/filter128/MAML_Prompt_padding_5way_1shot_filter128_cifar_fs.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/filter128/MAML_Prompt_padding_5way_5shot_filter128_cifar_fs.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/filter128/MAML_Prompt_padding_5way_1shot_filter128_fc100.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/filter128/MAML_Prompt_padding_5way_5shot_filter128_fc100.json --gpu_to_use 0
 ## (filter 64) miniImageNet
-# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_1shot_filter64_miniImagenet.json --gpu_to_use 0
-# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
 # python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_1shot_filter64_tieredImagenet.json --gpu_to_use 0
-# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_5shot_filter64_tieredImagenet.json --gpu_to_use 0
-
-# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_1shot_filter64_CIFAR_FS.json --gpu_to_use 0
-# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_5shot_filter64_CIFAR_FS.json --gpu_to_use 0
-# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_1shot_filter64_FC100.json --gpu_to_use 0
-# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_5shot_filter64_FC100.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_padding_5way_5shot_Resnet12_tieredImagenet.json --gpu_to_use 0
 
 ## (Fixed patch & Random patch)
 # python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/MAML_Prompt_fixed_patch_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
@@ -49,7 +44,7 @@ from multiprocessing import freeze_support
 ## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/Resnet12/MAML_Prompt_padding_5way_5shot_Resnet12_miniImagenet.json --gpu_to_use 0
 ## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/Resnet12/MAML_Prompt_padding_5way_1shot_Resnet12_tieredImagenet.json --gpu_to_use 0
 ## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/Resnet12/MAML_Prompt_padding_5way_5shot_Resnet12_tieredImagenet.json --gpu_to_use 0
-## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/Resnet12/MAML_Prompt_padding_5way_1shot_Resnet12_CIFARFS.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/Resnet12/MAML_Prompt_padding_5way_1shot_Resnet12_cifar_fs.json --gpu_to_use 0
 ## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/Resnet12/MAML_Prompt_padding_5way_5shot_Resnet12_cifarfs.json --gpu_to_use 0
 ## python train_maml_system.py --name_of_args_json_file experiment_config/MAML+Prompt/Resnet12/MAML_Prompt_padding_5way_1shot_Resnet12_FC100.json --gpu_to_use 0
 
