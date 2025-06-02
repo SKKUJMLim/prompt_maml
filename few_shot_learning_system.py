@@ -194,7 +194,6 @@ class MAMLFewShotClassifier(nn.Module):
             prompted_weights_copy = {key: value[0] for key, value in prompted_weights_copy.items()}
 
         else:
-            ## 각 layer의 weight에 대한 gradient 구하기
             grads = torch.autograd.grad(loss, names_weights_copy.values(),
                                         create_graph=use_second_order, allow_unused=True)
             names_grads_copy = dict(zip(names_weights_copy.keys(), grads))
@@ -319,7 +318,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                weights=names_weights_copy,
                                                                prompted_weights=prompted_weights_copy,
                                                                backup_running_statistics=num_step == 0,
-                                                               prepend_prompt=True,
+                                                               prepend_prompt=self.args.prompter,
                                                                training=True,
                                                                num_step=num_step,
                                                                training_phase=training_phase,
@@ -340,7 +339,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                  weights=names_weights_copy,
                                                                  prompted_weights=prompted_weights_copy,
                                                                  backup_running_statistics=False, training=True,
-                                                                 prepend_prompt=True,
+                                                                 prepend_prompt=self.args.prompter,
                                                                  num_step=num_step, training_phase=training_phase,
                                                                  epoch=epoch)
 
@@ -357,6 +356,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                      weights=names_weights_copy,
                                                                      prompted_weights=prompted_weights_copy,
                                                                      backup_running_statistics=False, training=True,
+                                                                     prepend_prompt=self.args.prompter,
                                                                      num_step=num_step, training_phase=training_phase,
                                                                      epoch=epoch,
                                                                      inner_loop=False)
