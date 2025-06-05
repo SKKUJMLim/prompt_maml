@@ -196,6 +196,11 @@ class LSLRGradientDescentLearningRule(nn.Module):
                                                       names_grads_wrt_params_dict[key]
         else:  # MAML++
 
+            for key in names_grads_wrt_params_dict.keys():
+                updated_names_weights_dict[key] = names_weights_dict[key] \
+                                                  - self.names_learning_rates_dict[key.replace(".", "-")][num_step] \
+                                                  * names_grads_wrt_params_dict[key]
+
             # for key in names_weights_dict.keys():
             #     if 'linear' in key:
             #         updated_names_weights_dict[key] = (1 - self.names_weight_decay_dict[key.replace(".", "-")][num_step]) * \
@@ -207,11 +212,6 @@ class LSLRGradientDescentLearningRule(nn.Module):
             #         updated_names_weights_dict[key] = names_weights_dict[key] \
             #                                           - freeze_layer_step_size * \
             #                                           names_grads_wrt_params_dict[key]
-
-            for key in names_grads_wrt_params_dict.keys():
-                updated_names_weights_dict[key] = names_weights_dict[key] \
-                                                  - self.names_learning_rates_dict[key.replace(".", "-")][num_step] \
-                                                  * names_grads_wrt_params_dict[key]
 
         return updated_names_weights_dict, updated_prompt_weights_dict
 
