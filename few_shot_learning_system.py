@@ -529,31 +529,31 @@ class MAMLFewShotClassifier(nn.Module):
     #
     #     return loss, preds, feature_map_list
 
-    def trainable_prompt_parameters(self):
-        """
-        Returns an iterator over the trainable parameters of the model.
-        """
-        for name, param in self.named_parameters():
-            if param.requires_grad:
-                if 'prompt' in name:
-                    yield param
+    # def trainable_prompt_parameters(self):
+    #     """
+    #     Returns an iterator over the trainable parameters of the model.
+    #     """
+    #     for name, param in self.named_parameters():
+    #         if param.requires_grad:
+    #             if 'prompt' in name:
+    #                 yield param
+    #
+    # def trainable_parameters(self):
+    #     """
+    #     Returns an iterator over the trainable parameters of the model.
+    #     """
+    #     for name, param in self.named_parameters():
+    #         if param.requires_grad:
+    #             if 'layer_dict' in name:
+    #                 yield param
 
     def trainable_parameters(self):
         """
         Returns an iterator over the trainable parameters of the model.
         """
-        for name, param in self.named_parameters():
+        for param in self.parameters():
             if param.requires_grad:
-                if 'layer_dict' in name:
-                    yield param
-
-    # def trainable_parameters(self):
-    #     """
-    #     Returns an iterator over the trainable parameters of the model.
-    #     """
-    #     for param in self.parameters():
-    #         if param.requires_grad:
-    #             yield param
+                yield param
 
     def train_forward_prop(self, data_batch, epoch, current_iter):
         """
