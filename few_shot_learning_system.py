@@ -265,6 +265,7 @@ class MAMLFewShotClassifier(nn.Module):
         self.num_classes_per_set = ncs
 
         total_losses = []
+        task_grads = []  # gradient conflict 분석용 gradient 저장
         total_accuracies = []
         total_support_accuracies = [[] for i in range(num_steps)]
         total_target_accuracies = [[] for i in range(num_steps)]
@@ -363,6 +364,16 @@ class MAMLFewShotClassifier(nn.Module):
                                                                      inner_loop=False)
                         task_losses.append(target_loss)
 
+                        # Gradient conflict 분석을 위한 gradient 수집
+                        self.classifier.zero_grad()
+                        target_loss.backward(retain_graph=True)
+
+                        grads = []
+                        for param in self.classifier.parameters():
+                            if param.grad is not None:
+                                grads.append(param.grad.detach().clone().flatten())
+                        task_grads.append(torch.cat(grads))
+
             per_task_target_preds[task_id] = target_preds.detach().cpu().numpy()
             _, predicted = torch.max(target_preds.data, 1)
 
@@ -371,28 +382,30 @@ class MAMLFewShotClassifier(nn.Module):
             total_losses.append(task_losses)
             total_accuracies.extend(accuracy)
 
-            if current_iter == 'test':
-                information = {}
-                information['phase'] = current_iter
-                information['task_idx'] = task_id
-                information['accuracy'] = accuracy.mean().item()
-                # .mean()은 True 값의 비율을 반환. 이는 정확도를 의미
 
-                if os.path.exists(self.args.experiment_name + '/' + self.args.experiment_name + "_per_task_acc.csv"):
-                    self.csv_exist = False
+            # if current_iter == 'test':
+            #     information = {}
+            #     information['phase'] = current_iter
+            #     information['task_idx'] = task_id
+            #     information['accuracy'] = accuracy.mean().item()
+            #     # .mean()은 True 값의 비율을 반환. 이는 정확도를 의미
+            #
+            #     if os.path.exists(self.args.experiment_name + '/' + self.args.experiment_name + "_per_task_acc.csv"):
+            #         self.csv_exist = False
+            #
+            #     if self.csv_exist:
+            #         save_statistics(experiment_name=self.args.experiment_name,
+            #                         line_to_add=list(information.keys()),
+            #                         filename=self.args.experiment_name + "_per_task_acc.csv", create=True)
+            #         self.csv_exist = False
+            #         save_statistics(experiment_name=self.args.experiment_name,
+            #                         line_to_add=list(information.values()),
+            #                         filename=self.args.experiment_name + "_per_task_acc.csv", create=False)
+            #     else:
+            #         save_statistics(experiment_name=self.args.experiment_name,
+            #                         line_to_add=list(information.values()),
+            #                         filename=self.args.experiment_name + "_per_task_acc.csv", create=False)
 
-                if self.csv_exist:
-                    save_statistics(experiment_name=self.args.experiment_name,
-                                    line_to_add=list(information.keys()),
-                                    filename=self.args.experiment_name + "_per_task_acc.csv", create=True)
-                    self.csv_exist = False
-                    save_statistics(experiment_name=self.args.experiment_name,
-                                    line_to_add=list(information.values()),
-                                    filename=self.args.experiment_name + "_per_task_acc.csv", create=False)
-                else:
-                    save_statistics(experiment_name=self.args.experiment_name,
-                                    line_to_add=list(information.values()),
-                                    filename=self.args.experiment_name + "_per_task_acc.csv", create=False)
 
             if not training_phase:
                 if torch.cuda.device_count() > 1:
@@ -405,6 +418,43 @@ class MAMLFewShotClassifier(nn.Module):
 
         for idx, item in enumerate(per_step_loss_importance_vectors):
             losses['loss_importance_vector_{}'.format(idx)] = item.detach().cpu().numpy()
+
+
+        # 모든 task에 대해 gradient 수집 완료 후 conflict 계산
+        num_tasks = len(task_grads)
+        for i in range(num_tasks):
+            for j in range(i + 1, num_tasks):
+                cos_sim = torch.nn.functional.cosine_similarity(task_grads[i], task_grads[j], dim=0)
+
+        grad_matrix = torch.stack(task_grads, dim=0)  # shape: [T, D]
+        grad_mean = grad_matrix.mean(dim=0)  # shape: [D]
+        signal_norm = torch.norm(grad_mean)  # ||E[g]||
+        deviation = grad_matrix - grad_mean.unsqueeze(0)  # shape: [T, D]
+        noise = torch.sqrt(torch.mean(torch.norm(deviation, dim=1) ** 2))
+        gsnr = signal_norm / (noise + 1e-8)  # 1e-8 for numerical stability
+
+        if training_phase:
+            information = {}
+            information['phase'] = current_iter
+            information['cos_sim'] = cos_sim.item()
+            information['gsnr'] = gsnr.item()
+
+            if os.path.exists(self.args.experiment_name + '/' + self.args.experiment_name + "_per_task_acc.csv"):
+                self.csv_exist = False
+
+            if self.csv_exist:
+                save_statistics(experiment_name=self.args.experiment_name,
+                                line_to_add=list(information.keys()),
+                                filename=self.args.experiment_name + "_per_task_acc.csv", create=True)
+                self.csv_exist = False
+                save_statistics(experiment_name=self.args.experiment_name,
+                                line_to_add=list(information.values()),
+                                filename=self.args.experiment_name + "_per_task_acc.csv", create=False)
+            else:
+                save_statistics(experiment_name=self.args.experiment_name,
+                                line_to_add=list(information.values()),
+                                filename=self.args.experiment_name + "_per_task_acc.csv", create=False)
+
 
         return losses, per_task_target_preds
 
