@@ -433,7 +433,7 @@ class MAMLFewShotClassifier(nn.Module):
         noise = torch.sqrt(torch.mean(torch.norm(deviation, dim=1) ** 2))
         gsnr = signal_norm / (noise + 1e-8)  # 1e-8 for numerical stability
 
-        if training_phase:
+        if training_phase and self.args.ablation_record:
             information = {}
             information['phase'] = current_iter
             information['cos_sim'] = cos_sim.item()
