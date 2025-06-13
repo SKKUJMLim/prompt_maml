@@ -60,5 +60,6 @@
   "prompt_random_init": false,
   "outer_prompt_learning_rate": 0.001,
   "inner_prompt_learning_rate": 0.01,
-  "data_aug" : "mixup"
+  "data_aug" : "mixup",
+  "ablation_record": false
 }
