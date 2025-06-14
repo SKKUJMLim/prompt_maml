@@ -231,7 +231,7 @@ class MAMLFewShotClassifier(nn.Module):
                 [num_devices] + [1 for i in range(len(value.shape))]) for
             name, value in prompted_weights_copy.items()}
 
-        return names_weights_copy, prompted_weights_copy, names_grads_copy
+        return names_weights_copy, prompted_weights_copy
 
     def get_across_task_loss_metrics(self, total_losses, total_accuracies):
         losses = dict()
@@ -328,7 +328,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                epoch=epoch,
                                                                inner_loop=True)
 
-                names_weights_copy, prompted_weights_copy, names_grads_copy = self.apply_inner_loop_update(loss=support_loss,
+                names_weights_copy, prompted_weights_copy = self.apply_inner_loop_update(loss=support_loss,
                                                                                          names_weights_copy=names_weights_copy,
                                                                                          prompted_weights_copy=prompted_weights_copy,
                                                                                          use_second_order=use_second_order,
@@ -367,8 +367,14 @@ class MAMLFewShotClassifier(nn.Module):
 
                         # Gradient conflict 분석을 위한 gradient 수집
                         if training_phase and self.args.ablation_record:
+
+                            grads = torch.autograd.grad(target_loss, names_weights_copy.values(),
+                                                        create_graph=use_second_order, allow_unused=True,
+                                                        retain_graph=True)
+                            target_names_grads_copy = dict(zip(names_weights_copy.keys(), grads))
+
                             grads = []
-                            for param, grad in names_grads_copy.items():
+                            for param, grad in target_names_grads_copy.items():
                                 grads.append(grad.detach().clone().flatten())
                             task_grads.append(torch.cat(grads))
 
