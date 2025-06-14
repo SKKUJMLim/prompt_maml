@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import itertools
 
 from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 # from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
@@ -420,25 +421,45 @@ class MAMLFewShotClassifier(nn.Module):
         if training_phase and self.args.ablation_record:
 
             # 모든 task에 대해 gradient 수집 완료 후 conflict 계산
-
             grad_matrix = torch.stack(task_grads, dim=0)  # shape: [T, D]
             grad_mean = grad_matrix.mean(dim=0)  # shape: [D]
             cos_sims = []
             for g in grad_matrix:
                 cos_sim = F.cosine_similarity(g, grad_mean, dim=0)
                 cos_sims.append(cos_sim.item())
-
             avg_cos_sim_to_mean = sum(cos_sims) / len(cos_sims)
 
-            signal_norm = torch.norm(grad_mean)  # ||E[g]||
-            deviation = grad_matrix - grad_mean.unsqueeze(0)  # shape: [T, D]
-            noise = torch.sqrt(torch.mean(torch.norm(deviation, dim=1) ** 2))
-            gsnr = signal_norm / (noise + 1e-8)  # 1e-8 for numerical stability
+            # Pairwise Cosine Similarity
+            pairwise_cos_sims = []
+            num_tasks = grad_matrix.size(0)
+            for i in range(num_tasks):
+                for j in range(i + 1, num_tasks):
+                    cos_sim = F.cosine_similarity(grad_matrix[i], grad_matrix[j], dim=0)
+                    pairwise_cos_sims.append(cos_sim.item())
+            avg_pairwise_cos_sim = sum(pairwise_cos_sims) / len(pairwise_cos_sims)
+
+            # Pairwise Mean Difference Norm
+            pairwise_diffs = []
+            for i, j in itertools.combinations(range(len(task_grads)), 2):
+                diff = (task_grads[i] - task_grads[j]).norm().item()
+                pairwise_diffs.append(diff)
+            mean_pairwise_diff = sum(pairwise_diffs) / len(pairwise_diffs)
+
+            # Mean Dot Product (각 task gradient와 평균 gradient 간 내적)
+            dot_products = [(g * grad_mean).sum().item() for g in grad_matrix]
+            mean_dot_product = sum(dot_products) / len(dot_products)
+
+            # Gradient Variance & Standard Deviation
+            grad_variance = ((grad_matrix - grad_mean.unsqueeze(0)) ** 2).mean().item()
+            grad_std = grad_variance ** 0.5
 
             information = {
                 'phase': current_iter,
                 'cos_sim': avg_cos_sim_to_mean,
-                'gsnr': gsnr.item()
+                'mean_pairwise_diff': mean_pairwise_diff,
+                'mean_dot_product': mean_dot_product,
+                'grad_std': grad_std,
+                'avg_pairwise_cos_sim': avg_pairwise_cos_sim
             }
 
             if os.path.exists(self.args.experiment_name + '/' + self.args.experiment_name + "_per_task_acc.csv"):
