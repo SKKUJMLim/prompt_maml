@@ -425,16 +425,16 @@ class MAMLFewShotClassifier(nn.Module):
         if training_phase and self.args.ablation_record:
 
             # 모든 task에 대해 gradient 수집 완료 후 conflict 계산
-            num_tasks = len(task_grads)
-            cos_sims = []
-            for i in range(num_tasks):
-                for j in range(i + 1, num_tasks):
-                    cos = F.cosine_similarity(task_grads[i], task_grads[j], dim=0)
-                    cos_sims.append(cos.item())
-            cos_sim = sum(cos_sims) / len(cos_sims)
 
             grad_matrix = torch.stack(task_grads, dim=0)  # shape: [T, D]
             grad_mean = grad_matrix.mean(dim=0)  # shape: [D]
+            cos_sims = []
+            for g in grad_matrix:
+                cos_sim = F.cosine_similarity(g, grad_mean, dim=0)
+                cos_sims.append(cos_sim.item())
+
+            avg_cos_sim_to_mean = sum(cos_sims) / len(cos_sims)
+
             signal_norm = torch.norm(grad_mean)  # ||E[g]||
             deviation = grad_matrix - grad_mean.unsqueeze(0)  # shape: [T, D]
             noise = torch.sqrt(torch.mean(torch.norm(deviation, dim=1) ** 2))
@@ -442,7 +442,7 @@ class MAMLFewShotClassifier(nn.Module):
 
             information = {
                 'phase': current_iter,
-                'cos_sim': cos_sim,
+                'cos_sim': avg_cos_sim_to_mean,
                 'gsnr': gsnr.item()
             }
 
