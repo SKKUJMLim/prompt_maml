@@ -365,14 +365,15 @@ class MAMLFewShotClassifier(nn.Module):
                         task_losses.append(target_loss)
 
                         # Gradient conflict 분석을 위한 gradient 수집
-                        self.classifier.zero_grad()
-                        target_loss.backward(retain_graph=True)
+                        if training_phase and self.args.ablation_record:
+                            self.classifier.zero_grad()
+                            target_loss.backward(retain_graph=True)
 
-                        grads = []
-                        for param in self.classifier.parameters():
-                            if param.grad is not None:
-                                grads.append(param.grad.detach().clone().flatten())
-                        task_grads.append(torch.cat(grads))
+                            grads = []
+                            for param in self.classifier.parameters():
+                                if param.grad is not None:
+                                    grads.append(param.grad.detach().clone().flatten())
+                            task_grads.append(torch.cat(grads))
 
             per_task_target_preds[task_id] = target_preds.detach().cpu().numpy()
             _, predicted = torch.max(target_preds.data, 1)
@@ -420,24 +421,29 @@ class MAMLFewShotClassifier(nn.Module):
             losses['loss_importance_vector_{}'.format(idx)] = item.detach().cpu().numpy()
 
 
-        # 모든 task에 대해 gradient 수집 완료 후 conflict 계산
-        num_tasks = len(task_grads)
-        for i in range(num_tasks):
-            for j in range(i + 1, num_tasks):
-                cos_sim = torch.nn.functional.cosine_similarity(task_grads[i], task_grads[j], dim=0)
-
-        grad_matrix = torch.stack(task_grads, dim=0)  # shape: [T, D]
-        grad_mean = grad_matrix.mean(dim=0)  # shape: [D]
-        signal_norm = torch.norm(grad_mean)  # ||E[g]||
-        deviation = grad_matrix - grad_mean.unsqueeze(0)  # shape: [T, D]
-        noise = torch.sqrt(torch.mean(torch.norm(deviation, dim=1) ** 2))
-        gsnr = signal_norm / (noise + 1e-8)  # 1e-8 for numerical stability
-
         if training_phase and self.args.ablation_record:
-            information = {}
-            information['phase'] = current_iter
-            information['cos_sim'] = cos_sim.item()
-            information['gsnr'] = gsnr.item()
+
+            # 모든 task에 대해 gradient 수집 완료 후 conflict 계산
+            num_tasks = len(task_grads)
+            cos_sims = []
+            for i in range(num_tasks):
+                for j in range(i + 1, num_tasks):
+                    cos = F.cosine_similarity(task_grads[i], task_grads[j], dim=0)
+                    cos_sims.append(cos.item())
+            cos_sim = sum(cos_sims) / len(cos_sims)
+
+            grad_matrix = torch.stack(task_grads, dim=0)  # shape: [T, D]
+            grad_mean = grad_matrix.mean(dim=0)  # shape: [D]
+            signal_norm = torch.norm(grad_mean)  # ||E[g]||
+            deviation = grad_matrix - grad_mean.unsqueeze(0)  # shape: [T, D]
+            noise = torch.sqrt(torch.mean(torch.norm(deviation, dim=1) ** 2))
+            gsnr = signal_norm / (noise + 1e-8)  # 1e-8 for numerical stability
+
+            information = {
+                'phase': current_iter,
+                'cos_sim': cos_sim.item(),
+                'gsnr': gsnr.item()
+            }
 
             if os.path.exists(self.args.experiment_name + '/' + self.args.experiment_name + "_per_task_acc.csv"):
                 self.csv_exist = False
