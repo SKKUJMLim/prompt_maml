@@ -370,9 +370,10 @@ class MAMLFewShotClassifier(nn.Module):
                             target_loss.backward(retain_graph=True)
 
                             grads = []
-                            for param in self.classifier.parameters():
-                                if param.grad is not None:
-                                    grads.append(param.grad.detach().clone().flatten())
+                            for name, param in self.classifier.named_parameters():
+                                if 'prompt' not in name and 'norm_layer' not in name:
+                                    if param.grad is not None:
+                                        grads.append(param.grad.detach().clone().flatten())
                             task_grads.append(torch.cat(grads))
 
             per_task_target_preds[task_id] = target_preds.detach().cpu().numpy()
@@ -441,7 +442,7 @@ class MAMLFewShotClassifier(nn.Module):
 
             information = {
                 'phase': current_iter,
-                'cos_sim': cos_sim.item(),
+                'cos_sim': cos_sim,
                 'gsnr': gsnr.item()
             }
 
