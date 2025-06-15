@@ -5,7 +5,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from utils.analysis import compute_layerwise_cosine_similarity
 from collections import defaultdict
 
 from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
