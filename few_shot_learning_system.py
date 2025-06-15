@@ -5,7 +5,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import itertools
+from utils.analysis import compute_layerwise_cosine_similarity
+from collections import defaultdict
 
 from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 # from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
@@ -266,7 +267,7 @@ class MAMLFewShotClassifier(nn.Module):
         self.num_classes_per_set = ncs
 
         total_losses = []
-        task_grads = []  # gradient conflict 분석용 gradient 저장
+        layerwise_task_grads = defaultdict(list)  # {layer_name: [grad_task1, grad_task2, ...]}
         total_accuracies = []
         total_support_accuracies = [[] for i in range(num_steps)]
         total_target_accuracies = [[] for i in range(num_steps)]
@@ -368,15 +369,16 @@ class MAMLFewShotClassifier(nn.Module):
                         # Gradient conflict 분석을 위한 gradient 수집
                         if training_phase and self.args.ablation_record:
 
-                            grads = torch.autograd.grad(target_loss, names_weights_copy.values(),
-                                                        create_graph=use_second_order, allow_unused=True,
-                                                        retain_graph=True)
-                            target_names_grads_copy = dict(zip(names_weights_copy.keys(), grads))
+                            target_loss.backward(retain_graph=True)
 
-                            grads = []
-                            for param, grad in target_names_grads_copy.items():
-                                grads.append(grad.detach().clone().flatten())
-                            task_grads.append(torch.cat(grads))
+                            for name, param in self.classifier.named_parameters():
+                                if param.grad is not None:
+                                    if 'prompt' not in name:
+                                        if "norm_layer" not in name:
+                                            grad = param.grad.detach().clone().flatten()
+                                            layerwise_task_grads[name].append(grad)  # 이름별로 모으기
+
+                            self.classifier.zero_grad()
 
             per_task_target_preds[task_id] = target_preds.detach().cpu().numpy()
             _, predicted = torch.max(target_preds.data, 1)
@@ -426,47 +428,25 @@ class MAMLFewShotClassifier(nn.Module):
 
         if training_phase and self.args.ablation_record:
 
-            # 모든 task에 대해 gradient 수집 완료 후 conflict 계산
-            grad_matrix = torch.stack(task_grads, dim=0)  # shape: [T, D]
-            grad_mean = grad_matrix.mean(dim=0)  # shape: [D]
-            cos_sims = []
-            for g in grad_matrix:
-                cos_sim = F.cosine_similarity(g, grad_mean, dim=0)
-                cos_sims.append(cos_sim.item())
-            avg_cos_sim_to_mean = sum(cos_sims) / len(cos_sims)
+            layerwise_cos_sim = {}  # 평균 코사인 유사도
+            layerwise_dot_prod = {}  # 평균 dot product
+            layerwise_std = {}  # 전체 std
 
-            # Pairwise Cosine Similarity
-            pairwise_cos_sims = []
-            num_tasks = grad_matrix.size(0)
-            for i in range(num_tasks):
-                for j in range(i + 1, num_tasks):
-                    cos_sim = F.cosine_similarity(grad_matrix[i], grad_matrix[j], dim=0)
-                    pairwise_cos_sims.append(cos_sim.item())
-            avg_pairwise_cos_sim = sum(pairwise_cos_sims) / len(pairwise_cos_sims)
+            for layer_name, grads in layerwise_task_grads.items():
+                grads = torch.stack(grads)  # [T, D]
+                grad_mean = grads.mean(dim=0)
 
-            # Pairwise Mean Difference Norm
-            pairwise_diffs = []
-            for i, j in itertools.combinations(range(len(task_grads)), 2):
-                diff = (task_grads[i] - task_grads[j]).norm().item()
-                pairwise_diffs.append(diff)
-            mean_pairwise_diff = sum(pairwise_diffs) / len(pairwise_diffs)
+                # Cosine similarity to mean
+                cos_sims = [F.cosine_similarity(g, grad_mean, dim=0).item() for g in grads]
+                information[layer_name + '_cos_sim'] = sum(cos_sims) / len(cos_sims)
 
-            # Mean Dot Product (각 task gradient와 평균 gradient 간 내적)
-            dot_products = [(g * grad_mean).sum().item() for g in grad_matrix]
-            mean_dot_product = sum(dot_products) / len(dot_products)
+                # Dot product to mean
+                dot_prods = [torch.dot(g, grad_mean).item() for g in grads]
+                information[layer_name + '_dot_product'] = sum(dot_prods) / len(dot_prods)
 
-            # Gradient Variance & Standard Deviation
-            grad_variance = ((grad_matrix - grad_mean.unsqueeze(0)) ** 2).mean().item()
-            grad_std = grad_variance ** 0.5
-
-            information = {
-                'phase': current_iter,
-                'cos_sim': avg_cos_sim_to_mean,
-                'mean_pairwise_diff': mean_pairwise_diff,
-                'mean_dot_product': mean_dot_product,
-                'grad_std': grad_std,
-                'avg_pairwise_cos_sim': avg_pairwise_cos_sim
-            }
+                # Variance (L2)
+                grad_var = ((grads - grad_mean.unsqueeze(0)) ** 2).mean().item()
+                information[layer_name + '_grad_var'] = grad_var ** 0.5
 
             if os.path.exists(self.args.experiment_name + '/' + self.args.experiment_name + "_per_task_acc.csv"):
                 self.csv_exist = False
