@@ -428,10 +428,6 @@ class MAMLFewShotClassifier(nn.Module):
 
         if training_phase and self.args.ablation_record:
 
-            layerwise_cos_sim = {}  # 평균 코사인 유사도
-            layerwise_dot_prod = {}  # 평균 dot product
-            layerwise_std = {}  # 전체 std
-
             for layer_name, grads in layerwise_task_grads.items():
                 grads = torch.stack(grads)  # [T, D]
                 grad_mean = grads.mean(dim=0)
