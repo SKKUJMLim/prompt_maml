@@ -427,6 +427,8 @@ class MAMLFewShotClassifier(nn.Module):
 
         if training_phase and self.args.ablation_record:
 
+            information['iteration'] = current_iter
+
             for layer_name, grads in layerwise_task_grads.items():
                 grads = torch.stack(grads)  # [T, D]
                 grad_mean = grads.mean(dim=0)
@@ -462,10 +464,10 @@ class MAMLFewShotClassifier(nn.Module):
                 grad_var = ((grads - grad_mean.unsqueeze(0)) ** 2).mean().item()
                 information[layer_name + '_grad_var'] = grad_var ** 0.5
 
-                signal = grad_mean.norm(p=2).item() ** 2
-                noise = ((grads - grad_mean.unsqueeze(0)) ** 2).mean().item()
+                signal = torch.mean(grad_mean).item() ** 2
+                noise =  torch.var(grad_mean).item()  + 1e-8 # epsilon for numerical stability
 
-                gsnr = signal / (noise + 1e-8)  # epsilon for numerical stability
+                gsnr = signal / noise
                 information[layer_name.replace('.', '_') + '_gsnr'] = gsnr
 
 
