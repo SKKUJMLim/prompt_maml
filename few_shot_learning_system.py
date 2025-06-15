@@ -368,14 +368,26 @@ class MAMLFewShotClassifier(nn.Module):
                         # Gradient conflict 분석을 위한 gradient 수집
                         if training_phase and self.args.ablation_record:
 
+                            task_idx = f"e{epoch}_i{current_iter}_t{task_id}"
                             target_loss.backward(retain_graph=True)
 
                             for name, param in self.classifier.named_parameters():
                                 if param.grad is not None:
-                                    if 'prompt' not in name:
-                                        if "norm_layer" not in name:
-                                            grad = param.grad.detach().clone().flatten()
-                                            layerwise_task_grads[name].append(grad)  # 이름별로 모으기
+                                    if 'prompt' not in name and 'norm_layer' not in name:
+                                        grad = param.grad.detach().clone().flatten().cpu()
+                                        layer_name = name.replace('.', '_')
+
+                                        # Layer 별 폴더 생성
+                                        layer_dir = os.path.join(
+                                            self.args.experiment_name,
+                                            "grad_info_per_epoch",
+                                            f"epoch{epoch}",
+                                            f"layer_{layer_name}"
+                                        )
+                                        os.makedirs(layer_dir, exist_ok=True)
+
+                                        save_path = os.path.join(layer_dir, f"{task_idx}.pt")
+                                        torch.save(grad, save_path)
 
                             self.classifier.zero_grad()
 
@@ -423,70 +435,6 @@ class MAMLFewShotClassifier(nn.Module):
 
         for idx, item in enumerate(per_step_loss_importance_vectors):
             losses['loss_importance_vector_{}'.format(idx)] = item.detach().cpu().numpy()
-
-
-        if training_phase and self.args.ablation_record:
-
-            information['iteration'] = current_iter
-
-            for layer_name, grads in layerwise_task_grads.items():
-                grads = torch.stack(grads)  # [T, D]
-                grad_mean = grads.mean(dim=0)
-
-                T = grads.size(0)
-                pairwise_sims = []
-                for i in range(T):
-                    for j in range(i + 1, T):
-                        sim = F.cosine_similarity(grads[i], grads[j], dim=0).item()
-                        pairwise_sims.append(sim)
-                avg_sim = sum(pairwise_sims) / len(pairwise_sims)
-                information[layer_name + '_pairwise_cos_sim'] = avg_sim
-
-                pairwise_diff_norms = []
-
-                for i in range(T):
-                    for j in range(i + 1, T):
-                        diff = torch.norm(grads[i] - grads[j], p=2).item()
-                        pairwise_diff_norms.append(diff)
-
-                avg_diff = sum(pairwise_diff_norms) / len(pairwise_diff_norms)
-                information[layer_name + '_pairwise_diff_norm'] = avg_diff
-
-                # Cosine similarity to mean
-                cos_sims = [F.cosine_similarity(g, grad_mean, dim=0).item() for g in grads]
-                information[layer_name + '_cos_sim'] = sum(cos_sims) / len(cos_sims)
-
-                # Dot product to mean
-                dot_prods = [torch.dot(g, grad_mean).item() for g in grads]
-                information[layer_name + '_dot_product'] = sum(dot_prods) / len(dot_prods)
-
-                # Variance (L2)
-                grad_var = ((grads - grad_mean.unsqueeze(0)) ** 2).mean().item()
-                information[layer_name + '_grad_var'] = grad_var ** 0.5
-
-                signal = torch.mean(grad_mean).item() ** 2
-                noise =  torch.var(grad_mean).item()  + 1e-8 # epsilon for numerical stability
-
-                gsnr = signal / noise
-                information[layer_name.replace('.', '_') + '_gsnr'] = gsnr
-
-
-            if os.path.exists(self.args.experiment_name + '/' + self.args.experiment_name + "_per_task_acc.csv"):
-                self.csv_exist = False
-
-            if self.csv_exist:
-                save_statistics(experiment_name=self.args.experiment_name,
-                                line_to_add=list(information.keys()),
-                                filename=self.args.experiment_name + "_per_task_acc.csv", create=True)
-                self.csv_exist = False
-                save_statistics(experiment_name=self.args.experiment_name,
-                                line_to_add=list(information.values()),
-                                filename=self.args.experiment_name + "_per_task_acc.csv", create=False)
-            else:
-                save_statistics(experiment_name=self.args.experiment_name,
-                                line_to_add=list(information.values()),
-                                filename=self.args.experiment_name + "_per_task_acc.csv", create=False)
-
 
         return losses, per_task_target_preds
 
