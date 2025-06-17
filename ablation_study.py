@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
     maml_base_path = "MAML_5way_5shot_filter64_miniImagenet"
     our_base_path = "MAML_Prompt_padding_5way_5shot_filter128_miniImagenet"
-    epoch_list = list(range(0, 3))
+    epoch_list = list(range(0, 2))
 
 
     if 'avg_cosine_similarity' in args.name:

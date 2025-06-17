@@ -403,6 +403,7 @@ class MAMLFewShotClassifier(nn.Module):
                             )
                             os.makedirs(all_dir, exist_ok=True)
                             all_save_path = os.path.join(all_dir, f"{task_idx}.pt")
+                            all_layer_grads = torch.cat(all_layer_grads)
                             torch.save(all_layer_grads, all_save_path)
 
 
