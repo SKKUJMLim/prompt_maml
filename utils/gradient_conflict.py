@@ -9,7 +9,8 @@ LAYER_NAMES = [
     "layer_layer_dict_conv1_conv_weight",
     "layer_layer_dict_conv2_conv_weight",
     "layer_layer_dict_conv3_conv_weight",
-    "layer_layer_dict_linear_weights"
+    "layer_layer_dict_linear_weights",
+    "all_layers"
 ]
 
 LAYER_LABELS = {
@@ -17,7 +18,8 @@ LAYER_LABELS = {
     "layer_layer_dict_conv1_conv_weight": "Conv1",
     "layer_layer_dict_conv2_conv_weight": "Conv2",
     "layer_layer_dict_conv3_conv_weight": "Conv3",
-    "layer_layer_dict_linear_weights": "Linear"
+    "layer_layer_dict_linear_weights": "Linear",
+    "all_layers": "All Layers"
 }
 
 # 1. Cosine 유사도 --------------------------------------------------
