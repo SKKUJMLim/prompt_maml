@@ -371,10 +371,15 @@ class MAMLFewShotClassifier(nn.Module):
                             task_idx = f"e{epoch}_i{current_iter}_t{task_id}"
                             target_loss.backward(retain_graph=True)
 
+                            all_layer_grads = []   # 전체 layer gradient 저장용
+
                             for name, param in self.classifier.named_parameters():
                                 if param.grad is not None:
                                     if 'prompt' not in name and 'norm_layer' not in name:
                                         grad = param.grad.detach().clone().flatten().cpu()
+
+                                        all_layer_grads.append(grad)
+
                                         layer_name = name.replace('.', '_')
 
                                         # Layer 별 폴더 생성
@@ -388,6 +393,18 @@ class MAMLFewShotClassifier(nn.Module):
 
                                         save_path = os.path.join(layer_dir, f"{task_idx}.pt")
                                         torch.save(grad, save_path)
+
+                            # 모든 layer를 하나로 저장 (dict 형식)
+                            all_dir = os.path.join(
+                                self.args.experiment_name,
+                                "grad_info_per_epoch",
+                                f"epoch{epoch}",
+                                "all_layers"
+                            )
+                            os.makedirs(all_dir, exist_ok=True)
+                            all_save_path = os.path.join(all_dir, f"{task_idx}.pt")
+                            torch.save(all_layer_grads, all_save_path)
+
 
                             self.classifier.zero_grad()
 
