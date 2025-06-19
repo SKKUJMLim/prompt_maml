@@ -21,7 +21,7 @@ if __name__ == '__main__':
 
     os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 
-    # python ablation_study.py --name avg_cosine_similarity gsnr l2_distance pairwise_cosine_similarity, pairwise_cosine_similarity
+    # python ablation_study.py --name avg_cosine_similarity gsnr l2_distance pairwise_cosine_similarity
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--name', type=str, nargs='+',
