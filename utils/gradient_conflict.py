@@ -177,18 +177,18 @@ def compute_gsnr(epoch: int, layer_name: str, base_path: str):
 
     grads = torch.stack(grad_list)  # [T, D]
 
-    # grad_mean = grads.mean(dim=0)   # [D]
-    #
-    # signal = grad_mean.mean().item() ** 2
-    # noise = torch.var(grads, dim=0).mean().item() + 1e-8  # 안정성 보정
-    #
-    # gsnr = signal / noise
+    grad_mean = grads.mean(dim=0)   # [D]
 
-    mean_per_param = grads.mean(dim=0)  # [D]
-    var_per_param = grads.var(dim=0) + 1e-8  # [D]
+    signal = grad_mean.mean().item() ** 2
+    noise = torch.var(grads, dim=0).mean().item() + 1e-8  # 안정성 보정
 
-    gsnr_per_param = (mean_per_param ** 2) / var_per_param  # [D]
-    gsnr = gsnr_per_param.mean().item()
+    gsnr = signal / noise
+
+    # mean_per_param = grads.mean(dim=0)  # [D]
+    # var_per_param = grads.var(dim=0) + 1e-8  # [D]
+    #
+    # gsnr_per_param = (mean_per_param ** 2) / var_per_param  # [D]
+    # gsnr = gsnr_per_param.mean().item()
 
 
     print(f"{layer_name} (epoch {epoch}): GSNR = {gsnr:.4f}")
