@@ -14,22 +14,28 @@ from utils.gradient_conflict import (
     plot_l2_distance_subplots,
     get_pairwise_cosine_all_layers,
     plot_pairwise_cosine_individual,
-    plot_pairwise_cosine_subplots
+    plot_pairwise_cosine_subplots,
+    get_variance_of_mean_gradient_all_layers,
+    plot_variance_of_mean_gradient_individual,
+    plot_variance_of_mean_gradient_subplots
 )
 
 if __name__ == '__main__':
 
     os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 
-    # python ablation_study.py --name avg_cosine_similarity gsnr l2_distance pairwise_cosine_similarity
+    # python ablation_study.py --name avg_cosine_similarity
+    # python ablation_study.py --name gsnr
+    # python ablation_study.py --name l2_distance
+    # python ablation_study.py --name pairwise_cosine_similarity
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--name', type=str, nargs='+',
-                        choices=['avg_cosine_similarity', 'gsnr', 'l2_distance', 'pairwise_cosine_similarity'],
+                        choices=['avg_cosine_similarity', 'gsnr', 'l2_distance', 'pairwise_cosine_similarity', 'var_gradient'],
                         help='Dataset name to preprocess.')
     args = parser.parse_args()
 
-    maml_base_path = "MAML_5way_5shot_filter64_miniImagenet"
+    maml_base_path = "MAML_5way_5shot_filter128_miniImagenet"
     our_base_path = "MAML_Prompt_padding_5way_5shot_filter128_miniImagenet"
     epoch_list = list(range(0, 100))
 
@@ -39,12 +45,9 @@ if __name__ == '__main__':
         our_all_results = get_avg_cos_sim_all_layers(our_base_path, epoch_list, LAYER_NAMES)
 
         # 시각화
-        plot_cosine_similarity_layerwise_individual(
-            maml_all_results, our_all_results, epoch_list
-        )
-        plot_cosine_similarity_layerwise_subplots(
-            maml_all_results, our_all_results, epoch_list
-        )
+        plot_cosine_similarity_layerwise_individual(maml_all_results, our_all_results, epoch_list)
+        plot_cosine_similarity_layerwise_subplots(maml_all_results, our_all_results, epoch_list)
+
     elif 'gsnr' in args.name:
 
         maml_gsnr = get_gsnr_all_layers(maml_base_path, epoch_list, LAYER_NAMES)
@@ -71,3 +74,13 @@ if __name__ == '__main__':
         # 그래프 저장
         plot_pairwise_cosine_individual(maml_pairwise, our_pairwise, epoch_list)
         plot_pairwise_cosine_subplots(maml_pairwise, our_pairwise, epoch_list)
+
+    elif 'var_gradient' in args.name:
+        # 평균 그래디언트 분산 계산
+        maml_var = get_variance_of_mean_gradient_all_layers(maml_base_path, epoch_list, LAYER_NAMES)
+        our_var = get_variance_of_mean_gradient_all_layers(our_base_path, epoch_list, LAYER_NAMES)
+
+        # 그래프 저장
+        plot_variance_of_mean_gradient_individual(maml_var, our_var, epoch_list)
+        plot_variance_of_mean_gradient_subplots(maml_var, our_var, epoch_list)
+

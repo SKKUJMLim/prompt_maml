@@ -100,12 +100,17 @@ def plot_cosine_similarity_layerwise_individual(
         plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed')
         plt.plot(sorted_epochs, our_values, label="OURS", linestyle='solid')
 
+        # 눈금 수 줄이기
+        step = max(len(epoch_list) // 10, 1)
+        display_epochs = sorted_epochs[::step]
+        plt.xticks(display_epochs)
+
         plt.title(f"Avg Cosine Similarity - {label}", fontsize=12)
         plt.xlabel("Epoch")
         plt.ylabel("Avg Cosine Similarity")
         plt.grid(True)
         plt.legend()
-        plt.xticks(sorted(epoch_list))
+        # plt.xticks(sorted(epoch_list))
         plt.tight_layout()
 
         save_path = os.path.join(save_dir, f"{label}_cosine_similarity.png")
@@ -239,12 +244,17 @@ def plot_gsnr_individual(
         plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed')
         plt.plot(sorted_epochs, our_values, label="OURS", linestyle='solid')
 
+        # 눈금 수 줄이기
+        step = max(len(epoch_list) // 10, 1)
+        display_epochs = sorted_epochs[::step]
+        plt.xticks(display_epochs)
+
         plt.title(f"GSNR - {label}", fontsize=12)
         plt.xlabel("Epoch")
         plt.ylabel("GSNR")
         plt.grid(True)
         plt.legend()
-        plt.xticks(sorted(epoch_list))
+        # plt.xticks(sorted(epoch_list))
         plt.tight_layout()
 
         save_path = os.path.join(save_dir, f"{label}_gsnr.png")
@@ -361,12 +371,16 @@ def plot_l2_distance_individual(
         plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed')
         plt.plot(sorted_epochs, our_values, label="OURS", linestyle='solid')
 
+        # 눈금 수 줄이기
+        step = max(len(epoch_list) // 10, 1)
+        display_epochs = sorted_epochs[::step]
+        plt.xticks(display_epochs)
+
         plt.title(f"L2 Distance - {label}", fontsize=12)
         plt.xlabel("Epoch")
         plt.ylabel("Average L2 Distance")
         plt.grid(True)
         plt.legend()
-        plt.xticks(sorted(epoch_list))
         plt.tight_layout()
 
         save_path = os.path.join(save_dir, f"{label}_l2_distance.png")
@@ -531,6 +545,120 @@ def plot_pairwise_cosine_subplots(
     plt.tight_layout()
     os.makedirs(save_dir, exist_ok=True)
     save_path = os.path.join(save_dir, "subplot_pairwise_cosine.png")
+    plt.savefig(save_path)
+    plt.close()
+    print(f"[Saved] {save_path}")
+
+
+def compute_variance_of_mean_gradient(epoch: int, layer_name: str, base_path: str):
+    """
+    평균 그래디언트의 분산(Variance of the mean gradient)을 계산합니다.
+    """
+    layer_dir = os.path.join(base_path, "grad_info_per_epoch", f"epoch{epoch}", layer_name)
+    grad_list = []
+
+    filenames = sorted([f for f in os.listdir(layer_dir) if f.endswith(".pt")])
+    for fname in filenames:
+        grad = torch.load(os.path.join(layer_dir, fname))  # [D]
+        grad_list.append(grad)
+
+    grads = torch.stack(grad_list)  # [T, D]
+    grad_mean = grads.mean(dim=0)   # [D]
+    variance = torch.var(grad_mean).item()  # scalar
+
+    print(f"{layer_name} (epoch {epoch}): Variance of Mean Gradient = {variance:.6f}")
+    return variance
+
+
+def compute_variance_of_mean_gradient_over_epochs(layer_name: str, base_path: str, epoch_list: list):
+    results = {}
+    for epoch in epoch_list:
+        try:
+            var = compute_variance_of_mean_gradient(epoch, layer_name, base_path)
+            results[epoch] = var
+        except Exception as e:
+            print(f"[Warning] {layer_name} - Epoch {epoch} failed: {e}")
+    return results
+
+
+def get_variance_of_mean_gradient_all_layers(base_path: str, epoch_list: list, layer_names: list):
+    all_results = {}
+    for layer_name in layer_names:
+        results = compute_variance_of_mean_gradient_over_epochs(layer_name, base_path, epoch_list)
+        all_results[layer_name] = results
+    return all_results
+
+
+
+def plot_variance_of_mean_gradient_individual(
+        maml_all_results: dict,
+        our_all_results: dict,
+        epoch_list: list,
+        save_dir: str = "gradient/var_mean_grad"
+):
+    os.makedirs(save_dir, exist_ok=True)
+
+    for layer_name in LAYER_NAMES:
+        label = LAYER_LABELS.get(layer_name, layer_name)
+        plt.figure(figsize=(8, 5))
+
+        sorted_epochs = sorted(maml_all_results[layer_name].keys())
+        maml_values = [maml_all_results[layer_name][ep] for ep in sorted_epochs]
+        our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
+
+        plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed')
+        plt.plot(sorted_epochs, our_values, label="OURS", linestyle='solid')
+
+        step = max(len(epoch_list) // 10, 1)
+        plt.xticks(sorted_epochs[::step])
+        plt.title(f"Variance of Mean Gradient - {label}", fontsize=12)
+        plt.xlabel("Epoch")
+        plt.ylabel("Variance")
+        plt.grid(True)
+        plt.legend()
+        plt.tight_layout()
+
+        save_path = os.path.join(save_dir, f"{label}_var_mean_gradient.png")
+        plt.savefig(save_path)
+        plt.close()
+        print(f"[Saved] {save_path}")
+
+
+def plot_variance_of_mean_gradient_subplots(
+        maml_all_results: dict,
+        our_all_results: dict,
+        epoch_list: list,
+        save_dir: str = "gradient/var_mean_grad"
+):
+    num_layers = len(LAYER_NAMES)
+    nrows = (num_layers + 1) // 2
+    fig, axes = plt.subplots(nrows=nrows, ncols=2, figsize=(12, 3 * nrows))
+    axes = axes.flatten()
+
+    for idx, layer_name in enumerate(LAYER_NAMES):
+        ax = axes[idx]
+        label = LAYER_LABELS.get(layer_name, layer_name)
+
+        sorted_epochs = sorted(maml_all_results[layer_name].keys())
+        maml_values = [maml_all_results[layer_name][ep] for ep in sorted_epochs]
+        our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
+
+        ax.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed')
+        ax.plot(sorted_epochs, our_values, label="OURS", linestyle='solid')
+
+        ax.set_title(label, fontsize=10)
+        ax.set_xlabel("Epoch")
+        ax.set_ylabel("Var. of Mean Gradient")
+        ax.grid(True)
+        ax.legend(fontsize=8)
+        ax.set_xticks(sorted(epoch_list))
+
+    for j in range(idx + 1, len(axes)):
+        fig.delaxes(axes[j])
+
+    plt.tight_layout()
+    os.makedirs(save_dir, exist_ok=True)
+    save_path = os.path.join(save_dir, "subplot_var_mean_gradient.png")
     plt.savefig(save_path)
     plt.close()
     print(f"[Saved] {save_path}")
