@@ -299,8 +299,10 @@ class MAMLFewShotClassifier(nn.Module):
 
             prompted_weights_copy = {}
             if self.args.prompter:
-                # prompted_weights_copy = {key: value for key, value in names_weights_copy.items() if 'prompt' in key}
-                prompted_weights_copy = {key: torch.randn_like(value, requires_grad=True) for key, value in names_weights_copy.items() if 'prompt' in key}
+                if self.args.random_prompt_init:
+                    prompted_weights_copy = {key: torch.randn_like(value, requires_grad=True) for key, value in names_weights_copy.items() if 'prompt' in key}
+                else:
+                    prompted_weights_copy = {key: value for key, value in names_weights_copy.items() if 'prompt' in key}
 
             names_weights_copy = {key: value for key, value in names_weights_copy.items() if 'layer_dict' in key}
 
