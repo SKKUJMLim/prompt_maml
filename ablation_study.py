@@ -28,6 +28,7 @@ if __name__ == '__main__':
     # python ablation_study.py --name gsnr
     # python ablation_study.py --name l2_distance
     # python ablation_study.py --name pairwise_cosine_similarity
+    # python ablation_study.py --name var_gradient
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--name', type=str, nargs='+',

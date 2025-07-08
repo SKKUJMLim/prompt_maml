@@ -98,14 +98,24 @@ def plot_cosine_similarity_layerwise_individual(
         our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
 
         plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed')
-        plt.plot(sorted_epochs, our_values, label="OURS", linestyle='solid')
+        plt.plot(sorted_epochs, our_values, label="Ours", linestyle='solid')
 
-        # 눈금 수 줄이기
+        # 눈금 수 줄이기 + 마지막 epoch 포함 보장
         step = max(len(epoch_list) // 10, 1)
         display_epochs = sorted_epochs[::step]
-        plt.xticks(display_epochs)
 
-        plt.title(f"Avg Cosine Similarity - {label}", fontsize=12)
+        # 마지막 에폭이 포함되어 있지 않다면 추가
+        if sorted_epochs[-1] not in display_epochs:
+            display_epochs.append(sorted_epochs[-1])
+
+        # 눈금 설정 + 글씨 키우기
+        plt.xticks(display_epochs, fontsize=15)
+        plt.yticks(fontsize=15)
+
+        # X축 범위 강제 지정 (예: 0 ~ 100)
+        plt.xlim([sorted_epochs[0], sorted_epochs[-1]])
+
+        # plt.title(f"Avg Cosine Similarity - {label}", fontsize=12)
         plt.xlabel("Epoch")
         plt.ylabel("Avg Cosine Similarity")
         plt.grid(True)
@@ -369,14 +379,21 @@ def plot_l2_distance_individual(
         our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
 
         plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed')
-        plt.plot(sorted_epochs, our_values, label="OURS", linestyle='solid')
+        plt.plot(sorted_epochs, our_values, label="Ours", linestyle='solid')
 
-        # 눈금 수 줄이기
+        # 눈금 수 줄이기 + 마지막 epoch 포함 보장
         step = max(len(epoch_list) // 10, 1)
         display_epochs = sorted_epochs[::step]
-        plt.xticks(display_epochs)
 
-        plt.title(f"L2 Distance - {label}", fontsize=12)
+        # 마지막 에폭이 포함되어 있지 않다면 추가
+        if sorted_epochs[-1] not in display_epochs:
+            display_epochs.append(sorted_epochs[-1])
+
+        # 눈금 설정 + 글씨 키우기
+        plt.xticks(display_epochs, fontsize=15)
+        plt.yticks(fontsize=15)
+
+        # plt.title(f"L2 Distance - {label}", fontsize=12)
         plt.xlabel("Epoch")
         plt.ylabel("Average L2 Distance")
         plt.grid(True)
