@@ -377,7 +377,7 @@ class MAMLFewShotClassifier(nn.Module):
 
                             for name, param in self.classifier.named_parameters():
                                 if param.grad is not None:
-                                    if 'prompt' not in name and 'norm_layer' not in name:
+                                    if 'prompt' not in name and 'norm_layer' not in name and 'inner_loop_optimizer' not in name:
                                         grad = param.grad.detach().clone().flatten().cpu()
 
                                         all_layer_grads.append(grad)
