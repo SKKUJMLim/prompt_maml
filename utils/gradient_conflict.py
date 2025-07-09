@@ -119,7 +119,7 @@ def plot_cosine_similarity_layerwise_individual(
         plt.xlabel("Epoch")
         plt.ylabel("Avg Cosine Similarity")
         plt.grid(True)
-        plt.legend()
+        plt.legend(fontsize=15)
         # plt.xticks(sorted(epoch_list))
         plt.tight_layout()
 
@@ -263,7 +263,7 @@ def plot_gsnr_individual(
         plt.xlabel("Epoch")
         plt.ylabel("GSNR")
         plt.grid(True)
-        plt.legend()
+        plt.legend(fontsize=15)
         # plt.xticks(sorted(epoch_list))
         plt.tight_layout()
 
@@ -397,7 +397,7 @@ def plot_l2_distance_individual(
         plt.xlabel("Epoch")
         plt.ylabel("Average L2 Distance")
         plt.grid(True)
-        plt.legend()
+        plt.legend(fontsize=15)
         plt.tight_layout()
 
         save_path = os.path.join(save_dir, f"{label}_l2_distance.png")
@@ -518,7 +518,7 @@ def plot_pairwise_cosine_individual(
         plt.xlabel("Epoch")
         plt.ylabel("Avg Pairwise Cosine Similarity")
         plt.grid(True)
-        plt.legend()
+        plt.legend(fontsize=15)
         plt.xticks(sorted(epoch_list))
         plt.tight_layout()
 
@@ -632,7 +632,7 @@ def plot_variance_of_mean_gradient_individual(
         plt.xlabel("Epoch")
         plt.ylabel("Variance")
         plt.grid(True)
-        plt.legend()
+        plt.legend(fontsize=15)
         plt.tight_layout()
 
         save_path = os.path.join(save_dir, f"{label}_var_mean_gradient.png")
