@@ -116,7 +116,7 @@ def plot_cosine_similarity_layerwise_individual(
         plt.xlim([sorted_epochs[0], sorted_epochs[-1]])
 
         # plt.title(f"Avg Cosine Similarity - {label}", fontsize=12)
-        plt.xlabel("Epoch")
+        plt.xlabel('Epoch', fontsize=16)
         plt.ylabel("Avg Cosine Similarity")
         plt.grid(True)
         plt.legend(fontsize=15)
@@ -260,7 +260,7 @@ def plot_gsnr_individual(
         plt.xticks(display_epochs)
 
         plt.title(f"GSNR - {label}", fontsize=12)
-        plt.xlabel("Epoch")
+        plt.xlabel('Epoch', fontsize=16)
         plt.ylabel("GSNR")
         plt.grid(True)
         plt.legend(fontsize=15)
@@ -394,7 +394,7 @@ def plot_l2_distance_individual(
         plt.yticks(fontsize=15)
 
         # plt.title(f"L2 Distance - {label}", fontsize=12)
-        plt.xlabel("Epoch")
+        plt.xlabel('Epoch', fontsize=16)
         plt.ylabel("Average L2 Distance")
         plt.grid(True)
         plt.legend(fontsize=15)
@@ -515,7 +515,7 @@ def plot_pairwise_cosine_individual(
         plt.plot(sorted_epochs, our_values, label="OURS", linestyle='solid')
 
         plt.title(f"Pairwise Cosine Similarity - {label}", fontsize=12)
-        plt.xlabel("Epoch")
+        plt.xlabel('Epoch', fontsize=16)
         plt.ylabel("Avg Pairwise Cosine Similarity")
         plt.grid(True)
         plt.legend(fontsize=15)
@@ -629,7 +629,7 @@ def plot_variance_of_mean_gradient_individual(
         step = max(len(epoch_list) // 10, 1)
         plt.xticks(sorted_epochs[::step])
         plt.title(f"Variance of Mean Gradient - {label}", fontsize=12)
-        plt.xlabel("Epoch")
+        plt.xlabel('Epoch', fontsize=16)
         plt.ylabel("Variance")
         plt.grid(True)
         plt.legend(fontsize=15)
