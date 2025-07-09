@@ -97,8 +97,8 @@ def plot_cosine_similarity_layerwise_individual(
         maml_values = [maml_all_results[layer_name][ep] for ep in sorted_epochs]
         our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
 
-        plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed')
-        plt.plot(sorted_epochs, our_values, label="Ours", linestyle='solid')
+        plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed', linewidth=2.5)
+        plt.plot(sorted_epochs, our_values, label="Ours", linestyle='solid', linewidth=2.5)
 
         # 눈금 수 줄이기 + 마지막 epoch 포함 보장
         step = max(len(epoch_list) // 10, 1)
@@ -155,7 +155,7 @@ def plot_cosine_similarity_layerwise_subplots(
         ax.set_xlabel("Epoch")
         ax.set_ylabel("Avg Cosine Similarity")
         ax.grid(True)
-        ax.legend(fontsize=8)
+        ax.legend(fontsize=15)
         ax.set_xticks(sorted(epoch_list))
 
     for j in range(idx + 1, len(axes)):
@@ -251,8 +251,8 @@ def plot_gsnr_individual(
         maml_values = [maml_all_results[layer_name][ep] for ep in sorted_epochs]
         our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
 
-        plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed')
-        plt.plot(sorted_epochs, our_values, label="OURS", linestyle='solid')
+        plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed', linewidth=2.5)
+        plt.plot(sorted_epochs, our_values, label="OURS", linestyle='solid', linewidth=2.5)
 
         # 눈금 수 줄이기
         step = max(len(epoch_list) // 10, 1)
@@ -298,7 +298,7 @@ def plot_gsnr_subplots(
         ax.set_xlabel("Epoch")
         ax.set_ylabel("GSNR")
         ax.grid(True)
-        ax.legend(fontsize=8)
+        ax.legend(fontsize=15)
         ax.set_xticks(sorted(epoch_list))
 
     for j in range(idx + 1, len(axes)):
@@ -378,8 +378,8 @@ def plot_l2_distance_individual(
         maml_values = [maml_all_results[layer_name][ep] for ep in sorted_epochs]
         our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
 
-        plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed')
-        plt.plot(sorted_epochs, our_values, label="Ours", linestyle='solid')
+        plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed', linewidth=2.5)
+        plt.plot(sorted_epochs, our_values, label="Ours", linestyle='solid', linewidth=2.5)
 
         # 눈금 수 줄이기 + 마지막 epoch 포함 보장
         step = max(len(epoch_list) // 10, 1)
@@ -432,7 +432,7 @@ def plot_l2_distance_subplots(
         ax.set_xlabel("Epoch")
         ax.set_ylabel("Avg L2 Distance")
         ax.grid(True)
-        ax.legend(fontsize=8)
+        ax.legend(fontsize=15)
         ax.set_xticks(sorted(epoch_list))
 
     for j in range(idx + 1, len(axes)):
@@ -511,8 +511,8 @@ def plot_pairwise_cosine_individual(
         maml_values = [maml_all_results[layer_name][ep] for ep in sorted_epochs]
         our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
 
-        plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed')
-        plt.plot(sorted_epochs, our_values, label="OURS", linestyle='solid')
+        plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed', linewidth=2.5)
+        plt.plot(sorted_epochs, our_values, label="OURS", linestyle='solid', linewidth=2.5)
 
         plt.title(f"Pairwise Cosine Similarity - {label}", fontsize=12)
         plt.xlabel('Epoch', fontsize=16)
@@ -553,7 +553,7 @@ def plot_pairwise_cosine_subplots(
         ax.set_xlabel("Epoch")
         ax.set_ylabel("Avg Pairwise Cosine Similarity")
         ax.grid(True)
-        ax.legend(fontsize=8)
+        ax.legend(fontsize=15)
         ax.set_xticks(sorted(epoch_list))
 
     for j in range(idx + 1, len(axes)):
@@ -623,8 +623,8 @@ def plot_variance_of_mean_gradient_individual(
         maml_values = [maml_all_results[layer_name][ep] for ep in sorted_epochs]
         our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
 
-        plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed')
-        plt.plot(sorted_epochs, our_values, label="OURS", linestyle='solid')
+        plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed', linewidth=2.5)
+        plt.plot(sorted_epochs, our_values, label="OURS", linestyle='solid', linewidth=2.5)
 
         step = max(len(epoch_list) // 10, 1)
         plt.xticks(sorted_epochs[::step])
@@ -667,7 +667,7 @@ def plot_variance_of_mean_gradient_subplots(
         ax.set_xlabel("Epoch")
         ax.set_ylabel("Var. of Mean Gradient")
         ax.grid(True)
-        ax.legend(fontsize=8)
+        ax.legend(fontsize=15)
         ax.set_xticks(sorted(epoch_list))
 
     for j in range(idx + 1, len(axes)):
