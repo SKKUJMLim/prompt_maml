@@ -681,6 +681,129 @@ def plot_variance_of_mean_gradient_subplots(
     print(f"[Saved] {save_path}")
 
 
+def compute_norm_of_mean_gradient(epoch: int, layer_name: str, base_path: str, p: int = 2):
+    """
+    평균 그래디언트의 L2 노름을 계산합니다.
+    Args:
+        epoch: 분석할 epoch 번호
+        layer_name: 레이어 이름
+        base_path: 그래디언트 저장 경로
+        p: 사용할 노름의 차수 (기본값은 2)
+    Returns:
+        float: 평균 그래디언트의 L2 노름
+    """
+    layer_dir = os.path.join(base_path, "grad_info_per_epoch", f"epoch{epoch}", layer_name)
+
+    grad_list = []
+    filenames = sorted([f for f in os.listdir(layer_dir) if f.endswith(".pt")])
+
+    for fname in filenames:
+        grad = torch.load(os.path.join(layer_dir, fname))  # [D]
+        grad_list.append(grad)
+
+    grads = torch.stack(grad_list)  # [T, D]
+    grad_mean = grads.mean(dim=0)   # [D]
+
+    norm = grad_mean.norm(p=p).item()
+    print(f"{layer_name} (epoch {epoch}): Norm of Mean Gradient = {norm:.6f}")
+    return norm
+
+def compute_norm_of_mean_gradient_over_epochs(layer_name: str, base_path: str, epoch_list: list, p: int = 2):
+    results = {}
+    for epoch in epoch_list:
+        try:
+            norm = compute_norm_of_mean_gradient(epoch, layer_name, base_path, p=p)
+            results[epoch] = norm
+        except Exception as e:
+            print(f"[Warning] {layer_name} - Epoch {epoch} failed: {e}")
+    return results
+
+
+def get_norm_of_mean_gradient_all_layers(base_path: str, epoch_list: list, layer_names: list, p: int = 2):
+    all_results = {}
+    for layer_name in layer_names:
+        results = compute_norm_of_mean_gradient_over_epochs(layer_name, base_path, epoch_list, p=p)
+        all_results[layer_name] = results
+    return all_results
+
+
+def plot_norm_of_mean_gradient_individual(
+        maml_all_results: dict,
+        our_all_results: dict,
+        epoch_list: list,
+        save_dir: str = "gradient/norm_mean_grad"
+):
+    os.makedirs(save_dir, exist_ok=True)
+
+    for layer_name in LAYER_NAMES:
+        label = LAYER_LABELS.get(layer_name, layer_name)
+        plt.figure(figsize=(8, 5))
+
+        sorted_epochs = sorted(maml_all_results[layer_name].keys())
+        maml_values = [maml_all_results[layer_name][ep] for ep in sorted_epochs]
+        our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
+
+        plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed', linewidth=2.5)
+        plt.plot(sorted_epochs, our_values, label="OURS", linestyle='solid', linewidth=2.5)
+
+        step = max(len(epoch_list) // 10, 1)
+        display_epochs = sorted_epochs[::step]
+        if sorted_epochs[-1] not in display_epochs:
+            display_epochs.append(sorted_epochs[-1])
+        plt.xticks(display_epochs, fontsize=15)
+        plt.yticks(fontsize=15)
+
+        plt.xlabel('Epoch', fontsize=16)
+        plt.ylabel("Norm of Mean Gradient")
+        plt.grid(True)
+        plt.legend(fontsize=15)
+        plt.tight_layout()
+
+        save_path = os.path.join(save_dir, f"{label}_norm_mean_gradient.png")
+        plt.savefig(save_path)
+        plt.close()
+        print(f"[Saved] {save_path}")
+
+
+def plot_norm_of_mean_gradient_subplots(
+        maml_all_results: dict,
+        our_all_results: dict,
+        epoch_list: list,
+        save_dir: str = "gradient/norm_mean_grad"
+):
+    num_layers = len(LAYER_NAMES)
+    nrows = (num_layers + 1) // 2
+    fig, axes = plt.subplots(nrows=nrows, ncols=2, figsize=(12, 3 * nrows))
+    axes = axes.flatten()
+
+    for idx, layer_name in enumerate(LAYER_NAMES):
+        ax = axes[idx]
+        label = LAYER_LABELS.get(layer_name, layer_name)
+
+        sorted_epochs = sorted(maml_all_results[layer_name].keys())
+        maml_values = [maml_all_results[layer_name][ep] for ep in sorted_epochs]
+        our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
+
+        ax.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed')
+        ax.plot(sorted_epochs, our_values, label="OURS", linestyle='solid')
+
+        ax.set_title(label, fontsize=10)
+        ax.set_xlabel("Epoch")
+        ax.set_ylabel("Norm of Mean Gradient")
+        ax.grid(True)
+        ax.legend(fontsize=15)
+        ax.set_xticks(sorted(epoch_list))
+
+    for j in range(idx + 1, len(axes)):
+        fig.delaxes(axes[j])
+
+    plt.tight_layout()
+    os.makedirs(save_dir, exist_ok=True)
+    save_path = os.path.join(save_dir, "subplot_norm_mean_gradient.png")
+    plt.savefig(save_path)
+    plt.close()
+    print(f"[Saved] {save_path}")
+
 
 
 # 외부에서 import 가능하도록 설정
