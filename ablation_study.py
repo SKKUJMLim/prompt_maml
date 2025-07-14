@@ -1,5 +1,6 @@
 import argparse
 import os
+import torch
 
 from utils.gradient_conflict import (
     LAYER_NAMES,
@@ -18,12 +19,13 @@ from utils.gradient_conflict import (
     get_variance_of_mean_gradient_all_layers,
     plot_variance_of_mean_gradient_individual,
     plot_variance_of_mean_gradient_subplots,
-
-    # 🔵 추가된 항목
     get_norm_of_mean_gradient_all_layers,
     plot_norm_of_mean_gradient_individual,
     plot_norm_of_mean_gradient_subplots
 )
+
+from utils.model_distance import (
+    plot_model_distance, make_random_init_params, get_model_distance_from_fixed_random_init)
 
 if __name__ == '__main__':
 
@@ -36,6 +38,7 @@ if __name__ == '__main__':
     # python ablation_study.py --name pairwise_cosine_similarity
     # python ablation_study.py --name var_gradient
     # python ablation_study.py --name norm_mean_gradient
+    # python ablation_study.py --name model_distance
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--name', type=str, nargs='+',
@@ -45,7 +48,8 @@ if __name__ == '__main__':
                             'l2_distance',
                             'pairwise_cosine_similarity',
                             'var_gradient',
-                            'norm_mean_gradient'
+                            'norm_mean_gradient',
+                            'model_distance'
                         ],
                         help='Metric name to compute.')
     args = parser.parse_args()
@@ -96,3 +100,33 @@ if __name__ == '__main__':
 
         plot_norm_of_mean_gradient_individual(maml_norm, our_norm, epoch_list)
         plot_norm_of_mean_gradient_subplots(maml_norm, our_norm, epoch_list)
+
+
+    elif 'model_distance' in args.name:
+        # 실험 세팅
+        prompt_ckpt_dir = 'MAML_Prompt_padding_5way_5shot_filter128_miniImagenet/saved_models'
+        baseline_ckpt_dir = 'MAML_5way_5shot_filter128_miniImagenet/saved_models'
+
+        epochs = list(range(1, 100))  # train_model_1 ~ train_model_99
+        prompt_checkpoints = [f"train_model_{e}" for e in epochs]
+        baseline_checkpoints = [f"train_model_{e}" for e in epochs]
+
+        # 기준 파라미터 (prompt 기준)
+        sample_ckpt = torch.load(os.path.join(prompt_ckpt_dir, 'train_model_1'), map_location='cpu')
+        reference_params = sample_ckpt['network']
+        random_init_params = make_random_init_params(reference_params)
+
+        # 모델 거리 계산
+        prompt_dist = get_model_distance_from_fixed_random_init(random_init_params, prompt_ckpt_dir, prompt_checkpoints)
+        baseline_dist = get_model_distance_from_fixed_random_init(random_init_params, baseline_ckpt_dir,
+                                                                  baseline_checkpoints)
+
+        # 그래프 저장
+        plot_model_distance(
+            epochs,
+            prompt_dist,
+            baseline_dist,
+            label1='Ours',
+            label2='MAML',
+            save_path='model_distance_highres.png'
+        )
