@@ -754,7 +754,7 @@ def plot_norm_of_mean_gradient_individual(
         plt.yticks(fontsize=15)
 
         plt.xlabel('Epoch', fontsize=16)
-        plt.ylabel("Norm of Mean Gradient")
+        # plt.ylabel("Norm of Mean Gradient")
         plt.grid(True)
         plt.legend(fontsize=15)
         plt.tight_layout()
