@@ -128,5 +128,5 @@ if __name__ == '__main__':
             baseline_dist,
             label1='Ours',
             label2='MAML',
-            save_path='model_distance_highres.png'
+            save_path='model_distance.png'
         )
