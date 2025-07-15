@@ -149,7 +149,7 @@ def plot_cosine_similarity_layerwise_subplots(
         our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
 
         ax.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed')
-        ax.plot(sorted_epochs, our_values, label="OURS", linestyle='solid')
+        ax.plot(sorted_epochs, our_values, label="Ours", linestyle='solid')
 
         ax.set_title(label, fontsize=10)
         ax.set_xlabel("Epoch")
@@ -252,7 +252,7 @@ def plot_gsnr_individual(
         our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
 
         plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed', linewidth=2.5)
-        plt.plot(sorted_epochs, our_values, label="OURS", linestyle='solid', linewidth=2.5)
+        plt.plot(sorted_epochs, our_values, label="Ours", linestyle='solid', linewidth=2.5)
 
         # 눈금 수 줄이기
         step = max(len(epoch_list) // 10, 1)
@@ -292,7 +292,7 @@ def plot_gsnr_subplots(
         our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
 
         ax.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed')
-        ax.plot(sorted_epochs, our_values, label="OURS", linestyle='solid')
+        ax.plot(sorted_epochs, our_values, label="Ours", linestyle='solid')
 
         ax.set_title(label, fontsize=10)
         ax.set_xlabel("Epoch")
@@ -426,7 +426,7 @@ def plot_l2_distance_subplots(
         our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
 
         ax.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed')
-        ax.plot(sorted_epochs, our_values, label="OURS", linestyle='solid')
+        ax.plot(sorted_epochs, our_values, label="Ours", linestyle='solid')
 
         ax.set_title(label, fontsize=10)
         ax.set_xlabel("Epoch")
@@ -512,7 +512,7 @@ def plot_pairwise_cosine_individual(
         our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
 
         plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed', linewidth=2.5)
-        plt.plot(sorted_epochs, our_values, label="OURS", linestyle='solid', linewidth=2.5)
+        plt.plot(sorted_epochs, our_values, label="Ours", linestyle='solid', linewidth=2.5)
 
         plt.title(f"Pairwise Cosine Similarity - {label}", fontsize=12)
         plt.xlabel('Epoch', fontsize=16)
@@ -547,7 +547,7 @@ def plot_pairwise_cosine_subplots(
         our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
 
         ax.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed')
-        ax.plot(sorted_epochs, our_values, label="OURS", linestyle='solid')
+        ax.plot(sorted_epochs, our_values, label="Ours", linestyle='solid')
 
         ax.set_title(label, fontsize=10)
         ax.set_xlabel("Epoch")
@@ -624,7 +624,7 @@ def plot_variance_of_mean_gradient_individual(
         our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
 
         plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed', linewidth=2.5)
-        plt.plot(sorted_epochs, our_values, label="OURS", linestyle='solid', linewidth=2.5)
+        plt.plot(sorted_epochs, our_values, label="Ours", linestyle='solid', linewidth=2.5)
 
         step = max(len(epoch_list) // 10, 1)
         plt.xticks(sorted_epochs[::step])
@@ -661,7 +661,7 @@ def plot_variance_of_mean_gradient_subplots(
         our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
 
         ax.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed')
-        ax.plot(sorted_epochs, our_values, label="OURS", linestyle='solid')
+        ax.plot(sorted_epochs, our_values, label="Ours", linestyle='solid')
 
         ax.set_title(label, fontsize=10)
         ax.set_xlabel("Epoch")
@@ -744,7 +744,7 @@ def plot_norm_of_mean_gradient_individual(
         our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
 
         plt.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed', linewidth=2.5)
-        plt.plot(sorted_epochs, our_values, label="OURS", linestyle='solid', linewidth=2.5)
+        plt.plot(sorted_epochs, our_values, label="Ours", linestyle='solid', linewidth=2.5)
 
         step = max(len(epoch_list) // 10, 1)
         display_epochs = sorted_epochs[::step]
@@ -785,7 +785,7 @@ def plot_norm_of_mean_gradient_subplots(
         our_values = [our_all_results[layer_name][ep] for ep in sorted_epochs]
 
         ax.plot(sorted_epochs, maml_values, label="MAML", linestyle='dashed')
-        ax.plot(sorted_epochs, our_values, label="OURS", linestyle='solid')
+        ax.plot(sorted_epochs, our_values, label="Ours", linestyle='solid')
 
         ax.set_title(label, fontsize=10)
         ax.set_xlabel("Epoch")
