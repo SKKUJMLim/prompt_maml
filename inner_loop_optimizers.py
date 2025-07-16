@@ -140,15 +140,10 @@ class LSLRGradientDescentLearningRule(nn.Module):
         self.names_learning_rates_dict = nn.ParameterDict()
 
         if self.args.prompter:
-            if self.args.prompt_engineering != 'arbiter':
-                # self.prompt_learning_rates_dict['prompt_weight_learning_rate'] = nn.Parameter(
-                #     data=torch.ones(self.total_num_inner_loop_steps + 1) * self.init_learning_rate,
-                #     requires_grad=self.use_learnable_learning_rates)
-
-                for idx, (key, param) in enumerate(prompted_weights_dict.items()):
-                    self.prompt_learning_rates_dict[key.replace(".", "-")] = nn.Parameter(
-                        data=torch.ones(self.total_num_inner_loop_steps + 1) * self.args.inner_prompt_learning_rate,
-                        requires_grad=self.use_learnable_learning_rates)
+            for idx, (key, param) in enumerate(prompted_weights_dict.items()):
+                self.prompt_learning_rates_dict[key.replace(".", "-")] = nn.Parameter(
+                    data=torch.ones(self.total_num_inner_loop_steps + 1) * self.args.inner_prompt_learning_rate,
+                    requires_grad=self.use_learnable_learning_rates)
 
         for idx, (key, param) in enumerate(names_weights_dict.items()):
             if 'linear' in key:
