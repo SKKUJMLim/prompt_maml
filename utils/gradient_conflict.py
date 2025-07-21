@@ -117,7 +117,7 @@ def plot_cosine_similarity_layerwise_individual(
 
         # plt.title(f"Avg Cosine Similarity - {label}", fontsize=12)
         plt.xlabel('Epoch', fontsize=16)
-        plt.ylabel("Avg Cosine Similarity")
+        # plt.ylabel("Avg Cosine Similarity")
         plt.grid(True)
         plt.legend(fontsize=15)
         # plt.xticks(sorted(epoch_list))
@@ -153,7 +153,7 @@ def plot_cosine_similarity_layerwise_subplots(
 
         ax.set_title(label, fontsize=10)
         ax.set_xlabel("Epoch")
-        ax.set_ylabel("Avg Cosine Similarity")
+        # ax.set_ylabel("Avg Cosine Similarity")
         ax.grid(True)
         ax.legend(fontsize=15)
         ax.set_xticks(sorted(epoch_list))
@@ -261,7 +261,7 @@ def plot_gsnr_individual(
 
         plt.title(f"GSNR - {label}", fontsize=12)
         plt.xlabel('Epoch', fontsize=16)
-        plt.ylabel("GSNR")
+        # plt.ylabel("GSNR")
         plt.grid(True)
         plt.legend(fontsize=15)
         # plt.xticks(sorted(epoch_list))
@@ -296,7 +296,7 @@ def plot_gsnr_subplots(
 
         ax.set_title(label, fontsize=10)
         ax.set_xlabel("Epoch")
-        ax.set_ylabel("GSNR")
+        # ax.set_ylabel("GSNR")
         ax.grid(True)
         ax.legend(fontsize=15)
         ax.set_xticks(sorted(epoch_list))
@@ -395,7 +395,7 @@ def plot_l2_distance_individual(
 
         # plt.title(f"L2 Distance - {label}", fontsize=12)
         plt.xlabel('Epoch', fontsize=16)
-        plt.ylabel("Average L2 Distance")
+        # plt.ylabel("Average L2 Distance")
         plt.grid(True)
         plt.legend(fontsize=15)
         plt.tight_layout()
@@ -430,7 +430,7 @@ def plot_l2_distance_subplots(
 
         ax.set_title(label, fontsize=10)
         ax.set_xlabel("Epoch")
-        ax.set_ylabel("Avg L2 Distance")
+        # ax.set_ylabel("Avg L2 Distance")
         ax.grid(True)
         ax.legend(fontsize=15)
         ax.set_xticks(sorted(epoch_list))
@@ -516,7 +516,7 @@ def plot_pairwise_cosine_individual(
 
         plt.title(f"Pairwise Cosine Similarity - {label}", fontsize=12)
         plt.xlabel('Epoch', fontsize=16)
-        plt.ylabel("Avg Pairwise Cosine Similarity")
+        # plt.ylabel("Avg Pairwise Cosine Similarity")
         plt.grid(True)
         plt.legend(fontsize=15)
         plt.xticks(sorted(epoch_list))
@@ -551,7 +551,7 @@ def plot_pairwise_cosine_subplots(
 
         ax.set_title(label, fontsize=10)
         ax.set_xlabel("Epoch")
-        ax.set_ylabel("Avg Pairwise Cosine Similarity")
+        # ax.set_ylabel("Avg Pairwise Cosine Similarity")
         ax.grid(True)
         ax.legend(fontsize=15)
         ax.set_xticks(sorted(epoch_list))
@@ -630,7 +630,7 @@ def plot_variance_of_mean_gradient_individual(
         plt.xticks(sorted_epochs[::step])
         plt.title(f"Variance of Mean Gradient - {label}", fontsize=12)
         plt.xlabel('Epoch', fontsize=16)
-        plt.ylabel("Variance")
+        # plt.ylabel("Variance")
         plt.grid(True)
         plt.legend(fontsize=15)
         plt.tight_layout()
@@ -665,7 +665,7 @@ def plot_variance_of_mean_gradient_subplots(
 
         ax.set_title(label, fontsize=10)
         ax.set_xlabel("Epoch")
-        ax.set_ylabel("Var. of Mean Gradient")
+        # ax.set_ylabel("Var. of Mean Gradient")
         ax.grid(True)
         ax.legend(fontsize=15)
         ax.set_xticks(sorted(epoch_list))
@@ -789,7 +789,7 @@ def plot_norm_of_mean_gradient_subplots(
 
         ax.set_title(label, fontsize=10)
         ax.set_xlabel("Epoch")
-        ax.set_ylabel("Norm of Mean Gradient")
+        # ax.set_ylabel("Norm of Mean Gradient")
         ax.grid(True)
         ax.legend(fontsize=15)
         ax.set_xticks(sorted(epoch_list))
