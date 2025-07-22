@@ -516,6 +516,13 @@ class MAMLFewShotClassifier(nn.Module):
                                                                       num_step=num_step, prepend_prompt=prepend_prompt)
             loss = F.cross_entropy(input=preds, target=y)
 
+        elif self.args.data_aug == "not_mixup":
+            preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+                                                             training=training,
+                                                             backup_running_statistics=backup_running_statistics,
+                                                             num_step=num_step, prepend_prompt=prepend_prompt)
+            loss = F.cross_entropy(preds, y)
+
         # --------- No augmentation ---------
         else:
             preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,

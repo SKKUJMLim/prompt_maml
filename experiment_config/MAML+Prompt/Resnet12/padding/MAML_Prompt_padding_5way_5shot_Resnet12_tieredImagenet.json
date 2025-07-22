@@ -61,5 +61,7 @@
   "outer_prompt_learning_rate": 0.001,
   "inner_prompt_learning_rate": 0.01,
   "backbone": "ResNet12",
-  "data_aug" : "mixup"
+  "data_aug" : "not_mixup",
+  "ablation_record": false,
+  "random_prompt_init": false
 }
