@@ -377,7 +377,7 @@ class MAMLFewShotClassifier(nn.Module):
 
                             for name, param in self.classifier.named_parameters():
                                 if param.grad is not None:
-                                    if 'prompt' not in name and 'norm_layer' not in name and 'inner_loop_optimizer' not in name:
+                                    if 'prompt' not in name and 'norm_layer' not in name:
                                         grad = param.grad.detach().clone().flatten().cpu()
 
                                         all_layer_grads.append(grad)
@@ -518,7 +518,7 @@ class MAMLFewShotClassifier(nn.Module):
 
         elif self.args.data_aug == "not_mixup":
 
-            x = random_flip_like_torchvision(x)
+            # x = random_flip_like_torchvision(x)
 
             preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
                                                              training=training,
