@@ -316,6 +316,9 @@ class MAMLFewShotClassifier(nn.Module):
             x_target_set_task = x_target_set_task.view(-1, c, h, w)
             y_target_set_task = y_target_set_task.view(-1)
 
+            if training_phase is True and self.args.data_aug is not None:
+                x_support_set_task = random_flip_like_torchvision(x_support_set_task)
+
             for num_step in range(num_steps):
 
                 support_loss, support_preds = self.net_forward(x=x_support_set_task,
