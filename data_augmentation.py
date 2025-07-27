@@ -18,9 +18,9 @@ def random_flip_batchwise(x):
     B = x.size(0)
     for i in range(B):
         if torch.rand(1) < 0.5:
-            x[i] = torch.flip(x[i], dims=[2])
+            x[i] = torch.flip(x[i], dims=[3])  # Horizontal flip (W)
         if torch.rand(1) < 0.5:
-            x[i] = torch.flip(x[i], dims=[1])
+            x[i] = torch.flip(x[i], dims=[2])  # Vertical flip (H)
     return x
 
 def random_brightness(x, min_val=0.8, max_val=1.2):
