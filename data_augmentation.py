@@ -13,6 +13,16 @@ def random_flip_like_torchvision(x):
         x = torch.flip(x, dims=[2])  # Vertical Flip
     return x
 
+
+def random_flip_batchwise(x):
+    B = x.size(0)
+    for i in range(B):
+        if torch.rand(1) < 0.5:
+            x[i] = torch.flip(x[i], dims=[2])
+        if torch.rand(1) < 0.5:
+            x[i] = torch.flip(x[i], dims=[1])
+    return x
+
 def random_brightness(x, min_val=0.8, max_val=1.2):
     """밝기 스케일 조정"""
     scale = torch.empty(1).uniform_(min_val, max_val).to(x.device)

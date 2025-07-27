@@ -12,7 +12,7 @@ from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 from inner_loop_optimizers_weightdecay import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 
 from utils.storage import save_statistics
-from data_augmentation import mixup_data, cutmix_data, random_flip, random_flip_like_torchvision
+from data_augmentation import mixup_data, cutmix_data, random_flip, random_flip_like_torchvision, random_flip_batchwise
 
 
 def set_torch_seed(seed):
@@ -317,7 +317,7 @@ class MAMLFewShotClassifier(nn.Module):
             y_target_set_task = y_target_set_task.view(-1)
 
             if training_phase is True and self.args.data_aug is not None:
-                x_support_set_task = random_flip_like_torchvision(x_support_set_task)
+                x_support_set_task = random_flip_batchwise(x_support_set_task)
 
             for num_step in range(num_steps):
 
@@ -357,7 +357,7 @@ class MAMLFewShotClassifier(nn.Module):
                     if num_step == (self.args.number_of_training_steps_per_iter - 1):
 
                         if training_phase is True and self.args.data_aug is not None:
-                            x_target_set_task = random_flip_like_torchvision(x_target_set_task)
+                            x_target_set_task = random_flip_batchwise(x_target_set_task)
 
                         target_loss, target_preds = self.net_forward(x=x_target_set_task,
                                                                      y=y_target_set_task,
