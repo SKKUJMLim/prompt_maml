@@ -271,10 +271,15 @@ class ExperimentBuilder(object):
         per_model_per_batch_preds = [[] for i in range(top_n_models)]
         per_model_per_batch_targets = [[] for i in range(top_n_models)]
         test_losses = [dict() for i in range(top_n_models)]
+
         for idx, model_idx in enumerate(top_n_idx):
             self.state = \
                 self.model.load_model(model_save_dir=self.saved_models_filepath, model_name="train_model",
                                       model_idx=model_idx + 1)
+
+            torch.cuda.synchronize()
+            start = time.time()
+
             with tqdm.tqdm(total=int(self.args.num_evaluation_tasks / self.args.batch_size)) as pbar_test:
                 for sample_idx, test_sample in enumerate(
                         self.data.get_test_batches(total_batches=int(self.args.num_evaluation_tasks / self.args.batch_size),
@@ -286,6 +291,10 @@ class ExperimentBuilder(object):
                                                                                model_idx=idx,
                                                                                per_model_per_batch_preds=per_model_per_batch_preds,
                                                                                pbar_test=pbar_test)
+        torch.cuda.synchronize()
+        end = time.time()
+        print(f"Test-time adaptation time: {end - start:.6f} seconds")
+
         # for i in range(top_n_models):
         #     print("test assertion", 0)
         #     print(per_model_per_batch_targets[0], per_model_per_batch_targets[i])
@@ -381,4 +390,4 @@ class ExperimentBuilder(object):
                             print("train_seed {}, val_seed: {}, at pause time".format(self.data.dataset.seed["train"],
                                                                                       self.data.dataset.seed["val"]))
                             sys.exit()
-            self.evaluated_test_set_using_the_best_models(top_n_models=5)
+            self.evaluated_test_set_using_the_best_models(top_n_models=1)

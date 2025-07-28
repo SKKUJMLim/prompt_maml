@@ -183,6 +183,12 @@ class MAMLFewShotClassifier(nn.Module):
 
         prompted_grads_copy = {}
         if self.args.prompter:
+
+            # Classifier만 추출해서 gradient 계산 대상 지정
+            # names_weights_copy = {
+            #     k: v for k, v in names_weights_copy.items() if 'classifier' in k or 'linear' in k
+            # }
+
             grads = torch.autograd.grad(loss, names_weights_copy.values(),
                                         create_graph=use_second_order, allow_unused=True,
                                         retain_graph=True)  ###### retrain_graph 추가
@@ -195,6 +201,12 @@ class MAMLFewShotClassifier(nn.Module):
             prompted_weights_copy = {key: value[0] for key, value in prompted_weights_copy.items()}
 
         else:
+
+            # # Classifier만 추출해서 gradient 계산 대상 지정
+            # names_weights_copy = {
+            #     k: v for k, v in names_weights_copy.items() if 'classifier' in k or 'linear' in k
+            # }
+
             grads = torch.autograd.grad(loss, names_weights_copy.values(),
                                         create_graph=use_second_order, allow_unused=True)
             names_grads_copy = dict(zip(names_weights_copy.keys(), grads))
