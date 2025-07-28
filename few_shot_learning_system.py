@@ -11,8 +11,8 @@ from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 # from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 from inner_loop_optimizers_weightdecay import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 
-from utils.storage import save_statistics
-from data_augmentation import mixup_data, cutmix_data, random_flip, random_flip_like_torchvision, random_flip_batchwise
+from data_augmentation import mixup_data, random_flip_like_torchvision, random_flip_batchwise
+from utils.basic import count_params_by_key
 
 
 def set_torch_seed(seed):
@@ -306,8 +306,10 @@ class MAMLFewShotClassifier(nn.Module):
 
             names_weights_copy = {key: value for key, value in names_weights_copy.items() if 'layer_dict' in key}
 
-            # print("names_weights_copy === ", names_weights_copy.keys())
-            # print("prompted_weight_dict === ", prompted_weights_copy.keys())
+            # parameter 수 체크
+            # print("visual prompt parameter count == ", count_params_by_key(param_dict=prompted_weights_copy, keyword='prompt'))
+            # print("backbone parameter count == ", count_params_by_key(param_dict=names_weights_copy, keyword='conv'))
+            # print("classifier parameter  count == ", count_params_by_key(param_dict=names_weights_copy, keyword='linear'))
 
             n, s, c, h, w = x_target_set_task.shape
 

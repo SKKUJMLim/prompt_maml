@@ -2,30 +2,9 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as F
 import itertools
-import os
-import numpy as np
-import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 from matplotlib import cm
 
-
-import os
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.manifold import TSNE
-from matplotlib import cm
-
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
-from mpl_toolkits.mplot3d import Axes3D
-
-import os
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 
 import os
@@ -33,6 +12,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+
+def count_params_by_key(param_dict, keyword):
+    return sum(p.numel() for k, p in param_dict.items() if keyword in k and p.requires_grad)
 
 def plot_3d_pca_query_comparison(
     query_before,
