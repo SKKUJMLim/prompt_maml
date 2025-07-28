@@ -293,7 +293,6 @@ class ExperimentBuilder(object):
                                                                                pbar_test=pbar_test)
         torch.cuda.synchronize()
         end = time.time()
-        print(f"Test-time adaptation time: {end - start:.6f} seconds")
 
         # for i in range(top_n_models):
         #     print("test assertion", 0)
@@ -319,6 +318,7 @@ class ExperimentBuilder(object):
                                                       create=False, filename="test_summary.csv")
         print(test_losses)
         print("saved test performance at", summary_statistics_filepath)
+        print(f"Test-time adaptation time: {end - start:.6f} seconds")
 
     def run_experiment(self):
         """
