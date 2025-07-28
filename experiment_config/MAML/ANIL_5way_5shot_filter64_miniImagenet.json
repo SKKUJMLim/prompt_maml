@@ -57,5 +57,8 @@
   "prompt_engineering": "not",
   "prompt_size" : 0,
   "image_size" : 0,
-  "ANIL": true
+  "ANIL": true,
+  "data_aug" : null,
+  "ablation_record": false,
+  "random_prompt_init": false
 }
