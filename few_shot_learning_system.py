@@ -384,49 +384,49 @@ class MAMLFewShotClassifier(nn.Module):
                                                                      inner_loop=False)
                         task_losses.append(target_loss)
 
-                        # Gradient conflict 분석을 위한 gradient 수집
-                        if training_phase and self.args.ablation_record:
-
-                            task_idx = f"e{epoch}_i{current_iter}_t{task_id}"
-                            target_loss.backward(retain_graph=True)
-
-                            all_layer_grads = []   # 전체 layer gradient 저장용
-
-                            for name, param in self.classifier.named_parameters():
-                                if param.grad is not None:
-                                    if 'prompt' not in name and 'norm_layer' not in name:
-                                        grad = param.grad.detach().clone().flatten().cpu()
-
-                                        all_layer_grads.append(grad)
-
-                                        layer_name = name.replace('.', '_')
-
-                                        # Layer 별 폴더 생성
-                                        layer_dir = os.path.join(
-                                            self.args.experiment_name,
-                                            "grad_info_per_epoch",
-                                            f"epoch{epoch}",
-                                            f"layer_{layer_name}"
-                                        )
-                                        os.makedirs(layer_dir, exist_ok=True)
-
-                                        save_path = os.path.join(layer_dir, f"{task_idx}.pt")
-                                        torch.save(grad, save_path)
-
-                            # 모든 layer를 하나로 저장 (dict 형식)
-                            all_dir = os.path.join(
-                                self.args.experiment_name,
-                                "grad_info_per_epoch",
-                                f"epoch{epoch}",
-                                "all_layers"
-                            )
-                            os.makedirs(all_dir, exist_ok=True)
-                            all_save_path = os.path.join(all_dir, f"{task_idx}.pt")
-                            all_layer_grads = torch.cat(all_layer_grads)
-                            torch.save(all_layer_grads, all_save_path)
-
-
-                            self.classifier.zero_grad()
+                        # # Gradient conflict 분석을 위한 gradient 수집
+                        # if training_phase and self.args.ablation_record:
+                        #
+                        #     task_idx = f"e{epoch}_i{current_iter}_t{task_id}"
+                        #     target_loss.backward(retain_graph=True)
+                        #
+                        #     all_layer_grads = []   # 전체 layer gradient 저장용
+                        #
+                        #     for name, param in self.classifier.named_parameters():
+                        #         if param.grad is not None:
+                        #             if 'prompt' not in name and 'norm_layer' not in name:
+                        #                 grad = param.grad.detach().clone().flatten().cpu()
+                        #
+                        #                 all_layer_grads.append(grad)
+                        #
+                        #                 layer_name = name.replace('.', '_')
+                        #
+                        #                 # Layer 별 폴더 생성
+                        #                 layer_dir = os.path.join(
+                        #                     self.args.experiment_name,
+                        #                     "grad_info_per_epoch",
+                        #                     f"epoch{epoch}",
+                        #                     f"layer_{layer_name}"
+                        #                 )
+                        #                 os.makedirs(layer_dir, exist_ok=True)
+                        #
+                        #                 save_path = os.path.join(layer_dir, f"{task_idx}.pt")
+                        #                 torch.save(grad, save_path)
+                        #
+                        #     # 모든 layer를 하나로 저장 (dict 형식)
+                        #     all_dir = os.path.join(
+                        #         self.args.experiment_name,
+                        #         "grad_info_per_epoch",
+                        #         f"epoch{epoch}",
+                        #         "all_layers"
+                        #     )
+                        #     os.makedirs(all_dir, exist_ok=True)
+                        #     all_save_path = os.path.join(all_dir, f"{task_idx}.pt")
+                        #     all_layer_grads = torch.cat(all_layer_grads)
+                        #     torch.save(all_layer_grads, all_save_path)
+                        #
+                        #
+                        #     self.classifier.zero_grad()
 
             per_task_target_preds[task_id] = target_preds.detach().cpu().numpy()
             _, predicted = torch.max(target_preds.data, 1)
@@ -664,33 +664,58 @@ class MAMLFewShotClassifier(nn.Module):
 
         return losses, per_task_target_preds
 
-    def meta_update(self, loss):
+    def meta_update(self, loss, epoch, current_iter):
         """
         Applies an outer loop update on the meta-parameters of the model.
         :param loss: The current crossentropy loss.
         """
 
-        # 가중치 업데이트 확인용 변수
-        # prev_weights = {}
-        # for name, param in self.classifier.named_parameters():
-        #     prev_weights[name] = param.data.clone()
 
         self.optimizer.zero_grad()
         loss.backward()
-        # if 'imagenet' in self.args.dataset_name:
-        #    for name, param in self.classifier.named_parameters():
-        #        if param.requires_grad:
-        #            param.grad.data.clamp_(-10, 10)  # not sure if this is necessary, more experiments are needed
-        # for name, param in self.classifier.named_parameters():
-        #    print(param.mean())
+
+        # Gradient conflict 분석을 위한 gradient 수집
+        if self.args.ablation_record:
+
+            task_idx = f"e{epoch}_i{current_iter}"
+            all_layer_grads = []  # 전체 layer gradient 저장용
+
+            for name, param in self.classifier.named_parameters():
+                if param.grad is not None:
+                    if 'prompt' not in name and 'norm_layer' not in name:
+                        grad = param.grad.detach().clone().flatten().cpu()
+
+                        all_layer_grads.append(grad)
+
+                        layer_name = name.replace('.', '_')
+
+                        # Layer 별 폴더 생성
+                        layer_dir = os.path.join(
+                            self.args.experiment_name,
+                            "grad_info_per_epoch",
+                            f"epoch{epoch}",
+                            f"layer_{layer_name}"
+                        )
+                        os.makedirs(layer_dir, exist_ok=True)
+
+                        save_path = os.path.join(layer_dir, f"{task_idx}.pt")
+                        torch.save(grad, save_path)
+
+            # 모든 layer를 하나로 저장 (dict 형식)
+            all_dir = os.path.join(
+                self.args.experiment_name,
+                "grad_info_per_epoch",
+                f"epoch{epoch}",
+                "all_layers"
+            )
+            os.makedirs(all_dir, exist_ok=True)
+            all_save_path = os.path.join(all_dir, f"{task_idx}.pt")
+            all_layer_grads = torch.cat(all_layer_grads)
+            torch.save(all_layer_grads, all_save_path)
+
 
         self.optimizer.step()
 
-        # 가중치 업데이트 확인
-        # for name, param in self.classifier.named_parameters():
-        #     if not torch.equal(prev_weights[name], param.data):
-        #         print(f"{name} 가중치가 업데이트되었습니다.")
-        #         prev_weights[name] = param.data.clone()
 
     def run_train_iter(self, data_batch, epoch, current_iter):
         """
@@ -719,7 +744,7 @@ class MAMLFewShotClassifier(nn.Module):
         losses, per_task_target_preds = self.train_forward_prop(data_batch=data_batch, epoch=epoch,
                                                                 current_iter=current_iter)
 
-        self.meta_update(loss=losses['loss'])
+        self.meta_update(loss=losses['loss'], epoch=epoch, current_iter=current_iter)
         losses['learning_rate'] = self.scheduler.get_lr()[0]
         self.optimizer.zero_grad()
         self.zero_grad()
