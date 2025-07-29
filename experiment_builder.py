@@ -277,8 +277,8 @@ class ExperimentBuilder(object):
                 self.model.load_model(model_save_dir=self.saved_models_filepath, model_name="train_model",
                                       model_idx=model_idx + 1)
 
-            torch.cuda.synchronize()
-            start = time.time()
+            # torch.cuda.synchronize()
+            # start = time.time()
 
             with tqdm.tqdm(total=int(self.args.num_evaluation_tasks / self.args.batch_size)) as pbar_test:
                 for sample_idx, test_sample in enumerate(
@@ -291,8 +291,8 @@ class ExperimentBuilder(object):
                                                                                model_idx=idx,
                                                                                per_model_per_batch_preds=per_model_per_batch_preds,
                                                                                pbar_test=pbar_test)
-        torch.cuda.synchronize()
-        end = time.time()
+        # torch.cuda.synchronize()
+        # end = time.time()
 
         # for i in range(top_n_models):
         #     print("test assertion", 0)
@@ -318,7 +318,7 @@ class ExperimentBuilder(object):
                                                       create=False, filename="test_summary.csv")
         print(test_losses)
         print("saved test performance at", summary_statistics_filepath)
-        print(f"Test-time adaptation time: {end - start:.6f} seconds")
+        # print(f"Test-time adaptation time: {end - start:.6f} seconds")
 
     def run_experiment(self):
         """
