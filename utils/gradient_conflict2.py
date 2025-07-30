@@ -2,6 +2,7 @@ import os
 import torch
 import matplotlib.pyplot as plt
 from torch.nn.functional import cosine_similarity
+from matplotlib.ticker import ScalarFormatter
 
 
 def analyze_epoch_gradients(epoch, grad_dir):
@@ -72,6 +73,8 @@ def save_plot(metric_name, maml_vals, dcml_vals, out_dir, label1='DCML', label2=
 
     if log_scale:
         plt.yscale('log')
+        plt.gca().yaxis.set_major_formatter(ScalarFormatter())
+        plt.ticklabel_format(axis='y', style='plain')
 
     plt.grid(True, linestyle='--', alpha=0.5)
     plt.legend(fontsize=15)
