@@ -15,7 +15,7 @@ if __name__ == '__main__':
 
     maml_path = "MAML_5way_5shot_filter128_miniImagenet/grad_info_per_epoch"
     dcml_path = "MAML_Prompt_padding_5way_5shot_filter128_miniImagenet/grad_info_per_epoch"
-    max_epoch = 3  # 필요 시 조정
+    max_epoch = 100  # 필요 시 조정
 
     # 분석
     print("MAML.....")
@@ -24,6 +24,6 @@ if __name__ == '__main__':
     dcml = analyze_model("DCML", dcml_path, max_epoch)
 
     # 시각화 및 저장
-    save_plot("Meta-gradient Norm", maml["norms"], dcml["norms"], 'gradient2/norm_of_meta_gradient')
+    save_plot("Meta-gradient Norm", maml["norms"], dcml["norms"], 'gradient2/norm_of_meta_gradient', log_scale=True)
     save_plot("Cosine Similarity", maml["cosines"], dcml["cosines"], 'gradient2/cos_sim')
     save_plot("L2 Distance", maml["l2s"], dcml["l2s"], 'gradient2/distance')

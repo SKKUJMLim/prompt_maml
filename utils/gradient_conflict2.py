@@ -47,7 +47,7 @@ def analyze_model(name, grad_root, max_epoch):
     }
 
 
-def save_plot(metric_name, maml_vals, dcml_vals, out_dir, label1='DCML', label2='MAML'):
+def save_plot(metric_name, maml_vals, dcml_vals, out_dir, label1='DCML', label2='MAML', log_scale=False):
     epochs = list(range(len(maml_vals)))
 
     # 유효한 데이터만 필터링
@@ -69,6 +69,10 @@ def save_plot(metric_name, maml_vals, dcml_vals, out_dir, label1='DCML', label2=
     plt.yticks(fontsize=15)
     plt.xlabel('Epoch', fontsize=16)
     plt.ylabel(metric_name, fontsize=16)
+
+    if log_scale:
+        plt.yscale('log')
+
     plt.grid(True, linestyle='--', alpha=0.5)
     plt.legend(fontsize=15)
     plt.tight_layout()
