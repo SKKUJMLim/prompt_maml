@@ -384,49 +384,49 @@ class MAMLFewShotClassifier(nn.Module):
                                                                      inner_loop=False)
                         task_losses.append(target_loss)
 
-                        # # Gradient conflict 분석을 위한 gradient 수집
-                        # if training_phase and self.args.ablation_record:
-                        #
-                        #     task_idx = f"e{epoch}_i{current_iter}_t{task_id}"
-                        #     target_loss.backward(retain_graph=True)
-                        #
-                        #     all_layer_grads = []   # 전체 layer gradient 저장용
-                        #
-                        #     for name, param in self.classifier.named_parameters():
-                        #         if param.grad is not None:
-                        #             if 'prompt' not in name and 'norm_layer' not in name:
-                        #                 grad = param.grad.detach().clone().flatten().cpu()
-                        #
-                        #                 all_layer_grads.append(grad)
-                        #
-                        #                 layer_name = name.replace('.', '_')
-                        #
-                        #                 # Layer 별 폴더 생성
-                        #                 layer_dir = os.path.join(
-                        #                     self.args.experiment_name,
-                        #                     "grad_info_per_epoch",
-                        #                     f"epoch{epoch}",
-                        #                     f"layer_{layer_name}"
-                        #                 )
-                        #                 os.makedirs(layer_dir, exist_ok=True)
-                        #
-                        #                 save_path = os.path.join(layer_dir, f"{task_idx}.pt")
-                        #                 torch.save(grad, save_path)
-                        #
-                        #     # 모든 layer를 하나로 저장 (dict 형식)
-                        #     all_dir = os.path.join(
-                        #         self.args.experiment_name,
-                        #         "grad_info_per_epoch",
-                        #         f"epoch{epoch}",
-                        #         "all_layers"
-                        #     )
-                        #     os.makedirs(all_dir, exist_ok=True)
-                        #     all_save_path = os.path.join(all_dir, f"{task_idx}.pt")
-                        #     all_layer_grads = torch.cat(all_layer_grads)
-                        #     torch.save(all_layer_grads, all_save_path)
-                        #
-                        #
-                        #     self.classifier.zero_grad()
+                        # Gradient conflict 분석을 위한 gradient 수집
+                        if training_phase and self.args.ablation_record:
+
+                            task_idx = f"e{epoch}_i{current_iter}_t{task_id}"
+                            target_loss.backward(retain_graph=True)
+
+                            all_layer_grads = []   # 전체 layer gradient 저장용
+
+                            for name, param in self.classifier.named_parameters():
+                                if param.grad is not None:
+                                    if 'prompt' not in name and 'norm_layer' not in name:
+                                        grad = param.grad.detach().clone().flatten().cpu()
+
+                                        all_layer_grads.append(grad)
+
+                                        layer_name = name.replace('.', '_')
+
+                                        # Layer 별 폴더 생성
+                                        layer_dir = os.path.join(
+                                            self.args.experiment_name,
+                                            "grad_info_per_epoch",
+                                            f"epoch{epoch}",
+                                            f"layer_{layer_name}"
+                                        )
+                                        os.makedirs(layer_dir, exist_ok=True)
+
+                                        save_path = os.path.join(layer_dir, f"{task_idx}.pt")
+                                        torch.save(grad, save_path)
+
+                            # 모든 layer를 하나로 저장 (dict 형식)
+                            all_dir = os.path.join(
+                                self.args.experiment_name,
+                                "grad_info_per_epoch",
+                                f"epoch{epoch}",
+                                "all_layers"
+                            )
+                            os.makedirs(all_dir, exist_ok=True)
+                            all_save_path = os.path.join(all_dir, f"{task_idx}.pt")
+                            all_layer_grads = torch.cat(all_layer_grads)
+                            torch.save(all_layer_grads, all_save_path)
+
+
+                            self.classifier.zero_grad()
 
             per_task_target_preds[task_id] = target_preds.detach().cpu().numpy()
             _, predicted = torch.max(target_preds.data, 1)
@@ -435,31 +435,6 @@ class MAMLFewShotClassifier(nn.Module):
             task_losses = torch.sum(torch.stack(task_losses))
             total_losses.append(task_losses)
             total_accuracies.extend(accuracy)
-
-
-            # if current_iter == 'test':
-            #     information = {}
-            #     information['phase'] = current_iter
-            #     information['task_idx'] = task_id
-            #     information['accuracy'] = accuracy.mean().item()
-            #     # .mean()은 True 값의 비율을 반환. 이는 정확도를 의미
-            #
-            #     if os.path.exists(self.args.experiment_name + '/' + self.args.experiment_name + "_per_task_acc.csv"):
-            #         self.csv_exist = False
-            #
-            #     if self.csv_exist:
-            #         save_statistics(experiment_name=self.args.experiment_name,
-            #                         line_to_add=list(information.keys()),
-            #                         filename=self.args.experiment_name + "_per_task_acc.csv", create=True)
-            #         self.csv_exist = False
-            #         save_statistics(experiment_name=self.args.experiment_name,
-            #                         line_to_add=list(information.values()),
-            #                         filename=self.args.experiment_name + "_per_task_acc.csv", create=False)
-            #     else:
-            #         save_statistics(experiment_name=self.args.experiment_name,
-            #                         line_to_add=list(information.values()),
-            #                         filename=self.args.experiment_name + "_per_task_acc.csv", create=False)
-
 
             if not training_phase:
                 if torch.cuda.device_count() > 1:
@@ -492,6 +467,18 @@ class MAMLFewShotClassifier(nn.Module):
         :return: the crossentropy losses with respect to the given y, the predictions of the base model.
         """
 
+        preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+                                                          training=training,
+                                                          backup_running_statistics=backup_running_statistics,
+                                                          num_step=num_step, prepend_prompt=prepend_prompt)
+        loss = F.cross_entropy(preds, y)
+
+        return loss, preds
+
+    def net_forward_feature_extractor(self, x, y, weights, backup_running_statistics, training, num_step, training_phase, epoch,
+                    prompted_weights=None, prepend_prompt=True, inner_loop=True):
+
+
         if inner_loop is False:
             preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
                                                               training=training,
@@ -499,7 +486,6 @@ class MAMLFewShotClassifier(nn.Module):
                                                               num_step=num_step, prepend_prompt=prepend_prompt)
             loss = F.cross_entropy(input=preds, target=y)
             return loss, preds
-
 
         if self.args.data_aug == "mixup":
             preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
@@ -511,10 +497,11 @@ class MAMLFewShotClassifier(nn.Module):
             x_aug = random_flip_like_torchvision(x)
             x_mix, y_a, y_b, lam = mixup_data(x_aug, y, alpha=5.0)
 
-            preds_mix, aug_feature_map_list = self.classifier.forward(x=x_mix, params=weights, prompted_params=prompted_weights,
-                                                   training=training,
-                                                   backup_running_statistics=backup_running_statistics,
-                                                   num_step=num_step, prepend_prompt=prepend_prompt)
+            preds_mix, aug_feature_map_list = self.classifier.forward(x=x_mix, params=weights,
+                                                                      prompted_params=prompted_weights,
+                                                                      training=training,
+                                                                      backup_running_statistics=backup_running_statistics,
+                                                                      num_step=num_step, prepend_prompt=prepend_prompt)
 
             # loss_aug = F.cross_entropy(aug_preds, y)
             loss_mix = lam * F.cross_entropy(preds_mix, y_a) + (1 - lam) * F.cross_entropy(preds_mix, y_b)
@@ -522,7 +509,6 @@ class MAMLFewShotClassifier(nn.Module):
             # 최종 loss: clean + weighted augmented
             gamma = 0.5
             loss = (1 - gamma) * loss_clean + gamma * loss_mix
-
 
         elif self.args.data_aug == "only_mixup":
             x_mix, y_a, y_b, lam = mixup_data(x, y, alpha=5.0)
@@ -533,9 +519,8 @@ class MAMLFewShotClassifier(nn.Module):
                                                                       num_step=num_step, prepend_prompt=prepend_prompt)
             loss = F.cross_entropy(input=preds, target=y)
 
+        # --------- No augmentation ---------
         elif self.args.data_aug == "not_mixup":
-
-            # x = random_flip_like_torchvision(x)
 
             preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
                                                              training=training,
@@ -543,7 +528,6 @@ class MAMLFewShotClassifier(nn.Module):
                                                              num_step=num_step, prepend_prompt=prepend_prompt)
             loss = F.cross_entropy(preds, y)
 
-        # --------- No augmentation ---------
         else:
             preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
                                                               training=training,
@@ -551,79 +535,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                               num_step=num_step, prepend_prompt=prepend_prompt)
             loss = F.cross_entropy(preds, y)
 
-        return loss, preds
-
-    # def net_forward_feature_extractor(self, x, y, weights, backup_running_statistics, training, num_step, training_phase, epoch,
-    #                 prompted_weights=None, prepend_prompt=True, inner_loop=True):
-    #
-    #
-    #     if inner_loop is False:
-    #         preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-    #                                                           training=training,
-    #                                                           backup_running_statistics=backup_running_statistics,
-    #                                                           num_step=num_step, prepend_prompt=prepend_prompt)
-    #         loss = F.cross_entropy(input=preds, target=y)
-    #         return loss, preds
-    #
-    #     if self.args.data_aug == "mixup":
-    #         preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-    #                                                           training=training,
-    #                                                           backup_running_statistics=backup_running_statistics,
-    #                                                           num_step=num_step, prepend_prompt=prepend_prompt)
-    #         loss_clean = F.cross_entropy(preds, y)
-    #
-    #         x_aug = random_flip_like_torchvision(x)
-    #         x_mix, y_a, y_b, lam = mixup_data(x_aug, y, alpha=5.0)
-    #
-    #         preds_mix, aug_feature_map_list = self.classifier.forward(x=x_mix, params=weights,
-    #                                                                   prompted_params=prompted_weights,
-    #                                                                   training=training,
-    #                                                                   backup_running_statistics=backup_running_statistics,
-    #                                                                   num_step=num_step, prepend_prompt=prepend_prompt)
-    #
-    #         # loss_aug = F.cross_entropy(aug_preds, y)
-    #         loss_mix = lam * F.cross_entropy(preds_mix, y_a) + (1 - lam) * F.cross_entropy(preds_mix, y_b)
-    #
-    #         # 최종 loss: clean + weighted augmented
-    #         gamma = 0.5
-    #         loss = (1 - gamma) * loss_clean + gamma * loss_mix
-    #
-    #     elif self.args.data_aug == "only_mixup":
-    #         x_mix, y_a, y_b, lam = mixup_data(x, y, alpha=5.0)
-    #         preds, feature_map_list = self.classifier.forward(x=x_mix, params=weights,
-    #                                                                   prompted_params=prompted_weights,
-    #                                                                   training=training,
-    #                                                                   backup_running_statistics=backup_running_statistics,
-    #                                                                   num_step=num_step, prepend_prompt=prepend_prompt)
-    #         loss = F.cross_entropy(input=preds, target=y)
-    #
-    #     # --------- No augmentation ---------
-    #     else:
-    #         preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-    #                                                           training=training,
-    #                                                           backup_running_statistics=backup_running_statistics,
-    #                                                           num_step=num_step, prepend_prompt=prepend_prompt)
-    #         loss = F.cross_entropy(preds, y)
-    #
-    #     return loss, preds, feature_map_list
-
-    # def trainable_prompt_parameters(self):
-    #     """
-    #     Returns an iterator over the trainable parameters of the model.
-    #     """
-    #     for name, param in self.named_parameters():
-    #         if param.requires_grad:
-    #             if 'prompt' in name:
-    #                 yield param
-    #
-    # def trainable_parameters(self):
-    #     """
-    #     Returns an iterator over the trainable parameters of the model.
-    #     """
-    #     for name, param in self.named_parameters():
-    #         if param.requires_grad:
-    #             if 'layer_dict' in name:
-    #                 yield param
+        return loss, preds, feature_map_list
 
     def trainable_parameters(self):
         """
@@ -670,49 +582,8 @@ class MAMLFewShotClassifier(nn.Module):
         :param loss: The current crossentropy loss.
         """
 
-
         self.optimizer.zero_grad()
         loss.backward()
-
-        # Gradient conflict 분석을 위한 gradient 수집
-        if self.args.ablation_record:
-
-            task_idx = f"e{epoch}_i{current_iter}"
-            all_layer_grads = []  # 전체 layer gradient 저장용
-
-            for name, param in self.classifier.named_parameters():
-                if param.grad is not None:
-                    if 'prompt' not in name and 'norm_layer' not in name:
-                        grad = param.grad.detach().clone().flatten().cpu()
-
-                        all_layer_grads.append(grad)
-
-                        layer_name = name.replace('.', '_')
-
-                        # Layer 별 폴더 생성
-                        layer_dir = os.path.join(
-                            self.args.experiment_name,
-                            "grad_info_per_epoch",
-                            f"epoch{epoch}",
-                            f"layer_{layer_name}"
-                        )
-                        os.makedirs(layer_dir, exist_ok=True)
-
-                        save_path = os.path.join(layer_dir, f"{task_idx}.pt")
-                        torch.save(grad, save_path)
-
-            # 모든 layer를 하나로 저장 (dict 형식)
-            all_dir = os.path.join(
-                self.args.experiment_name,
-                "grad_info_per_epoch",
-                f"epoch{epoch}",
-                "all_layers"
-            )
-            os.makedirs(all_dir, exist_ok=True)
-            all_save_path = os.path.join(all_dir, f"{task_idx}.pt")
-            all_layer_grads = torch.cat(all_layer_grads)
-            torch.save(all_layer_grads, all_save_path)
-
 
         self.optimizer.step()
 
