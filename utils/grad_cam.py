@@ -37,8 +37,10 @@ def visualize_and_save_grad_cam(input_image, grad_cam, original_save_path, grad_
     elif datasets == "CIFAR_FS":
         input_image = input_image * torch.tensor([0.2675, 0.2565, 0.2761]) + torch.tensor([0.5071, 0.4847, 0.4408])
     elif datasets == "CUB":
-        input_image = input_image * torch.tensor([1 / 255.0, 1 / 255.0, 1 / 255.0]) + torch.tensor(
-            [104 / 255.0, 117 / 255.0, 128 / 255.0])
+        # input_image = input_image * torch.tensor([1 / 255.0, 1 / 255.0, 1 / 255.0]) + torch.tensor(
+        #     [104 / 255.0, 117 / 255.0, 128 / 255.0])
+        input_image = input_image * torch.tensor([0.229, 0.224, 0.225]) + torch.tensor(
+            [0.485, 0.456, 0.406])
 
     input_image = torch.clamp(input_image, 0, 1)  # 클리핑을 통해 값을 [0, 1]로 제한
     input_image = input_image.numpy()
