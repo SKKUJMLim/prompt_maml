@@ -330,8 +330,8 @@ class MAMLFewShotClassifier(nn.Module):
             y_target_set_task = y_target_set_task.view(-1)
 
             if training_phase is True and self.args.data_aug is not None:
-                x_support_set_task = random_flip_like_torchvision(x_support_set_task)
-                x_target_set_task = random_flip_like_torchvision(x_target_set_task)
+                x_support_set_task = random_flip_batchwise(x_support_set_task)
+                x_target_set_task = random_flip_batchwise(x_target_set_task)
 
             for num_step in range(num_steps):
 
@@ -475,62 +475,11 @@ class MAMLFewShotClassifier(nn.Module):
     def net_forward_feature_extractor(self, x, y, weights, backup_running_statistics, training, num_step, training_phase, epoch,
                     prompted_weights=None, prepend_prompt=True, inner_loop=True):
 
-
-        if inner_loop is False:
-            preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-                                                              training=training,
-                                                              backup_running_statistics=backup_running_statistics,
-                                                              num_step=num_step, prepend_prompt=prepend_prompt)
-            loss = F.cross_entropy(input=preds, target=y)
-            return loss, preds
-
-        if self.args.data_aug == "mixup":
-            preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-                                                              training=training,
-                                                              backup_running_statistics=backup_running_statistics,
-                                                              num_step=num_step, prepend_prompt=prepend_prompt)
-            loss_clean = F.cross_entropy(preds, y)
-
-            x_aug = random_flip_like_torchvision(x)
-            x_mix, y_a, y_b, lam = mixup_data(x_aug, y, alpha=5.0)
-
-            preds_mix, aug_feature_map_list = self.classifier.forward(x=x_mix, params=weights,
-                                                                      prompted_params=prompted_weights,
-                                                                      training=training,
-                                                                      backup_running_statistics=backup_running_statistics,
-                                                                      num_step=num_step, prepend_prompt=prepend_prompt)
-
-            # loss_aug = F.cross_entropy(aug_preds, y)
-            loss_mix = lam * F.cross_entropy(preds_mix, y_a) + (1 - lam) * F.cross_entropy(preds_mix, y_b)
-
-            # 최종 loss: clean + weighted augmented
-            gamma = 0.5
-            loss = (1 - gamma) * loss_clean + gamma * loss_mix
-
-        elif self.args.data_aug == "only_mixup":
-            x_mix, y_a, y_b, lam = mixup_data(x, y, alpha=5.0)
-            preds, feature_map_list = self.classifier.forward(x=x_mix, params=weights,
-                                                                      prompted_params=prompted_weights,
-                                                                      training=training,
-                                                                      backup_running_statistics=backup_running_statistics,
-                                                                      num_step=num_step, prepend_prompt=prepend_prompt)
-            loss = F.cross_entropy(input=preds, target=y)
-
-        # --------- No augmentation ---------
-        elif self.args.data_aug == "not_mixup":
-
-            preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-                                                             training=training,
-                                                             backup_running_statistics=backup_running_statistics,
-                                                             num_step=num_step, prepend_prompt=prepend_prompt)
-            loss = F.cross_entropy(preds, y)
-
-        else:
-            preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
-                                                              training=training,
-                                                              backup_running_statistics=backup_running_statistics,
-                                                              num_step=num_step, prepend_prompt=prepend_prompt)
-            loss = F.cross_entropy(preds, y)
+        preds, feature_map_list = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+                                                          training=training,
+                                                          backup_running_statistics=backup_running_statistics,
+                                                          num_step=num_step, prepend_prompt=prepend_prompt)
+        loss = F.cross_entropy(preds, y)
 
         return loss, preds, feature_map_list
 
