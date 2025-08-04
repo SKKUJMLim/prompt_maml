@@ -78,38 +78,30 @@ def augment_image(image, k, channels, augment_bool, args, dataset_name):
 
 
 def get_transforms_for_dataset(dataset_name, args, k):
-    if "cifar10" in dataset_name or "cifar100" in dataset_name or "FC100" or "CIFAR_FS" in dataset_name:
+
+    if "FC100" in dataset_name or "CIFAR_FS" in dataset_name:
         transform_train = [
             transforms.ToTensor(),
             transforms.Normalize((0.5071, 0.4847, 0.4408), (0.2675, 0.2565, 0.2761))]
 
-            #transforms.RandomCrop(32, padding=4),
-            #transforms.RandomHorizontalFlip(),
-            #transforms.ToTensor(),
-            #transforms.Normalize(args.classification_mean, args.classification_std)]
-
         transform_evaluate = [
             transforms.ToTensor(),
             transforms.Normalize((0.5071, 0.4847, 0.4408), (0.2675, 0.2565, 0.2761))]
-            #transforms.ToTensor(),
-            #transforms.Normalize(args.classification_mean, args.classification_std)]
 
     elif 'omniglot' in dataset_name:
 
         transform_train = [rotate_image(k=k, channels=args.image_channels), transforms.ToTensor()]
         transform_evaluate = [transforms.ToTensor()]
 
-
     elif 'imagenet' in dataset_name:
-
         transform_train = [transforms.Compose([
-
+            transforms.RandomVerticalFlip(),
+            transforms.RandomVerticalFlip,
             transforms.ToTensor(), transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])]
 
         transform_evaluate = [transforms.Compose([
 
             transforms.ToTensor(), transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])]
-
 
     elif 'CUB' in dataset_name:
         transform_train = [transforms.Compose([
