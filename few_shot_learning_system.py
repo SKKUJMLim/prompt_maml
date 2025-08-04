@@ -278,7 +278,6 @@ class MAMLFewShotClassifier(nn.Module):
         self.num_classes_per_set = ncs
 
         total_losses = []
-        layerwise_task_grads = defaultdict(list)  # {layer_name: [grad_task1, grad_task2, ...]}
         total_accuracies = []
         total_support_accuracies = [[] for i in range(num_steps)]
         total_target_accuracies = [[] for i in range(num_steps)]
