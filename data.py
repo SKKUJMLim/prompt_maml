@@ -95,8 +95,8 @@ def get_transforms_for_dataset(dataset_name, args, k):
 
     elif 'imagenet' in dataset_name:
         transform_train = [transforms.Compose([
-            transforms.RandomVerticalFlip(),
-            transforms.RandomVerticalFlip,
+            # transforms.RandomVerticalFlip(),
+            # transforms.RandomVerticalFlip,
             transforms.ToTensor(), transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])]
 
         transform_evaluate = [transforms.Compose([
