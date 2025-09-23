@@ -333,7 +333,7 @@ class MAMLFewShotClassifier(nn.Module):
                 x_support_set_task = random_flip_batchwise(x_support_set_task)
                 x_target_set_task = random_flip_batchwise(x_target_set_task)
 
-            if self.args.noisy_data:
+            if training_phase is True and self.args.noisy_data:
                 x_support_set_task = add_gaussian_noise(x_support_set_task)
                 x_target_set_task = add_gaussian_noise(x_target_set_task)
 
