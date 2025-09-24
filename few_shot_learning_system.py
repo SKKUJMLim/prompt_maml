@@ -374,6 +374,33 @@ class MAMLFewShotClassifier(nn.Module):
                 else:
                     if num_step == (self.args.number_of_training_steps_per_iter - 1):
 
+                        if self.args.adversarial_attack:
+                            x_target_set_task = x_target_set_task.clone().detach().requires_grad_(True)
+
+                            target_loss, target_preds = self.net_forward(x=x_target_set_task,
+                                                                         y=y_target_set_task,
+                                                                         weights=names_weights_copy,
+                                                                         prompted_weights=prompted_weights_copy,
+                                                                         backup_running_statistics=False, training=True,
+                                                                         prepend_prompt=self.args.prompter,
+                                                                         num_step=num_step,
+                                                                         training_phase=training_phase,
+                                                                         epoch=epoch,
+                                                                         inner_loop=False)
+
+                            grads = torch.autograd.grad(outputs=target_loss,
+                                                        inputs=x_target_set_task,
+                                                        create_graph=False,
+                                                        retain_graph=False,
+                                                        only_inputs=True)[0]
+
+                            # 4) FGSM perturbation 적용 (L_inf)
+                            eps = 8.0 / 255.0
+                            x_target_set_task = x_target_set_task.detach() + eps * grads.sign()
+                            x_target_set_task = torch.clamp(x_target_set_task, 0.0, 1.0).detach()  # detach -> 더 이상 그래디언트 추적 안 함
+
+
+
                         target_loss, target_preds = self.net_forward(x=x_target_set_task,
                                                                      y=y_target_set_task,
                                                                      weights=names_weights_copy,
