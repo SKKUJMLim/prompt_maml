@@ -61,5 +61,6 @@
   "BOIL": false,
   "data_aug" : null,
   "ablation_record": false,
-  "noisy_data": false
+  "noisy_data": false,
+  "adversarial_attack": false
 }
