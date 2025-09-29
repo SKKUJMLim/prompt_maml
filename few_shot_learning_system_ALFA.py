@@ -8,7 +8,7 @@ import torch.optim as optim
 
 from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 from inner_loop_optimizers_ALFA import LSLRGradientDescentLearningRule
-
+from data_augmentation import mixup_data, random_flip_like_torchvision, random_flip_batchwise, add_gaussian_noise
 
 def set_torch_seed(seed):
     """
@@ -322,6 +322,13 @@ class MAMLFewShotClassifier(nn.Module):
             y_support_set_task = y_support_set_task.view(-1)
             x_target_set_task = x_target_set_task.view(-1, c, h, w)
             y_target_set_task = y_target_set_task.view(-1)
+
+
+
+            if self.args.noisy_data:
+                x_support_set_task = add_gaussian_noise(x_support_set_task, std=0.5)
+                x_target_set_task = add_gaussian_noise(x_target_set_task, std=0.5)
+
 
             # Attenuate the initialization for L2F
             if self.args.attenuate:
