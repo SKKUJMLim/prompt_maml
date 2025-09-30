@@ -64,6 +64,5 @@
   "data_aug" : "not_mixup",
   "ablation_record": false,
   "random_prompt_init": false,
-  "noisy_data": false,
-  "adversarial_attack": false
+  "noisy_data": false
 }
