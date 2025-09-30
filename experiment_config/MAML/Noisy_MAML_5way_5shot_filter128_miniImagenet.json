@@ -62,5 +62,11 @@
   "BOIL": false,
   "data_aug" : null,
   "ablation_record": false,
-  "noisy_data": true
+
+  "train_noise" : true,
+  "train_noise_type": "gaussian_noise",
+  "train_noise_param": 0.05,
+  "eval_noise": true,
+  "eval_noise_type": "gaussian_noise",
+  "eval_noise_param": 0.05
 }
