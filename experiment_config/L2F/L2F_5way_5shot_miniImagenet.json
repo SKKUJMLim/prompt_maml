@@ -57,5 +57,6 @@
   "alfa": false,
   "random_init": false,
   "backbone": "4-CONV",
-  "prompter": false
+  "prompter": false,
+  "noisy_data": false
 }
