@@ -58,6 +58,12 @@
   "random_init": false,
   "backbone": "4-CONV",
   "prompter": false,
-  "noisy_data": true,
-  "adversarial_attack": false
+
+  "train_noise" : false,
+  "train_noise_type": null,
+  "train_noise_param": null,
+  "eval_noise": false,
+  "eval_noise_type": false,
+  "eval_noise_param": null
+
 }

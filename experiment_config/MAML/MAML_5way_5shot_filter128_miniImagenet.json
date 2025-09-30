@@ -62,6 +62,13 @@
   "BOIL": false,
   "data_aug" : null,
   "ablation_record": false,
-  "noisy_data": false,
-  "adversarial_attack": false
+
+  "train_noise" : false,
+  "train_noise_type": null,
+  "train_noise_param": null,
+  "eval_noise": null,
+  "eval_noise_type": false,
+  "eval_noise_param": null
+
+
 }

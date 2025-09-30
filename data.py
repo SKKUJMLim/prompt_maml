@@ -13,6 +13,8 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 from utils.parser_utils import get_args
 
+from corruption import SelectCorruption
+
 
 class rotate_image(object):
 
@@ -77,6 +79,26 @@ def augment_image(image, k, channels, augment_bool, args, dataset_name):
     return image
 
 
+
+
+
+def build_transform(noise_on, noise_type, noise_param, mean, std):
+    steps = [transforms.ToTensor()]
+    # Normalize 전에만 조건부 코럽션 추가
+    if noise_on and noise_type:
+        if noise_type == "gaussian_noise":
+            steps.append(SelectCorruption("gaussian_noise", std=noise_param or 0.05))
+        elif noise_type == "shot_noise":
+            steps.append(SelectCorruption("shot_noise", scale=noise_param or 0.05))
+        elif noise_type == "impulse_noise":
+            steps.append(SelectCorruption("impulse_noise", severity=noise_param or 1))
+        elif noise_type == "jpeg_compression":
+            steps.append(SelectCorruption("jpeg_compression", quality=noise_param or 60))
+        # noise_type이 None 또는 알 수 없는 값이면 아무것도 안 추가
+    steps.append(transforms.Normalize(mean, std))
+    return transforms.Compose(steps)
+
+
 def get_transforms_for_dataset(dataset_name, args, k):
 
     if "FC100" in dataset_name or "CIFAR_FS" in dataset_name:
@@ -89,19 +111,43 @@ def get_transforms_for_dataset(dataset_name, args, k):
             transforms.Normalize((0.5071, 0.4847, 0.4408), (0.2675, 0.2565, 0.2761))]
 
     elif 'omniglot' in dataset_name:
-
         transform_train = [rotate_image(k=k, channels=args.image_channels), transforms.ToTensor()]
         transform_evaluate = [transforms.ToTensor()]
 
     elif 'imagenet' in dataset_name:
-        transform_train = [transforms.Compose([
-            # transforms.RandomVerticalFlip(),
-            # transforms.RandomVerticalFlip,
-            transforms.ToTensor(), transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])]
 
-        transform_evaluate = [transforms.Compose([
+        IMAGENET_MEAN = (0.485, 0.456, 0.406)
+        IMAGENET_STD = (0.229, 0.224, 0.225)
 
-            transforms.ToTensor(), transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])]
+        # 학습용 트랜스폼
+        transform_train = [build_transform(
+            noise_on=args.train_noise,
+            noise_type=args.train_noise_type,
+            noise_param=args.train_noise_param,
+            mean=IMAGENET_MEAN,
+            std=IMAGENET_STD
+        )]
+
+        # 평가용 트랜스폼
+        transform_evaluate = [build_transform(
+            noise_on=args.eval_noise,
+            noise_type=args.eval_noise_type,
+            noise_param=args.eval_noise_param,
+            mean=IMAGENET_MEAN,
+            std=IMAGENET_STD
+        )]
+
+        # transform_train = [transforms.Compose([
+        #     # transforms.RandomVerticalFlip(),
+        #     # transforms.RandomVerticalFlip,
+        #     transforms.ToTensor(),
+        #     transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])]
+        #
+        # transform_evaluate = [transforms.Compose([
+        #     transforms.ToTensor(),
+        #     SelectCorruption("gaussian_noise", std=0.05),
+        #     transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        # ])]
 
     elif 'CUB' in dataset_name:
         transform_train = [transforms.Compose([

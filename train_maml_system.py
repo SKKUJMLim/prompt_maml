@@ -1,11 +1,8 @@
 from data import MetaLearningSystemDataLoader
-
 from experiment_builder import ExperimentBuilder
-from few_shot_learning_system import MAMLFewShotClassifier
-# from few_shot_learning_system_ALFA import MAMLFewShotClassifier
-
 from utils.parser_utils import get_args
 from utils.dataset_tools import maybe_unzip_dataset
+
 
 from multiprocessing import freeze_support
 
@@ -14,6 +11,11 @@ if __name__ == '__main__':
 
     # Combines the arguments, model, data and experiment builders to run an experiment
     args, device = get_args()
+
+    if args.experiment_name.startswith(('DCML', 'MAML')):
+        from few_shot_learning_system import MAMLFewShotClassifier
+    elif args.experiment_name.startswith(('ALFA', 'L2F')):
+        from few_shot_learning_system_ALFA import MAMLFewShotClassifier
 
     # 모델을 구성한다
     model = MAMLFewShotClassifier(args=args, device=device,

@@ -333,10 +333,6 @@ class MAMLFewShotClassifier(nn.Module):
                 x_support_set_task = random_flip_batchwise(x_support_set_task)
                 x_target_set_task = random_flip_batchwise(x_target_set_task)
 
-            if self.args.noisy_data:
-                x_support_set_task = add_gaussian_noise(x_support_set_task, std=0.5)
-                x_target_set_task = add_gaussian_noise(x_target_set_task, std=0.5)
-
             for num_step in range(num_steps):
 
                 support_loss, support_preds = self.net_forward(x=x_support_set_task,
