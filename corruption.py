@@ -15,11 +15,11 @@ def shot_noise(x, scale=1.0):
     return torch.clamp(noisy, 0.0, 1.0)
 
 # Impulse (salt & pepper)
-def impulse_noise(x, prob=0.02):
+def impulse_noise(x, severity=0.02):
     r = torch.rand_like(x)
     x = x.clone()
-    x[r < prob/2] = 0.0
-    x[r > 1 - prob/2] = 1.0
+    x[r < severity/2] = 0.0
+    x[r > 1 - severity/2] = 1.0
     return x
 
 # Motion blur (간단한 선형 커널)

@@ -323,13 +323,6 @@ class MAMLFewShotClassifier(nn.Module):
             x_target_set_task = x_target_set_task.view(-1, c, h, w)
             y_target_set_task = y_target_set_task.view(-1)
 
-
-
-            if self.args.noisy_data:
-                x_support_set_task = add_gaussian_noise(x_support_set_task, std=0.5)
-                x_target_set_task = add_gaussian_noise(x_target_set_task, std=0.5)
-
-
             # Attenuate the initialization for L2F
             if self.args.attenuate:
                 # Obtain gradients from support set for task embedding
