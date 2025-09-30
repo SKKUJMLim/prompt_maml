@@ -12,9 +12,9 @@ if __name__ == '__main__':
     # Combines the arguments, model, data and experiment builders to run an experiment
     args, device = get_args()
 
-    if args.experiment_name.startswith(('DCML', 'MAML')):
+    if any(tag in args.experiment_name for tag in ('DCML', 'MAML')):
         from few_shot_learning_system import MAMLFewShotClassifier
-    elif args.experiment_name.startswith(('ALFA', 'L2F')):
+    elif any(tag in args.experiment_name for tag in ('ALFA', 'L2F')):
         from few_shot_learning_system_ALFA import MAMLFewShotClassifier
 
     # 모델을 구성한다
