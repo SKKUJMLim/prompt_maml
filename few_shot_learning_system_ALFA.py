@@ -9,7 +9,7 @@ import torch.optim as optim
 from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 from inner_loop_optimizers_ALFA import LSLRGradientDescentLearningRule
 from data_augmentation import mixup_data, random_flip_like_torchvision, random_flip_batchwise, add_gaussian_noise
-from corruption import corrupt_labels
+from corruption import corrupt_labels_batch_wise, corrupt_labels_task_wise
 
 
 def set_torch_seed(seed):
@@ -325,7 +325,9 @@ class MAMLFewShotClassifier(nn.Module):
             x_target_set_task = x_target_set_task.view(-1, c, h, w)
             y_target_set_task = y_target_set_task.view(-1)
 
-            # y_support_set_task = corrupt_labels(y_support_set_task, corruption_rate=0.2, rng=self.rng)
+
+            if self.args.train_with_label_noise:
+                y_support_set_task = corrupt_labels_task_wise(y_set=y_support_set_task, corruption_rate=self.args.label_corruption_rate, rng=self.rng)
 
 
             # Attenuate the initialization for L2F

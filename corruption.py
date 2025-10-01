@@ -3,7 +3,39 @@ import numpy as np
 import cv2
 
 
-def corrupt_labels(y_set, corruption_rate, rng):
+def corrupt_labels_batch_wise(y_support_set, corruption_rate, rng):
+    """
+    Corrupts a fraction of the support set labels.
+    y_support_set shape: (Batch_size, N_way * K_shot)
+    """
+    y_corrupted = y_support_set.clone()
+    batch_size, num_samples = y_corrupted.shape
+
+    for i in range(batch_size):
+        task_labels = y_corrupted[i].view(-1)
+        num_corrupt = int(num_samples * corruption_rate)
+
+        # Select indices to corrupt
+        corrupt_indices = rng.choice(num_samples, num_corrupt, replace=False)
+
+        # Corrupt labels: assign a random incorrect label
+        num_classes = torch.max(task_labels) + 1
+
+        for idx in corrupt_indices:
+            original_label = task_labels[idx]
+            # Generate a new label that is not the original one
+            possible_labels = [l for l in range(num_classes) if l != original_label]
+            if len(possible_labels) > 0:
+                new_label = rng.choice(possible_labels)
+                task_labels[idx] = new_label
+
+        y_corrupted[i] = task_labels.view(y_support_set[i].shape)
+
+    return y_corrupted
+
+
+
+def corrupt_labels_task_wise(y_set, corruption_rate, rng):
     """
     Corrupts a fraction of the labels for a SINGLE task.
     y_set shape: (N_way * K_shot) - Assumed to be a 1D Tensor after view(-1)
