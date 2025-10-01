@@ -1,6 +1,52 @@
 import torch
 import numpy as np
-import cv2  # pip install opencv-python
+import cv2
+
+
+def corrupt_labels(y_set, corruption_rate, rng):
+    """
+    Corrupts a fraction of the labels for a SINGLE task.
+    y_set shape: (N_way * K_shot) - Assumed to be a 1D Tensor after view(-1)
+
+    :param y_set: The 1D torch Tensor of labels for a single task.
+    :param corruption_rate: The fraction of labels to corrupt.
+    :param rng: The numpy RandomState object for controlled randomness.
+    :return: The corrupted 1D torch Tensor of labels.
+    """
+    # y_corrupted는 1D 텐서입니다.
+    y_corrupted = y_set.clone()
+    task_labels = y_corrupted.view(-1)
+    num_samples = task_labels.numel()
+
+    # 오염시킬 라벨의 개수 계산
+    num_corrupt = int(num_samples * corruption_rate)
+
+    # 1. 오염시킬 인덱스 선택
+    # rng.choice는 numpy 함수이므로 텐서가 아닌 정수 배열을 반환합니다.
+    corrupt_indices = rng.choice(num_samples, num_corrupt, replace=False)
+
+    # 2. 새로운 (틀린) 라벨 할당
+    # 현재 Task의 총 클래스 수 계산
+    # y_set이 0부터 N-1까지의 클래스 라벨을 포함한다고 가정합니다.
+    if num_samples > 0:
+        num_classes = torch.max(task_labels).item() + 1
+    else:
+        return y_corrupted  # 샘플이 없으면 그대로 반환
+
+    for idx in corrupt_indices:
+        original_label = task_labels[idx].item()
+
+        # 원본 라벨이 아닌 가능한 모든 라벨 리스트 생성
+        possible_labels = [l for l in range(num_classes) if l != original_label]
+
+        if len(possible_labels) > 0:
+            # 새로운 라벨을 무작위로 선택하여 할당
+            new_label = rng.choice(possible_labels)
+            task_labels[idx] = new_label
+        # (len(possible_labels) == 0 인 경우는 N_way가 1일 때만 가능하며, 이 경우 오염이 불가능합니다.)
+
+    # 1D 텐서이므로 view() 없이 바로 반환
+    return y_corrupted
 
 # Gaussian
 def gaussian_noise(x, std=0.05):

@@ -9,7 +9,7 @@
   "dataset_name":"mini_imagenet_full_size",
   "dataset_path":"mini_imagenet_full_size",
   "reset_stored_paths":false,
-  "experiment_name":"ALFA_5way_5shot_miniImagenet",
+  "experiment_name":"InputNoisy_ALFA_5way_5shot_miniImagenet",
   "train_seed": 0, "val_seed": 0,
   "indexes_of_folders_indicating_class": [-3, -2],
   "sets_are_pre_split": true,
@@ -59,11 +59,10 @@
   "backbone": "4-CONV",
   "prompter": false,
 
-  "train_noise" : false,
-  "train_noise_type": null,
-  "train_noise_param": null,
-  "eval_noise": false,
-  "eval_noise_type": false,
-  "eval_noise_param": null
-
+  "train_noise" : true,
+  "train_noise_type": "gaussian_noise",
+  "train_noise_param": 0.05,
+  "eval_noise": true,
+  "eval_noise_type": "gaussian_noise",
+  "eval_noise_param": 0.05
 }

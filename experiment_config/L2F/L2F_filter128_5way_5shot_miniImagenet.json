@@ -9,7 +9,7 @@
   "dataset_name":"mini_imagenet_full_size",
   "dataset_path":"mini_imagenet_full_size",
   "reset_stored_paths":false,
-  "experiment_name":"ALFA_5way_5shot_miniImagenet",
+  "experiment_name":"L2F_filter128_5way_5shot_miniImagenet",
   "train_seed": 0, "val_seed": 0,
   "indexes_of_folders_indicating_class": [-3, -2],
   "sets_are_pre_split": true,
@@ -41,7 +41,7 @@
   "weight_decay": 0.0,
 
   "norm_layer":"batch_norm",
-  "cnn_num_filters":48,
+  "cnn_num_filters":128,
   "num_stages":4,
   "conv_padding": true,
   "number_of_training_steps_per_iter":5,
@@ -53,8 +53,8 @@
 
   "second_order": true,
   "use_multi_step_loss_optimization":false,
-  "attenuate": false,
-  "alfa": true,
+  "attenuate": true,
+  "alfa": false,
   "random_init": false,
   "backbone": "4-CONV",
   "prompter": false,
@@ -62,8 +62,7 @@
   "train_noise" : false,
   "train_noise_type": null,
   "train_noise_param": null,
-  "eval_noise": false,
+  "eval_noise": null,
   "eval_noise_type": false,
   "eval_noise_param": null
-
 }

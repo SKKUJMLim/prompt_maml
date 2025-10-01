@@ -11,7 +11,8 @@ from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 # from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 from inner_loop_optimizers_weightdecay import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 
-from data_augmentation import mixup_data, random_flip_like_torchvision, random_flip_batchwise, add_gaussian_noise
+from data_augmentation import random_flip_batchwise
+from corruption import corrupt_labels
 from utils.basic import count_params_by_key
 
 
@@ -328,6 +329,12 @@ class MAMLFewShotClassifier(nn.Module):
             y_support_set_task = y_support_set_task.view(-1)
             x_target_set_task = x_target_set_task.view(-1, c, h, w)
             y_target_set_task = y_target_set_task.view(-1)
+
+            print("Before y_support_set_task == ", y_support_set_task)
+
+            y_support_set_task = corrupt_labels(y_support_set_task, corruption_rate=0.2, rng=self.rng)
+
+            print("after y_support_set_task == ", y_support_set_task)
 
             if training_phase is True and self.args.data_aug is not None:
                 x_support_set_task = random_flip_batchwise(x_support_set_task)
