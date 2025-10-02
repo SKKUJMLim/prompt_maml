@@ -67,7 +67,7 @@
   "eval_noise_param": null,
 
   "train_with_label_noise":false,
-  "label_corruption_rate" : 0.5,
+  "label_corruption_rate" : null,
   "test_with_label_noise":false
 
 }
