@@ -326,7 +326,7 @@ class MAMLFewShotClassifier(nn.Module):
             y_target_set_task = y_target_set_task.view(-1)
 
 
-            if self.args.train_with_label_noise:
+            if training_phase is True and self.args.train_with_label_noise:
                 y_support_set_task = corrupt_labels_task_wise(y_set=y_support_set_task, corruption_rate=self.args.label_corruption_rate, rng=self.rng)
 
 
