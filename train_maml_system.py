@@ -16,6 +16,8 @@ if __name__ == '__main__':
         from few_shot_learning_system import MAMLFewShotClassifier
     elif any(tag in args.experiment_name for tag in ('ALFA', 'L2F')):
         from few_shot_learning_system_ALFA import MAMLFewShotClassifier
+    elif any(tag in args.experiment_name for tag in ('GAP')):
+        from few_shot_learning_system_GAP import MAMLFewShotClassifier
 
     # 모델을 구성한다
     model = MAMLFewShotClassifier(args=args, device=device,
