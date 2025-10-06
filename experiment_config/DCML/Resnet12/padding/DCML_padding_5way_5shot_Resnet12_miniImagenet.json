@@ -65,7 +65,7 @@
   "ablation_record": false,
   "random_prompt_init": false,
   "load_pretrained": true,
-  "path_to_pretrained_weights": "COS.ckpt",
+  "path_to_pretrained_weights": "Meta-baseline.ckpt",
 
 
   "train_noise" : false,
