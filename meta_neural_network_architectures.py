@@ -1073,7 +1073,11 @@ class ResNet12(nn.Module):
         self.layer_dict = nn.ModuleDict()
         self.upscale_shapes.append(x.shape)
 
-        num_chn = [64, 128, 256, 512]
+        if self.args.load_pretrained:
+            num_chn = [64, 160, 320, 640]
+        else:
+            num_chn = [64, 128, 256, 512]
+
         max_padding = [0, 0, 1, 1]
         maxpool = [True, True, True, False]
         for i in range(len(num_chn)):

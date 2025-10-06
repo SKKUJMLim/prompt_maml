@@ -51,6 +51,26 @@ class MAMLFewShotClassifier(nn.Module):
             self.classifier = ResNet12(im_shape=self.im_shape, num_output_classes=self.args.
                                        num_classes_per_set,
                                        args=args, device=device, meta_classifier=True).to(device=self.device)
+
+            # # 가중치 업데이트 확인용 변수
+            # prev_weights = {}
+            # for name, params in self.classifier.named_parameters():
+            #     # print(name)
+            #     prev_weights[name] = params.data.clone()
+            #     # if name == 'layer_dict.layer0.conv1.conv.weight':
+            #     #     print(params)
+
+            if self.args.load_pretrained:
+                self.load_pretrained_weights(path_to_weights=self.args.path_to_pretrained_weights)
+
+            # for name, params in self.classifier.named_parameters():
+            #     if not torch.equal(prev_weights[name], params.data):
+            #         pass
+            #         # print(f"{name}  사전학습된 모델의 weight로 load 되었습니다.")
+            #     else:
+            #         print(f"{name}  사전학습된 모델의 weight로 load 하지 않았습니다.")
+
+
         else:
             self.classifier = VGGReLUNormNetwork(im_shape=self.im_shape, num_output_classes=self.args.
                                                  num_classes_per_set,
@@ -77,20 +97,20 @@ class MAMLFewShotClassifier(nn.Module):
             self.inner_loop_optimizer = GradientDescentLearningRule(device=device, args=self.args,
                                                                     learning_rate=self.task_learning_rate)
 
-        print("Inner Loop parameters")
-        for key, value in self.inner_loop_optimizer.named_parameters():
-            if value.requires_grad:
-                print(key, value.shape)
+        # print("Inner Loop parameters")
+        # for key, value in self.inner_loop_optimizer.named_parameters():
+        #     if value.requires_grad:
+        #         print(key, value.shape)
 
         self.use_cuda = args.use_cuda
         self.device = device
         self.args = args
         self.to(device)
 
-        print("Outer Loop parameters")
-        for name, param in self.named_parameters():
-            if param.requires_grad:
-                print(name, param.shape, param.device, param.requires_grad)
+        # print("Outer Loop parameters")
+        # for name, param in self.named_parameters():
+        #     if param.requires_grad:
+        #         print(name, param.shape, param.device, param.requires_grad)
 
         # self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False)
         self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False,
@@ -627,3 +647,174 @@ class MAMLFewShotClassifier(nn.Module):
         state_dict_loaded = state['network']
         self.load_state_dict(state_dict=state_dict_loaded)
         return state
+
+    def load_pretrained_weights(self, path_to_weights):
+        """
+        사전 학습된 표준 ResNet12 가중치를 MAML Meta-ResNet12 모델에 로드하고 매핑합니다.
+
+        - BN 통계량 (running_mean/var 등)은 MAML의 inner-loop steps 수에 맞게 1D에서 2D로 확장됩니다.
+        """
+        print(f"Loading pretrained weights from {path_to_weights}...")
+
+        # self.device가 정수(int)일 경우, 문자열(str)로 변환 (torch.load 오류 방지)
+        if isinstance(self.device, int):
+            device_str = f'cuda:{self.device}'
+        elif isinstance(self.device, torch.device):
+            device_str = self.device.type
+            if self.device.index is not None:
+                device_str += f":{self.device.index}"
+        else:
+            device_str = self.device
+
+        # 1. 사전 학습된 가중치 로드
+        # "network" 키가 없는 경우를 대비하여 .get("network", pretrained_state_dict)를 사용합니다.
+        pretrained_state_dict = torch.load(path_to_weights, map_location=device_str)
+        source_state_dict = pretrained_state_dict.get("network", pretrained_state_dict)
+
+        # 모델이 DataParallel로 래핑되어 있다면 self.classifier.module을 사용
+        model_to_load = self.classifier.module if torch.cuda.device_count() > 1 else self.classifier
+        maml_state_dict = model_to_load.state_dict()
+
+        new_maml_state_dict = {}
+
+        # 2. 파라미터 이름 매핑 및 1D/2D 확장
+        for pretrained_name, pretrained_param in source_state_dict.items():
+            # 'layer1' -> 'layer0'로 인덱스 변경을 위한 준비
+            layer_idx = pretrained_name.split('.')[0].replace('layer', '')
+
+            try:
+                # MAML layer 인덱스 (0부터 시작)
+                idx = int(layer_idx) - 1
+                if idx < 0:
+                    continue
+
+                base_name = f"layer_dict.layer{idx}"
+                parts = pretrained_name.split('.')
+
+                # --- 1. Conv Weights 및 Inner BN (conv1, conv2) ---
+                if parts[1] in ['conv1', 'conv2']:
+                    # Conv 1, 2: MetaConvNormLayerSwish (중첩 구조)
+                    conv_name = parts[1]
+
+                    if parts[2] == 'weight':
+                        # A. Conv Weight: layerN.convM.weight -> layer_dict.layerN.convM.conv.weight
+                        new_name = f"{base_name}.{conv_name}.conv.weight"
+                        new_maml_state_dict[new_name] = pretrained_param
+
+                    elif parts[2] != 'num_batches_tracked':
+                        # B. BN Parameters: layerN.bnM.param -> layer_dict.layerN.convM.norm_layer.param
+
+                        # 사전 학습 키는 layerN.bnM.param 형태이고, 이 BN은 MAML의 convM 내부에 매핑됨.
+                        # 사전 학습 키의 'bnM'에 해당하는 MAML의 'convM'을 찾아야 합니다.
+                        # 이 부분은 사전 학습 키의 'bn1'/'bn2'가 MAML 키의 'conv1'/'conv2'와 연결되도록 처리해야 합니다.
+                        # (사전 학습 키는 parts[1]이 'bn1'/'bn2'인 형태로 나타나지 않고, 'conv1'/'conv2'의 BN은
+                        # 사전 학습 키에서 'bn1'/'bn2'로 이름 붙여지므로, 아래와 같이 로직을 수정합니다.)
+
+                        # MAML 타겟 키의 이름 설정
+                        if parts[1] == 'conv1':
+                            bn_match_name = 'bn1'
+                        elif parts[1] == 'conv2':
+                            bn_match_name = 'bn2'
+                        else:
+                            continue  # 다른 키는 처리하지 않음
+
+                        # 사전 학습 키가 'layerN.bnM.param_type' 형태일 때만 처리
+                        # (이전 로직은 'conv1'/'conv2' 이름만 보고 Conv Weight로 처리했으나, BN Weight도 처리해야 함)
+
+                        # 여기서는 BN 파라미터가 'bn1'/'bn2' 이름으로 따로 있다고 가정하고 처리합니다.
+                        # 만약 parts[1]이 'conv1' 또는 'conv2'일 때 BN을 처리하려면 이 부분이 복잡해지므로,
+                        # BN 파라미터가 'bn1'/'bn2' 키를 가진다고 가정하고 아래 로직을 사용합니다.
+
+                        # --- BN 매핑 (Conv1/Conv2의 BN) ---
+                        # 사전 학습 키가 'layerN.bn1/2' 형태일 때만 처리합니다.
+                        bn_name_map = {'bn1': 'conv1', 'bn2': 'conv2'}
+
+                        if parts[1] in bn_name_map.keys():
+                            conv_name = bn_name_map.get(parts[1])
+                            param_type = parts[2]
+
+                            new_bn_name = f"{base_name}.{conv_name}.norm_layer.{param_type}"
+
+                            # BN 로딩 및 1D/2D 확장 로직
+                            if new_bn_name in maml_state_dict:
+                                maml_target = maml_state_dict[new_bn_name]
+                                if len(maml_target.shape) == 2 and len(pretrained_param.shape) == 1:
+                                    num_steps = maml_target.shape[0]
+                                    new_maml_state_dict[new_bn_name] = pretrained_param.unsqueeze(0).repeat(num_steps,
+                                                                                                            1)
+                                else:
+                                    new_maml_state_dict[new_bn_name] = pretrained_param
+                        # --- 끝 (BN 매핑) ---
+
+                        # (현재 코드는 BN 파라미터가 'bn1'/'bn2' 이름으로 별도의 if/elif 블록에서 처리된다고 가정합니다.)
+                        pass  # Conv Weight 이후의 처리는 다음 elif 블록으로 넘깁니다.
+
+                # --- 2. Inner BN Parameters (B) ---
+                elif parts[1] in ['bn1', 'bn2']:
+                    # 이 블록은 사전 학습된 키가 'layerN.bn1/bn2.param' 형태일 때만 실행되어야 합니다.
+                    bn_name_map = {'bn1': 'conv1', 'bn2': 'conv2'}
+                    conv_name = bn_name_map.get(parts[1])
+                    param_type = parts[2]
+
+                    if param_type == 'num_batches_tracked':
+                        continue
+
+                    new_bn_name = f"{base_name}.{conv_name}.norm_layer.{param_type}"
+
+                    if new_bn_name in maml_state_dict:
+                        maml_target = maml_state_dict[new_bn_name]
+                        if len(maml_target.shape) == 2 and len(pretrained_param.shape) == 1:
+                            num_steps = maml_target.shape[0]
+                            new_maml_state_dict[new_bn_name] = pretrained_param.unsqueeze(0).repeat(num_steps, 1)
+                        else:
+                            new_maml_state_dict[new_bn_name] = pretrained_param
+
+                # --- 3. CONV 3 및 최종 BN ---
+                elif parts[1] == 'conv3':
+                    # C. Conv 3 Weight: layerN.conv3.weight -> layer_dict.layerN.conv3.weight
+                    if parts[2] == 'weight':
+                        new_name = f"{base_name}.conv3.weight"
+                        new_maml_state_dict[new_name] = pretrained_param
+
+                elif parts[1] == 'bn3' and parts[2] != 'num_batches_tracked':
+                    # D. Final BN Parameters: layerN.bn3.param -> layer_dict.layerN.norm_layer.param (블록의 최종 독립 BN)
+                    param_type = parts[2]
+                    new_bn_name = f"{base_name}.norm_layer.{param_type}"  # Target: 블록의 최종 독립된 BN
+
+                    if new_bn_name in maml_state_dict:
+                        maml_target = maml_state_dict[new_bn_name]
+                        if len(maml_target.shape) == 2 and len(pretrained_param.shape) == 1:
+                            num_steps = maml_target.shape[0]
+                            new_maml_state_dict[new_bn_name] = pretrained_param.unsqueeze(0).repeat(num_steps, 1)
+                        else:
+                            new_maml_state_dict[new_bn_name] = pretrained_param
+
+
+                # --- 4. Downsample Shortcut 매핑 ---
+                elif parts[1] == 'downsample':
+                    if parts[2] == '0' and parts[3] == 'weight':
+                        # E. Shortcut Conv: downsample.0.weight -> shortcut_conv.weight
+                        new_name = f"{base_name}.shortcut_conv.weight"
+                        new_maml_state_dict[new_name] = pretrained_param
+
+                    elif parts[2] == '1' and parts[3] != 'num_batches_tracked':
+                        # F. Shortcut BN: downsample.1.param -> shortcut_norm_layer.param
+                        param_type = parts[3]
+                        new_name = f"{base_name}.shortcut_norm_layer.{param_type}"
+
+                        if new_name in maml_state_dict:
+                            maml_target = maml_state_dict[new_name]
+                            if len(maml_target.shape) == 2 and len(pretrained_param.shape) == 1:
+                                num_steps = maml_target.shape[0]
+                                new_maml_state_dict[new_name] = pretrained_param.unsqueeze(0).repeat(num_steps, 1)
+                            else:
+                                new_maml_state_dict[new_name] = pretrained_param
+
+            except Exception as e:
+                print(f"Skipping parameter (Processing Error): {pretrained_name} | Error: {e}")
+                continue
+
+        # 5. MAML 모델에 가중치 업데이트 및 로드
+        maml_state_dict.update(new_maml_state_dict)
+        model_to_load.load_state_dict(maml_state_dict, strict=False)
+        print("Pretrained weights successfully loaded to Meta-ResNet12 (Feature Extractor).")
