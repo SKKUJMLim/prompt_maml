@@ -95,6 +95,8 @@ def build_transform(noise_on, noise_type, noise_param, mean, std):
         elif noise_type == "jpeg_compression":
             steps.append(SelectCorruption("jpeg_compression", quality=noise_param or 60))
         # noise_type이 None 또는 알 수 없는 값이면 아무것도 안 추가
+
+    # steps.append(transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4))
     steps.append(transforms.Normalize(mean, std))
     return transforms.Compose(steps)
 
