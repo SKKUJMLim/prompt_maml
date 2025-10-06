@@ -13,6 +13,91 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
+def load_pretrained_weights(self, path_to_weights):
+    """
+    사전 학습된 표준 ResNet12 가중치를 MAML Meta-ResNet12 모델에 로드합니다.
+    """
+    print(f"Loading pretrained weights from {path_to_weights}...")
+
+    # 1. 사전 학습된 가중치 로드
+    pretrained_state_dict = torch.load(path_to_weights, map_location=self.device)
+
+    # 모델이 DataParallel로 래핑되어 있다면 self.classifier.module을 사용
+    model_to_load = self.classifier.module if torch.cuda.device_count() > 1 else self.classifier
+    maml_state_dict = model_to_load.state_dict()
+
+    new_maml_state_dict = {}
+
+    # 2. 파라미터 이름 매핑
+    for pretrained_name, pretrained_param in pretrained_state_dict.items():
+        # 'layer1' -> 'layer0'로 인덱스 변경
+        layer_idx = pretrained_name.split('.')[0].replace('layer', '')
+
+        try:
+            # ResNet12 layer 인덱스는 1부터 시작 (layer1, layer2, ...)
+            # MAML layer 인덱스는 0부터 시작 (layer0, layer1, ...)
+            idx = int(layer_idx) - 1
+            if idx < 0:
+                continue  # Skip if indexing is wrong
+
+            base_name = f"layer_dict.layer{idx}"
+
+            # --- Conv, BN 매핑 ---
+            if "conv" in pretrained_name and "weight" in pretrained_name:
+                # 예: layer1.block.conv1.weight -> layer_dict.layer0.conv1.conv.weight
+                if "block.conv" in pretrained_name:
+                    block_part = pretrained_name.split('block.')[1]  # conv1.weight
+                    conv_name = block_part.split('.weight')[0]  # conv1
+                    new_name = f"{base_name}.{conv_name}.conv.weight"
+                    new_maml_state_dict[new_name] = pretrained_param
+
+            # --- BN Running Stats 및 Parameters 매핑 (weight, bias, mean, var) ---
+            if "bn" in pretrained_name:
+                # convM에 연결된 BN
+                if "block.bn" in pretrained_name:
+                    block_part = pretrained_name.split('block.')[1]  # bn1.weight
+                    bn_name = block_part.split('.')[0]  # bn1
+                    param_type = block_part.split('.')[1]  # weight, bias, running_mean, ...
+
+                    # MetaConvNormLayerSwish 내부의 MetaBatchNormLayer
+                    new_bn_name = f"{base_name}.{bn_name}.norm_layer.{param_type}"
+
+                    # MetaBatchNormLayer는 running_mean/var이 2D(num_steps, features)일 수 있으므로
+                    # 차원을 확장하여 줘야 합니다 (MAML에서 per-step BN을 사용하는 경우).
+                    # 여기서는 일단 1D로 로드하고, MAML이 2D로 저장했다면 오류가 날 수 있습니다.
+                    # MAML이 1D (Global) BN을 사용한다고 가정하고 일단 로드합니다.
+                    if new_bn_name in maml_state_dict:
+                        new_maml_state_dict[new_bn_name] = pretrained_param
+
+                # --- Downsample Shortcut BN 매핑 ---
+                elif "downsample" in pretrained_name:
+                    # 예: layer1.block.downsample.1.running_mean -> layer_dict.layer0.shortcut_norm_layer.running_mean
+                    param_type = pretrained_name.split('downsample.1.')[1]
+                    new_name = f"{base_name}.shortcut_norm_layer.{param_type}"
+                    new_maml_state_dict[new_name] = pretrained_param
+
+            # --- Downsample Shortcut Conv 매핑 ---
+            elif "downsample" in pretrained_name and ".0.weight" in pretrained_name:
+                # 예: layer1.block.downsample.0.weight -> layer_dict.layer0.shortcut_conv.weight
+                new_name = f"{base_name}.shortcut_conv.weight"
+                new_maml_state_dict[new_name] = pretrained_param
+
+        except:
+            # Logit layer나 이름이 맞지 않는 기타 파라미터는 건너뜁니다.
+            print(f"Skipping parameter: {pretrained_name}")
+            continue
+
+    # 3. MAML 모델에 가중치 업데이트 및 로드
+    maml_state_dict.update(new_maml_state_dict)
+
+    # strict=False: 최종 Logit Layer 등 로드하지 않은 파라미터는 건너뜁니다.
+    model_to_load.load_state_dict(maml_state_dict, strict=False)
+
+    print("Pretrained weights successfully loaded to Meta-ResNet12 (Feature Extractor).")
+
+
+# 이 함수를 MAMLFewShotClassifier 클래스 내부에 정의하고 __init__에서 호출하세요.
+
 
 def count_params_by_key(param_dict, keyword):
     return sum(p.numel() for k, p in param_dict.items() if keyword in k and p.requires_grad)
