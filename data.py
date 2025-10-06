@@ -82,8 +82,13 @@ def augment_image(image, k, channels, augment_bool, args, dataset_name):
 
 
 
-def build_transform(noise_on, noise_type, noise_param, mean, std):
+def build_transform(train_phase, args, noise_on, noise_type, noise_param, mean, std):
     steps = [transforms.ToTensor()]
+
+    if train_phase and any(tag in args.experiment_name for tag in ('GAP')):
+        steps.append(transforms.RandomHorizontalFlip())
+        steps.append(transforms.RandomVerticalFlip())
+
     # Normalize 전에만 조건부 코럽션 추가
     if noise_on and noise_type:
         if noise_type == "gaussian_noise":
@@ -123,6 +128,8 @@ def get_transforms_for_dataset(dataset_name, args, k):
 
         # 학습용 트랜스폼
         transform_train = [build_transform(
+            args= args,
+            train_phase=True,
             noise_on=args.train_noise,
             noise_type=args.train_noise_type,
             noise_param=args.train_noise_param,
@@ -132,6 +139,8 @@ def get_transforms_for_dataset(dataset_name, args, k):
 
         # 평가용 트랜스폼
         transform_evaluate = [build_transform(
+            args=args,
+            train_phase=False,
             noise_on=args.eval_noise,
             noise_type=args.eval_noise_type,
             noise_param=args.eval_noise_param,
