@@ -670,6 +670,7 @@ class MAMLFewShotClassifier(nn.Module):
         # "network" 키가 없는 경우를 대비하여 .get("network", pretrained_state_dict)를 사용합니다.
         pretrained_state_dict = torch.load(path_to_weights, map_location=device_str)
         source_state_dict = pretrained_state_dict.get("network", pretrained_state_dict)
+        # source_state_dict = pretrained_state_dict.get("state_dict", pretrained_state_dict)
 
         # 모델이 DataParallel로 래핑되어 있다면 self.classifier.module을 사용
         model_to_load = self.classifier.module if torch.cuda.device_count() > 1 else self.classifier
@@ -680,6 +681,8 @@ class MAMLFewShotClassifier(nn.Module):
         # 2. 파라미터 이름 매핑 및 1D/2D 확장
         for pretrained_name, pretrained_param in source_state_dict.items():
             # 'layer1' -> 'layer0'로 인덱스 변경을 위한 준비
+
+            # pretrained_name = pretrained_name.replace("backbone.", "", 1)
             layer_idx = pretrained_name.split('.')[0].replace('layer', '')
 
             try:
