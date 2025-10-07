@@ -83,14 +83,15 @@ def augment_image(image, k, channels, augment_bool, args, dataset_name):
 
 
 def build_transform(train_phase, args, noise_on, noise_type, noise_param, mean, std):
-    steps = [transforms.ToTensor()]
+    steps = []
 
-    if train_phase and any(tag in args.experiment_name for tag in ('GAP')):
+    if train_phase:
         steps.append(transforms.RandomHorizontalFlip())
         steps.append(transforms.RandomVerticalFlip())
         steps.append(transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4))
 
-    # Normalize 전에만 조건부 코럽션 추가
+    steps.append(transforms.ToTensor())
+
     if noise_on and noise_type:
         if noise_type == "gaussian_noise":
             steps.append(SelectCorruption("gaussian_noise", std=noise_param or 0.05))
