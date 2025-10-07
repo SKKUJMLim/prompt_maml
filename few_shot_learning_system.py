@@ -116,6 +116,13 @@ class MAMLFewShotClassifier(nn.Module):
         self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False,
                                     weight_decay=self.args.init_inner_loop_weight_decay)
 
+        if self.args.load_pretrained:
+            self.optimizer = optim.Adam(self.linear_trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False,
+                                        weight_decay=self.args.init_inner_loop_weight_decay)
+        else:
+            self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False,
+                                        weight_decay=self.args.init_inner_loop_weight_decay)
+
         # if self.args.prompter:
         #     if self.args.prompt_random_init:
         #         self.optimizer = optim.Adam([
@@ -516,6 +523,17 @@ class MAMLFewShotClassifier(nn.Module):
         for param in self.parameters():
             if param.requires_grad:
                 yield param
+
+    def linear_trainable_parameters(self):
+        """
+        Returns an iterator over the trainable parameters of the model.
+        """
+        for name, param in self.named_parameters():
+            if param.requires_grad:
+                if "linear" in name or "prompt" in name:
+                    print("linear_trainable_parameters===", name)
+                    yield param
+
 
     def train_forward_prop(self, data_batch, epoch, current_iter):
         """
