@@ -116,6 +116,13 @@ class MAMLFewShotClassifier(nn.Module):
         self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False,
                                     weight_decay=self.args.init_inner_loop_weight_decay)
 
+        # if self.args.load_pretrained:
+        #     self.optimizer = optim.Adam(self.linear_trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False,
+        #                                 weight_decay=self.args.init_inner_loop_weight_decay)
+        # else:
+        #     self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.meta_learning_rate, amsgrad=False,
+        #                                 weight_decay=self.args.init_inner_loop_weight_decay)
+
         # if self.args.prompter:
         #     if self.args.prompt_random_init:
         #         self.optimizer = optim.Adam([
