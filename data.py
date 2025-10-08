@@ -85,11 +85,12 @@ def augment_image(image, k, channels, augment_bool, args, dataset_name):
 def build_transform(train_phase, args, noise_on, noise_type, noise_param, mean, std):
     steps = []
 
-    if train_phase and any(tag in args.experiment_name for tag in ('GAP')):
-        steps.append(transforms.RandomHorizontalFlip())
-        steps.append(transforms.RandomVerticalFlip())
-
     steps.append(transforms.ToTensor())
+
+    if train_phase: # and any(tag in args.experiment_name for tag in ('GAP')):
+        # steps.append(transforms.RandomHorizontalFlip())
+        # steps.append(transforms.RandomVerticalFlip())
+        steps.append(transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4))
 
     if noise_on and noise_type:
         if noise_type == "gaussian_noise":
@@ -102,7 +103,7 @@ def build_transform(train_phase, args, noise_on, noise_type, noise_param, mean, 
             steps.append(SelectCorruption("jpeg_compression", quality=noise_param or 60))
         # noise_type이 None 또는 알 수 없는 값이면 아무것도 안 추가
 
-    steps.append(transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4))
+
     steps.append(transforms.Normalize(mean, std))
     return transforms.Compose(steps)
 
