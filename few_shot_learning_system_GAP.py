@@ -241,7 +241,7 @@ class MAMLFewShotClassifier(nn.Module):
             #     x_support_set_task = random_flip_batchwise(x_support_set_task)
             #     x_target_set_task = random_flip_batchwise(x_target_set_task)
 
-            if self.args.train_with_label_noise:
+            if self.args.test_with_label_noise:
                 y_support_set_task = corrupt_labels_task_wise(y_set=y_support_set_task, corruption_rate=self.args.label_corruption_rate, rng=self.rng)
 
 
