@@ -129,11 +129,11 @@ class SelectCorruption(object):
         self.name = name
         self.kwargs = kwargs
         self._registry = {
-            "gaussian_noise": gaussian_noise,
-            "shot_noise":     shot_noise,
-            "impulse_noise":  impulse_noise,
-            "motion_blur":    motion_blur,
-            "jpeg":           jpeg_compression,
+            "gaussian_noise":   gaussian_noise,
+            "shot_noise":       shot_noise,
+            "impulse_noise":    impulse_noise,
+            "motion_blur":      motion_blur,
+            "jpeg_compression": jpeg_compression,
         }
         if self.name not in self._registry:
             raise ValueError(f"Unknown corruption name: {self.name}")

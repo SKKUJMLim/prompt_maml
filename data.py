@@ -103,7 +103,6 @@ def build_transform(train_phase, args, noise_on, noise_type, noise_param, mean, 
             steps.append(SelectCorruption("jpeg_compression", quality=noise_param or 60))
         # noise_type이 None 또는 알 수 없는 값이면 아무것도 안 추가
 
-
     steps.append(transforms.Normalize(mean, std))
     return transforms.Compose(steps)
 
