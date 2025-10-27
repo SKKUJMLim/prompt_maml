@@ -41,7 +41,7 @@
   "weight_decay": 0.0,
 
   "norm_layer":"batch_norm",
-  "cnn_num_filters":48,
+  "cnn_num_filters":64,
   "num_stages":4,
   "conv_padding": true,
   "number_of_training_steps_per_iter":5,
@@ -60,5 +60,16 @@
   "ANIL": true,
   "data_aug" : null,
   "ablation_record": false,
-  "random_prompt_init": false
+  "random_prompt_init": false,
+
+  "train_noise" : false,
+  "train_noise_type": null,
+  "train_noise_param": null,
+  "eval_noise": false,
+  "eval_noise_type": null,
+  "eval_noise_param": null,
+
+  "train_with_label_noise":false,
+  "label_corruption_rate" : null,
+  "test_with_label_noise":false
 }

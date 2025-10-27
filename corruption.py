@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import cv2
+import math
 
 
 def corrupt_labels_batch_wise(y_support_set, corruption_rate, rng):
@@ -85,6 +86,24 @@ def gaussian_noise(x, std=0.05):
     noise = torch.randn_like(x) * std
     return torch.clamp(x + noise, 0.0, 1.0)
 
+
+def uniform_noise(x, width=None, std=None):
+    """
+    Uniform(-a, a) 노이즈를 입력에 더합니다.
+    - x: [0,1] 범위를 가정 (Tensor, BxCxHxW 또는 CxHxW)
+    - width: a 값 (절반 범위). 예: width=0.1 -> U(-0.1, 0.1)
+    - std: 표준편차. 지정 시 a = sqrt(3) * std 로 변환하여 동일 분산의 Uniform을 생성
+    """
+    if std is not None:
+        a = math.sqrt(3.0) * float(std)
+    else:
+        a = 0.1 if width is None else float(width)
+
+    noise = (torch.rand_like(x) - 0.5) * 2.0 * a
+    return torch.clamp(x + noise, 0.0, 1.0)
+
+
+
 # Shot (Poisson)
 def shot_noise(x, scale=1.0):
     # x:[0,1] 가정
@@ -130,6 +149,7 @@ class SelectCorruption(object):
         self.kwargs = kwargs
         self._registry = {
             "gaussian_noise":   gaussian_noise,
+            "uniform_noise":    uniform_noise,
             "shot_noise":       shot_noise,
             "impulse_noise":    impulse_noise,
             "motion_blur":      motion_blur,

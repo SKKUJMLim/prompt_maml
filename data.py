@@ -95,6 +95,8 @@ def build_transform(train_phase, args, noise_on, noise_type, noise_param, mean, 
     if noise_on and noise_type:
         if noise_type == "gaussian_noise":
             steps.append(SelectCorruption("gaussian_noise", std=noise_param or 0.05))
+        elif noise_type == "uniform_noise":
+            steps.append(SelectCorruption("uniform_noise", std=noise_param or 0.05))
         elif noise_type == "shot_noise":
             steps.append(SelectCorruption("shot_noise", scale=noise_param or 0.05))
         elif noise_type == "impulse_noise":
