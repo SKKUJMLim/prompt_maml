@@ -57,7 +57,8 @@ def maybe_unzip_dataset(args):
 
 def unzip_file(filepath_pack, filepath_to_store):
 
-    # Linux 용 코
+    # 종민 수정
+    # Linux 용
     # apt install pbzip2
     command_to_run = "tar -I pbzip2 -xf {} -C {}".format(filepath_pack, filepath_to_store)
 
