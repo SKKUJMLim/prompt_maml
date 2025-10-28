@@ -579,6 +579,77 @@ class FewShotLearningDatasetParallel(Dataset):
         x = x[indices]
         return x
 
+    # def get_set(self, dataset_name, seed, augment_images=False):
+    #     """
+    #     Generates a task-set to be used for training or evaluation
+    #     :param set_name: The name of the set to use, e.g. "train", "val" etc.
+    #     :return: A task-set containing an image and label support set, and an image and label target set.
+    #
+    #     Support set과 Query set을 구분하여 Noisy를 주기 위한 코드
+    #
+    #     """
+    #     # seed = seed % self.args.total_unique_tasks
+    #     rng = np.random.RandomState(seed)
+    #     selected_classes = rng.choice(list(self.dataset_size_dict[dataset_name].keys()),
+    #                                   size=self.num_classes_per_set, replace=False)
+    #     rng.shuffle(selected_classes)
+    #     k_list = rng.randint(0, 4, size=self.num_classes_per_set)
+    #     k_dict = {selected_class: k_item for (selected_class, k_item) in zip(selected_classes, k_list)}
+    #     episode_labels = [i for i in range(self.num_classes_per_set)]
+    #     class_to_episode_label = {selected_class: episode_label for (selected_class, episode_label) in
+    #                               zip(selected_classes, episode_labels)}
+    #
+    #     x_images = []
+    #     y_labels = []
+    #
+    #     for class_entry in selected_classes:
+    #         choose_samples_list = rng.choice(self.dataset_size_dict[dataset_name][class_entry],
+    #                                          size=self.num_samples_per_class + self.num_target_samples, replace=False)
+    #         class_image_samples = []
+    #         class_labels = []
+    #         k = k_dict[class_entry]
+    #
+    #         for idx, sample in enumerate(choose_samples_list):
+    #             choose_samples = self.datasets[dataset_name][class_entry][sample]
+    #             x_class_data = self.load_batch([choose_samples])[0]
+    #
+    #             # -------------------------------
+    #             # ✅ Support vs Query 구분
+    #             # -------------------------------
+    #
+    #             if idx < self.num_samples_per_class:
+    #                 # Support → clean transform (no noise)
+    #                 self.args.eval_noise = True  # 강제 noise_on
+    #                 image = augment_image(
+    #                     image=x_class_data, k=k, channels=self.image_channel,
+    #                     augment_bool=augment_images, args=self.args, dataset_name=self.dataset_name
+    #                 )
+    #             else:
+    #                 # Query → noisy transform
+    #                 self.args.eval_noise = False  # 강제 noise_on
+    #                 image = augment_image(
+    #                     image=x_class_data, k=k, channels=self.image_channel,
+    #                     augment_bool=augment_images, args=self.args, dataset_name=self.dataset_name
+    #                 )
+    #
+    #             class_image_samples.append(image)
+    #             class_labels.append(int(class_to_episode_label[class_entry]))
+    #
+    #         class_image_samples = torch.stack(class_image_samples)
+    #         x_images.append(class_image_samples)
+    #         y_labels.append(class_labels)
+    #
+    #     x_images = torch.stack(x_images)
+    #     y_labels = np.array(y_labels, dtype=np.float32)
+    #
+    #     support_set_images = x_images[:, :self.num_samples_per_class]
+    #     support_set_labels = y_labels[:, :self.num_samples_per_class]
+    #     target_set_images = x_images[:, self.num_samples_per_class:]
+    #     target_set_labels = y_labels[:, self.num_samples_per_class:]
+    #
+    #     return support_set_images, target_set_images, support_set_labels, target_set_labels, seed
+
+
     def get_set(self, dataset_name, seed, augment_images=False):
         """
         Generates a task-set to be used for training or evaluation
@@ -613,6 +684,8 @@ class FewShotLearningDatasetParallel(Dataset):
                                              dataset_name=self.dataset_name, args=self.args)
                 class_image_samples.append(x_class_data)
                 class_labels.append(int(class_to_episode_label[class_entry]))
+
+
             class_image_samples = torch.stack(class_image_samples)
             x_images.append(class_image_samples)
             y_labels.append(class_labels)
