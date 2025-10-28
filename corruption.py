@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import cv2
 import math
+import torch.nn.functional as F
 
 
 def corrupt_labels_batch_wise(y_support_set, corruption_rate, rng):
@@ -103,13 +104,14 @@ def uniform_noise(x, width=None, std=None):
     return torch.clamp(x + noise, 0.0, 1.0)
 
 
-
 # Shot (Poisson)
 def shot_noise(x, scale=1.0):
     # x:[0,1] 가정
-    lam = torch.clamp(x * scale, 1e-8, None)
-    noisy = torch.poisson(lam) / torch.clamp(scale, 1e-8)
-    return torch.clamp(noisy, 0.0, 1.0)
+    s = float(scale)
+    s = max(s, 1e-8)                       # float로 안전 가드
+    lam = (x * s).clamp_min(1e-8)          # 텐서 clamp는 이렇게
+    noisy = torch.poisson(lam) / s         # E[noisy] = x로 복원
+    return noisy.clamp(0.0, 1.0)
 
 # Impulse (salt & pepper)
 def impulse_noise(x, severity=0.02):
@@ -121,12 +123,59 @@ def impulse_noise(x, severity=0.02):
 
 # Motion blur (간단한 선형 커널)
 def motion_blur(x, kernel_size=9):
+    # kernel_size를 정수·홀수로 정규화
+    k = int(round(kernel_size))          # float -> int
+    if k < 3:
+        k = 3
+    if k % 2 == 0:
+        k += 1
+
     x_np = (x.permute(1,2,0).cpu().numpy() * 255).astype(np.uint8)
-    k = np.zeros((kernel_size, kernel_size), dtype=np.float32)
-    k[kernel_size//2, :] = 1.0
-    k /= k.sum()
-    blurred = cv2.filter2D(x_np, -1, k)
-    return torch.tensor(blurred/255., dtype=torch.float32).permute(2,0,1)
+    k_mat = np.zeros((k, k), dtype=np.float32)
+    k_mat[k // 2, :] = 1.0
+    k_mat /= k_mat.sum()
+
+    blurred = cv2.filter2D(x_np, -1, k_mat)
+    return torch.tensor(blurred / 255., dtype=torch.float32).permute(2,0,1)
+
+
+# def motion_blur(x: torch.Tensor, k: int = 9, angle_deg: float = 0.0) -> torch.Tensor:
+#     """
+#     x: BxCxHxW 또는 CxHxW 텐서, float [0,1]
+#     k: 커널 사이즈(홀수 권장)
+#     angle_deg: 블러 방향(도)
+#     """
+#     single = (x.dim() == 3)
+#     if single:
+#         x = x.unsqueeze(0)  # 1xCxHxW
+#
+#     B, C, H, W = x.shape
+#     dev = x.device
+#     # 기본 수평 커널 생성
+#     kernel = torch.zeros((k, k), device=dev, dtype=x.dtype)
+#     kernel[k//2, :] = 1.0
+#     kernel = kernel / kernel.sum()
+#
+#     # 각도 회전(간단한 근사: grid_sample)
+#     # 회전 행렬
+#     theta = torch.tensor([
+#         [ torch.cos(torch.deg2rad(torch.tensor(angle_deg))), -torch.sin(torch.deg2rad(torch.tensor(angle_deg))), 0.0],
+#         [ torch.sin(torch.deg2rad(torch.tensor(angle_deg))),  torch.cos(torch.deg2rad(torch.tensor(angle_deg))), 0.0]
+#     ], device=dev, dtype=x.dtype).unsqueeze(0)
+#
+#     grid = F.affine_grid(theta, size=(1,1,k,k), align_corners=False)
+#     kernel = kernel.unsqueeze(0).unsqueeze(0)  # 1x1xk xk
+#     kernel = F.grid_sample(kernel, grid, align_corners=False)
+#     kernel = kernel / kernel.sum()
+#
+#     # 채널별 depthwise conv
+#     weight = kernel.repeat(C, 1, 1, 1)  # Cx1xk xk
+#     padding = k // 2
+#     out = F.conv2d(x, weight, bias=None, stride=1, padding=padding, groups=C)
+#     out = out.clamp(0,1)
+#
+#     return out.squeeze(0) if single else out
+
 
 # JPEG compression
 def jpeg_compression(x, quality=30):
@@ -136,6 +185,62 @@ def jpeg_compression(x, quality=30):
     dec = cv2.imdecode(enc, cv2.IMREAD_COLOR)
     dec = cv2.cvtColor(dec, cv2.COLOR_BGR2RGB)
     return torch.tensor(dec/255., dtype=torch.float32).permute(2,0,1)
+
+
+import torch
+import numpy as np
+
+# 기존의 SelectCorruption 클래스에 통합하기 위한 새로운 함수 정의
+
+def random_block_masking(x: torch.Tensor, size: float = 0.2, fill_value: float = 0.0, rng: np.random.RandomState = None) -> torch.Tensor:
+    """
+    이미지의 무작위 영역(블록)을 지정된 값으로 마스킹합니다. (Partial Occlusion)
+    (PyTorch 텐서, [0, 1] 범위 가정)
+
+    :param x: CxHxW 형태의 입력 이미지 텐서. (배치 형태는 augment_image에서 처리해야 함)
+    :param size: 이미지 높이/너비에 대한 마스크 크기의 비율 (예: 0.2 -> 20% 크기)
+    :param fill_value: 마스크를 채울 값 (0.0은 검정색, 0.5는 중간 회색 등)
+    :param rng: Numpy RandomState 객체 (재현성 확보용)
+    :return: 마스킹이 적용된 텐서.
+    """
+    if rng is None:
+        rng = np.random.RandomState()
+
+    x_masked = x.clone()
+    _, H, W = x.shape
+
+    # 마스크 크기 계산 (정수로 반올림)
+    mask_h = int(H * size)
+    mask_w = int(W * size)
+
+    if mask_h < 1 or mask_w < 1:
+        # 마스크 크기가 너무 작으면 노이즈 적용 안함
+        return x_masked
+
+    # 마스크의 좌측 상단 위치 무작위 선택
+    # H - mask_h + 1 범위를 사용 (마스크가 이미지 경계를 벗어나지 않도록)
+    y1 = rng.randint(0, H - mask_h + 1)
+    x1 = rng.randint(0, W - mask_w + 1)
+    y2 = y1 + mask_h
+    x2 = x1 + mask_w
+
+    # 마스크 적용
+    # [Channel, Height, Width]
+    x_masked[:, y1:y2, x1:x2] = fill_value
+
+    return x_masked
+
+
+def speckle_noise(x: torch.Tensor, std: float = 0.1) -> torch.Tensor:
+    """
+    Speckle Noise (Multiplicative Noise)를 적용합니다.
+    x:[0,1] 가정.
+    """
+    # 텐서와 동일한 크기의 정규분포 노이즈 맵 생성
+    noise = torch.randn_like(x) * std
+    # 노이즈를 픽셀 값에 곱한 후 더함: x_noisy = x + x * noise
+    noisy_x = x + x * noise
+    return noisy_x.clamp(0.0, 1.0)
 
 
 class SelectCorruption(object):
@@ -154,6 +259,8 @@ class SelectCorruption(object):
             "impulse_noise":    impulse_noise,
             "motion_blur":      motion_blur,
             "jpeg_compression": jpeg_compression,
+            "random_block_masking": random_block_masking,
+            "speckle_noise": speckle_noise,
         }
         if self.name not in self._registry:
             raise ValueError(f"Unknown corruption name: {self.name}")

@@ -103,6 +103,13 @@ def build_transform(train_phase, args, noise_on, noise_type, noise_param, mean, 
             steps.append(SelectCorruption("impulse_noise", severity=noise_param or 1))
         elif noise_type == "jpeg_compression":
             steps.append(SelectCorruption("jpeg_compression", quality=noise_param or 60))
+        elif noise_type == "motion_blur":
+            steps.append(SelectCorruption("motion_blur", kernel_size=noise_param or 9))
+        elif noise_type == "random_block_masking":
+            # noise_param이 size 비율 (0.1 ~ 0.5 등)을 의미한다고 가정
+            steps.append(SelectCorruption("random_block_masking", size=noise_param or 0.2, fill_value=0.0))
+        elif noise_type == "speckle_noise":
+            steps.append(SelectCorruption("speckle_noise", std=noise_param or 0.05))
         # noise_type이 None 또는 알 수 없는 값이면 아무것도 안 추가
 
     steps.append(transforms.Normalize(mean, std))

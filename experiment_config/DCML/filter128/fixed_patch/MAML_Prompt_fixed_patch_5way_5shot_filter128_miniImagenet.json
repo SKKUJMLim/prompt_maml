@@ -52,6 +52,7 @@
   "num_target_samples": 15,
 
   "second_order": true,
+  "backbone": "4-CONV",
   "use_multi_step_loss_optimization":false,
   "prompter": true,
   "prompt_engineering": "fixed_patch",
@@ -60,5 +61,19 @@
   "prompt_random_init": false,
   "outer_prompt_learning_rate": 0.001,
   "inner_prompt_learning_rate": 0.01,
-  "data_aug" : "mixup"
+  "data_aug" : "not_mixup",
+  "ablation_record": false,
+  "random_prompt_init": false,
+
+  "train_noise" : false,
+  "train_noise_type": null,
+  "train_noise_param": null,
+  "eval_noise": false,
+  "eval_noise_type": null,
+  "eval_noise_param": null,
+
+  "train_with_label_noise":false,
+  "label_corruption_rate" : null,
+  "test_with_label_noise":false
+
 }
