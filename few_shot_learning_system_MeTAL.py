@@ -551,7 +551,7 @@ class MAMLFewShotClassifier(nn.Module):
 
         return losses, per_task_target_preds
 
-    def run_validation_iter(self, data_batch):
+    def run_validation_iter(self, data_batch, current_iter):
         """
         Runs an outer loop evaluation step on the meta-model's parameters.
         :param data_batch: input data batch containing the support set and target set input, output pairs
@@ -570,7 +570,7 @@ class MAMLFewShotClassifier(nn.Module):
         y_target_set = torch.Tensor(y_target_set).long().to(device=self.device)
         data_batch = (x_support_set, x_target_set, y_support_set, y_target_set)
 
-        losses, per_task_target_preds = self.evaluation_forward_prop(data_batch=data_batch, epoch=self.current_epoch)
+        losses, per_task_target_preds = self.evaluation_forward_prop(data_batch=data_batch, epoch=self.current_epoch, current_iter=current_iter)
         losses['loss'] = torch.mean(losses['loss']).item()
         losses['accuracy'] = np.mean(losses['accuracy'])
 
