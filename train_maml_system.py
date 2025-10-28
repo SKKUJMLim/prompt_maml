@@ -16,6 +16,10 @@ if __name__ == '__main__':
         from few_shot_learning_system import MAMLFewShotClassifier
     elif any(tag in args.experiment_name for tag in ('ALFA', 'L2F')):
         from few_shot_learning_system_ALFA import MAMLFewShotClassifier
+    elif any(tag in args.experiment_name for tag in ('MeTAL')):
+        from few_shot_learning_system_MeTAL import MAMLFewShotClassifier
+    elif any(tag in args.experiment_name for tag in ('MetaAdaM')):
+        from few_shot_learning_system_MetaAdaM import MAMLFewShotClassifier
     elif any(tag in args.experiment_name for tag in ('GAP')):
         from few_shot_learning_system_GAP import MAMLFewShotClassifier
 

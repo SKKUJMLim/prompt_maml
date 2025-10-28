@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12, MetaLossNetwork, LossAdapter
-from inner_loop_optimizers import LSLRGradientDescentLearningRule
+from inner_loop_optimizers_ALFA import LSLRGradientDescentLearningRule
 
 
 def set_torch_seed(seed):
@@ -213,7 +213,7 @@ class MAMLFewShotClassifier(nn.Module):
 
         return losses
 
-    def forward(self, data_batch, epoch, use_second_order, use_multi_step_loss_optimization, num_steps, training_phase):
+    def forward(self, data_batch, epoch, use_second_order, use_multi_step_loss_optimization, num_steps, training_phase, current_iter):
         """
         Runs a forward outer loop pass on the batch of tasks using the MAML/++ framework.
         :param data_batch: A data batch containing the support and target sets.
@@ -385,7 +385,7 @@ class MAMLFewShotClassifier(nn.Module):
         :param num_step: An integer indicating the number of the step in the inner loop.
         :return: the crossentropy losses with respect to the given y, the predictions of the base model.
         """
-        tmp_preds = self.classifier.forward(x=torch.cat((x, x_t), 0), params=weights,
+        tmp_preds, feature_map = self.classifier.forward(x=torch.cat((x, x_t), 0), params=weights,
                                             training=training,
                                             backup_running_statistics=backup_running_statistics, num_step=num_step)
         support_preds = tmp_preds[:-x_t.size(0)]
@@ -456,7 +456,7 @@ class MAMLFewShotClassifier(nn.Module):
             if param.requires_grad:
                 yield param
 
-    def train_forward_prop(self, data_batch, epoch):
+    def train_forward_prop(self, data_batch, epoch, current_iter):
         """
         Runs an outer loop forward prop using the meta-model and base-model.
         :param data_batch: A data batch containing the support set and the target set input, output pairs.
@@ -468,10 +468,11 @@ class MAMLFewShotClassifier(nn.Module):
                                                                       epoch > self.args.first_order_to_second_order_epoch,
                                                      use_multi_step_loss_optimization=self.args.use_multi_step_loss_optimization,
                                                      num_steps=self.args.number_of_training_steps_per_iter,
-                                                     training_phase=True)
+                                                     training_phase=True,
+                                                     current_iter=current_iter)
         return losses, per_task_target_preds
 
-    def evaluation_forward_prop(self, data_batch, epoch):
+    def evaluation_forward_prop(self, data_batch, epoch, current_iter):
         """
         Runs an outer loop evaluation forward prop using the meta-model and base-model.
         :param data_batch: A data batch containing the support set and the target set input, output pairs.
@@ -481,7 +482,8 @@ class MAMLFewShotClassifier(nn.Module):
         losses, per_task_target_preds = self.forward(data_batch=data_batch, epoch=epoch, use_second_order=False,
                                                      use_multi_step_loss_optimization=True,
                                                      num_steps=self.args.number_of_evaluation_steps_per_iter,
-                                                     training_phase=False)
+                                                     training_phase=False,
+                                                     current_iter=current_iter)
 
         return losses, per_task_target_preds
 
@@ -495,7 +497,7 @@ class MAMLFewShotClassifier(nn.Module):
         if task_idx == self.args.batch_size - 1:
             self.optimizer.step()
 
-    def run_train_iter(self, data_batch, epoch):
+    def run_train_iter(self, data_batch, epoch, current_iter):
         """
         Runs an outer loop update step on the meta-model's parameters.
         :param data_batch: input data batch containing the support set and target set input, output pairs
@@ -529,7 +531,7 @@ class MAMLFewShotClassifier(nn.Module):
 
             data_batch = (x_support_set_t, x_target_set_t, y_support_set_t, y_target_set_t)
 
-            losses, per_task_target_preds = self.train_forward_prop(data_batch=data_batch, epoch=epoch)
+            losses, per_task_target_preds = self.train_forward_prop(data_batch=data_batch, epoch=epoch, current_iter=current_iter)
             self.meta_update(loss=losses['loss'] / self.args.batch_size, task_idx=nt)
 
             if stacked_loss is None:
