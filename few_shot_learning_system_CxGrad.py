@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from meta_neural_network_architectures import VGGReLUNormNetwork
-from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
+from inner_loop_optimizers_CxGrad import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 from utils.storage import save_statistics
 
 
