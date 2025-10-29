@@ -138,45 +138,6 @@ def motion_blur(x, kernel_size=9):
     blurred = cv2.filter2D(x_np, -1, k_mat)
     return torch.tensor(blurred / 255., dtype=torch.float32).permute(2,0,1)
 
-
-# def motion_blur(x: torch.Tensor, k: int = 9, angle_deg: float = 0.0) -> torch.Tensor:
-#     """
-#     x: BxCxHxW 또는 CxHxW 텐서, float [0,1]
-#     k: 커널 사이즈(홀수 권장)
-#     angle_deg: 블러 방향(도)
-#     """
-#     single = (x.dim() == 3)
-#     if single:
-#         x = x.unsqueeze(0)  # 1xCxHxW
-#
-#     B, C, H, W = x.shape
-#     dev = x.device
-#     # 기본 수평 커널 생성
-#     kernel = torch.zeros((k, k), device=dev, dtype=x.dtype)
-#     kernel[k//2, :] = 1.0
-#     kernel = kernel / kernel.sum()
-#
-#     # 각도 회전(간단한 근사: grid_sample)
-#     # 회전 행렬
-#     theta = torch.tensor([
-#         [ torch.cos(torch.deg2rad(torch.tensor(angle_deg))), -torch.sin(torch.deg2rad(torch.tensor(angle_deg))), 0.0],
-#         [ torch.sin(torch.deg2rad(torch.tensor(angle_deg))),  torch.cos(torch.deg2rad(torch.tensor(angle_deg))), 0.0]
-#     ], device=dev, dtype=x.dtype).unsqueeze(0)
-#
-#     grid = F.affine_grid(theta, size=(1,1,k,k), align_corners=False)
-#     kernel = kernel.unsqueeze(0).unsqueeze(0)  # 1x1xk xk
-#     kernel = F.grid_sample(kernel, grid, align_corners=False)
-#     kernel = kernel / kernel.sum()
-#
-#     # 채널별 depthwise conv
-#     weight = kernel.repeat(C, 1, 1, 1)  # Cx1xk xk
-#     padding = k // 2
-#     out = F.conv2d(x, weight, bias=None, stride=1, padding=padding, groups=C)
-#     out = out.clamp(0,1)
-#
-#     return out.squeeze(0) if single else out
-
-
 # JPEG compression
 def jpeg_compression(x, quality=30):
     x_np = (x.permute(1,2,0).cpu().numpy() * 255).astype(np.uint8)
@@ -186,11 +147,6 @@ def jpeg_compression(x, quality=30):
     dec = cv2.cvtColor(dec, cv2.COLOR_BGR2RGB)
     return torch.tensor(dec/255., dtype=torch.float32).permute(2,0,1)
 
-
-import torch
-import numpy as np
-
-# 기존의 SelectCorruption 클래스에 통합하기 위한 새로운 함수 정의
 
 def random_block_masking(x: torch.Tensor, size: float = 0.2, fill_value: float = 0.0, rng: np.random.RandomState = None) -> torch.Tensor:
     """
