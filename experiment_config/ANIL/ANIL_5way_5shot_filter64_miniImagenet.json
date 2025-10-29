@@ -58,6 +58,7 @@
   "prompt_size" : 0,
   "image_size" : 0,
   "ANIL": true,
+  "BOIL": false,
   "data_aug" : null,
   "ablation_record": false,
   "random_prompt_init": false,
