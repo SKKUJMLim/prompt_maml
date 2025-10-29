@@ -18,6 +18,8 @@ if __name__ == '__main__':
         from few_shot_learning_system_ALFA import MAMLFewShotClassifier
     elif any(tag in args.experiment_name for tag in ('MeTAL',)):
         from few_shot_learning_system_MeTAL import MAMLFewShotClassifier
+    elif any(tag in args.experiment_name for tag in ('CxGrad',)):
+        from few_shot_learning_system_ALFA import MAMLFewShotClassifier
     elif any(tag in args.experiment_name for tag in ('GAP',)):
         from few_shot_learning_system_GAP import MAMLFewShotClassifier
 
