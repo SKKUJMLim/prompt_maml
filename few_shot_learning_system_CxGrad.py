@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from meta_neural_network_architectures import VGGReLUNormNetwork
-from inner_loop_optimizers_CxGrad import GradientDescentLearningRule, LSLRGradientDescentLearningRule
+from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 from utils.storage import save_statistics
 
 
@@ -389,7 +389,7 @@ class MAMLFewShotClassifier(nn.Module):
         :param num_step: An integer indicating the number of the step in the inner loop.
         :return: the crossentropy losses with respect to the given y, the predictions of the base model.
         """
-        preds, _ = self.classifier.forward(x=x,
+        preds = self.classifier.forward(x=x,
                                         params=weights,
                                         training=training,
                                         backup_running_statistics=backup_running_statistics,
