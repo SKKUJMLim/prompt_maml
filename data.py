@@ -87,10 +87,10 @@ def build_transform(train_phase, args, noise_on, noise_type, noise_param, mean, 
 
     steps.append(transforms.ToTensor())
 
-    # if train_phase: # and any(tag in args.experiment_name for tag in ('GAP')):
-    #     # steps.append(transforms.RandomHorizontalFlip())
-    #     # steps.append(transforms.RandomVerticalFlip())
-    #     steps.append(transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4))
+    if train_phase and not any(tag in args.experiment_name for tag in ('DCML',)):
+        steps.append(transforms.RandomHorizontalFlip())
+        steps.append(transforms.RandomVerticalFlip())
+        # steps.append(transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4))
 
     if noise_on and noise_type:
         if noise_type == "gaussian_noise":
