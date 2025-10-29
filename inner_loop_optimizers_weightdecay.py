@@ -83,6 +83,14 @@ class GradientDescentLearningRule(nn.Module):
                     else:
                         updated_names_weights_dict[key] = names_weights_dict[key] - freeze_layer_step_size * \
                                                           names_grads_wrt_params_dict[key]
+                if self.args.BOIL:
+                    if 'linear' in key:
+                        updated_names_weights_dict[key] = names_weights_dict[key] - freeze_layer_step_size * \
+                                                          names_grads_wrt_params_dict[key]
+
+                    else:
+                        updated_names_weights_dict[key] = names_weights_dict[key] - self.learning_rate * \
+                                                          names_grads_wrt_params_dict[key]
                 else:
                     updated_names_weights_dict[key] = names_weights_dict[key] - self.learning_rate * \
                                                       names_grads_wrt_params_dict[key]
