@@ -10,7 +10,6 @@ import torch
 from torchvision import transforms
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-
 from utils.parser_utils import get_args
 
 from corruption import SelectCorruption
@@ -87,9 +86,10 @@ def build_transform(train_phase, args, noise_on, noise_type, noise_param, mean, 
 
     steps.append(transforms.ToTensor())
 
-    if train_phase and not any(tag in args.experiment_name for tag in ('DCML',)):
-        steps.append(transforms.RandomHorizontalFlip())
-        steps.append(transforms.RandomVerticalFlip())
+    # if train_phase: # and not any(tag in args.experiment_name for tag in ('DCML',)):
+        # steps.append(transforms.RandomHorizontalFlip())
+        # steps.append(transforms.RandomVerticalFlip())
+        # steps.append(SelectCorruption("gaussian_noise", std=0.1))
         # steps.append(transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4))
 
     if noise_on and noise_type:
