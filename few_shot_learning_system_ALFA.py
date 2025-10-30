@@ -54,7 +54,7 @@ class MAMLFewShotClassifier(nn.Module):
 
         self.task_learning_rate = args.init_inner_loop_learning_rate
 
-        self.inner_loop_optimizer = LSLRGradientDescentLearningRule(args=self.args,device=device,
+        self.inner_loop_optimizer = LSLRGradientDescentLearningRule(device=device,
                                                                     init_learning_rate=self.task_learning_rate,
                                                                     init_weight_decay=args.init_inner_loop_weight_decay,
                                                                     total_num_inner_loop_steps=self.args.number_of_training_steps_per_iter,
@@ -65,11 +65,6 @@ class MAMLFewShotClassifier(nn.Module):
 
         names_weights_copy = self.get_inner_loop_parameter_dict(self.classifier.named_parameters())
 
-        prompted_weights_copy = {}
-        if self.args.prompter:
-            prompted_weights_copy = {key: value for key, value in names_weights_copy.items() if 'prompt' in key}
-        names_weights_copy = {key: value for key, value in names_weights_copy.items() if 'layer_dict' in key}
-
         if self.args.attenuate:
             num_layers = len(names_weights_copy)
             self.attenuator = nn.Sequential(
@@ -79,7 +74,7 @@ class MAMLFewShotClassifier(nn.Module):
                 nn.Sigmoid()
             ).to(device=self.device)
 
-        self.inner_loop_optimizer.initialise(prompted_weights_dict=prompted_weights_copy,
+        self.inner_loop_optimizer.initialise(
             names_weights_dict=names_weights_copy)
 
         print("Inner Loop parameters")
@@ -150,11 +145,10 @@ class MAMLFewShotClassifier(nn.Module):
 
             self.device = torch.cuda.current_device()
 
-    def get_task_embeddings(self, x_support_set_task, y_support_set_task, names_weights_copy, prompted_weights):
+    def get_task_embeddings(self, x_support_set_task, y_support_set_task, names_weights_copy):
         # Use gradients as task embeddings
         support_loss, support_preds = self.net_forward(x=x_support_set_task,
                                                        y=y_support_set_task,
-                                                       prompted_weights=prompted_weights,
                                                        weights=names_weights_copy,
                                                        backup_running_statistics=True,
                                                        training=True, num_step=0)
@@ -227,8 +221,8 @@ class MAMLFewShotClassifier(nn.Module):
 
         return param_dict
 
-    def apply_inner_loop_update(self, loss, names_weights_copy, prompted_weights_copy, generated_alpha_params, generated_beta_params,
-                                use_second_order, current_step_idx, current_iter, training_phase):
+    def apply_inner_loop_update(self, loss, names_weights_copy, generated_alpha_params, generated_beta_params,
+                                use_second_order, current_step_idx):
         """
         Applies an inner loop update given current step's loss, the weights to update, a flag indicating whether to use
         second order derivatives and the current step's index.
@@ -241,102 +235,33 @@ class MAMLFewShotClassifier(nn.Module):
         num_gpus = torch.cuda.device_count()
         if num_gpus > 1:
             self.classifier.module.zero_grad(params=names_weights_copy)
-            self.classifier.module.zero_grad(params=prompted_weights_copy)
         else:
             self.classifier.zero_grad(params=names_weights_copy)
-            self.classifier.zero_grad(params=prompted_weights_copy)
 
-        # grads = torch.autograd.grad(loss, names_weights_copy.values(),
-        #                             create_graph=use_second_order, allow_unused=True)
-        # names_grads_copy = dict(zip(names_weights_copy.keys(), grads))
-        #
-        # names_weights_copy = {key: value[0] for key, value in names_weights_copy.items()}
-        #
-        # for key, grad in names_grads_copy.items():
-        #     if grad is None:
-        #         print('Grads not found for inner loop parameter', key)
-        #     names_grads_copy[key] = names_grads_copy[key].sum(dim=0)
+        grads = torch.autograd.grad(loss, names_weights_copy.values(),
+                                    create_graph=use_second_order, allow_unused=True)
+        names_grads_copy = dict(zip(names_weights_copy.keys(), grads))
 
-        prompted_grads_copy = {}
-        if self.args.prompter:
-
-            # Classifier만 추출해서 gradient 계산 대상 지정
-            # names_weights_copy = {
-            #     k: v for k, v in names_weights_copy.items() if 'classifier' in k or 'linear' in k
-            # }
-
-            grads = torch.autograd.grad(loss, names_weights_copy.values(),
-                                        create_graph=use_second_order, allow_unused=True,
-                                        retain_graph=True)  ###### retrain_graph 추가
-            names_grads_copy = dict(zip(names_weights_copy.keys(), grads))
-            names_weights_copy = {key: value[0] for key, value in names_weights_copy.items()}
-
-            prompt_grads = torch.autograd.grad(loss, prompted_weights_copy.values(),
-                                               create_graph=use_second_order, allow_unused=True)
-            prompted_grads_copy = dict(zip(prompted_weights_copy.keys(), prompt_grads))
-            prompted_weights_copy = {key: value[0] for key, value in prompted_weights_copy.items()}
-
-        else:
-
-            # # Classifier만 추출해서 gradient 계산 대상 지정
-            # names_weights_copy = {
-            #     k: v for k, v in names_weights_copy.items() if 'classifier' in k or 'linear' in k
-            # }
-
-            grads = torch.autograd.grad(loss, names_weights_copy.values(),
-                                        create_graph=use_second_order, allow_unused=True)
-            names_grads_copy = dict(zip(names_weights_copy.keys(), grads))
-            names_weights_copy = {key: value[0] for key, value in names_weights_copy.items()}
+        names_weights_copy = {key: value[0] for key, value in names_weights_copy.items()}
 
         for key, grad in names_grads_copy.items():
             if grad is None:
                 print('Grads not found for inner loop parameter', key)
             names_grads_copy[key] = names_grads_copy[key].sum(dim=0)
 
-        for key, prompt_grad in prompted_grads_copy.items():
-            if prompt_grad is None:
-                print('Prompt Grads not found for inner loop parameter', key)
-            prompted_grads_copy[key] = prompted_grads_copy[key].sum(dim=0)
-
-        names_weights_copy, prompted_weights_copy = self.inner_loop_optimizer.update_params(
-            names_weights_dict=names_weights_copy,
-            names_grads_wrt_params_dict=names_grads_copy,
-            generated_alpha_params=generated_alpha_params,
-            generated_beta_params=generated_beta_params,
-            prompted_weights_dict=prompted_weights_copy,
-            prompted_grads_wrt_params_dict=prompted_grads_copy,
-            num_step=current_step_idx,
-            current_iter=current_iter,
-            training_phase=training_phase)
+        names_weights_copy = self.inner_loop_optimizer.update_params(names_weights_dict=names_weights_copy,
+                                                                     names_grads_wrt_params_dict=names_grads_copy,
+                                                                     generated_alpha_params=generated_alpha_params,
+                                                                     generated_beta_params=generated_beta_params,
+                                                                     num_step=current_step_idx)
 
         num_devices = torch.cuda.device_count() if torch.cuda.is_available() else 1
-
         names_weights_copy = {
             name.replace('module.', ''): value.unsqueeze(0).repeat(
                 [num_devices] + [1 for i in range(len(value.shape))]) for
             name, value in names_weights_copy.items()}
 
-        prompted_weights_copy = {
-            name.replace('module.', ''): value.unsqueeze(0).repeat(
-                [num_devices] + [1 for i in range(len(value.shape))]) for
-            name, value in prompted_weights_copy.items()}
-
-        return names_weights_copy, prompted_weights_copy
-
-
-        # names_weights_copy = self.inner_loop_optimizer.update_params(names_weights_dict=names_weights_copy,
-        #                                                              names_grads_wrt_params_dict=names_grads_copy,
-        #                                                              generated_alpha_params=generated_alpha_params,
-        #                                                              generated_beta_params=generated_beta_params,
-        #                                                              num_step=current_step_idx)
-        #
-        # num_devices = torch.cuda.device_count() if torch.cuda.is_available() else 1
-        # names_weights_copy = {
-        #     name.replace('module.', ''): value.unsqueeze(0).repeat(
-        #         [num_devices] + [1 for i in range(len(value.shape))]) for
-        #     name, value in names_weights_copy.items()}
-        #
-        # return names_weights_copy
+        return names_weights_copy
 
     def get_across_task_loss_metrics(self, total_losses, total_accuracies):
         losses = dict()
@@ -393,17 +318,6 @@ class MAMLFewShotClassifier(nn.Module):
                     [num_devices] + [1 for i in range(len(value.shape))]) for
                 name, value in names_weights_copy.items()}
 
-            prompted_weights_copy = {}
-            if self.args.prompter:
-                if self.args.random_prompt_init:
-                    prompted_weights_copy = {key: torch.randn_like(value, requires_grad=True) for key, value in
-                                             names_weights_copy.items() if 'prompt' in key}
-                else:
-                    prompted_weights_copy = {key: value for key, value in names_weights_copy.items() if 'prompt' in key}
-
-            names_weights_copy = {key: value for key, value in names_weights_copy.items() if 'layer_dict' in key}
-
-
             n, s, c, h, w = x_target_set_task.shape
 
             x_support_set_task = x_support_set_task.view(-1, c, h, w)
@@ -412,12 +326,15 @@ class MAMLFewShotClassifier(nn.Module):
             y_target_set_task = y_target_set_task.view(-1)
 
 
+            if training_phase is True and self.args.train_with_label_noise:
+                y_support_set_task = corrupt_labels_task_wise(y_set=y_support_set_task, corruption_rate=self.args.label_corruption_rate, rng=self.rng)
+
+
             # Attenuate the initialization for L2F
             if self.args.attenuate:
                 # Obtain gradients from support set for task embedding
                 task_embeddings = self.get_task_embeddings(x_support_set_task=x_support_set_task,
                                                            y_support_set_task=y_support_set_task,
-                                                           prompted_weights=prompted_weights_copy,
                                                            names_weights_copy=names_weights_copy)
 
                 names_weights_copy = self.attenuate_init(task_embeddings=task_embeddings,
@@ -427,7 +344,6 @@ class MAMLFewShotClassifier(nn.Module):
 
                 support_loss, support_preds = self.net_forward(x=x_support_set_task,
                                                                y=y_support_set_task,
-                                                               prompted_weights=prompted_weights_copy,
                                                                weights=names_weights_copy,
                                                                backup_running_statistics=
                                                                True if (num_step == 0) else False,
@@ -458,13 +374,12 @@ class MAMLFewShotClassifier(nn.Module):
                         generated_beta_params[key] = generated_beta[g]
                         g += 1
 
-                names_weights_copy, prompted_weights_copy = self.apply_inner_loop_update(loss=support_loss,
+                names_weights_copy = self.apply_inner_loop_update(loss=support_loss,
                                                                   names_weights_copy=names_weights_copy,
-                                                                  prompted_weights_copy=prompted_weights_copy,
                                                                   generated_beta_params=generated_beta_params,
                                                                   generated_alpha_params=generated_alpha_params,
                                                                   use_second_order=use_second_order,
-                                                                  current_step_idx=num_step,current_iter=current_iter, training_phase=training_phase)
+                                                                  current_step_idx=num_step)
 
                 if use_multi_step_loss_optimization and training_phase and epoch < self.args.multi_step_loss_num_epochs:
                     target_loss, target_preds = self.net_forward(x=x_target_set_task,
@@ -478,7 +393,6 @@ class MAMLFewShotClassifier(nn.Module):
                     if num_step == (self.args.number_of_training_steps_per_iter - 1):
                         target_loss, target_preds = self.net_forward(x=x_target_set_task,
                                                                      y=y_target_set_task, weights=names_weights_copy,
-                                                                     prompted_weights=prompted_weights_copy,
                                                                      backup_running_statistics=False, training=True,
                                                                      num_step=num_step)
                         task_losses.append(target_loss)
@@ -505,7 +419,7 @@ class MAMLFewShotClassifier(nn.Module):
 
         return losses, per_task_target_preds
 
-    def net_forward(self, x, y, weights, backup_running_statistics, training, num_step, prompted_weights=None, prepend_prompt=True):
+    def net_forward(self, x, y, weights, backup_running_statistics, training, num_step):
         """
         A base model forward pass on some data points x. Using the parameters in the weights dictionary. Also requires
         boolean flags indicating whether to reset the running statistics at the end of the run (if at evaluation phase).
@@ -520,9 +434,9 @@ class MAMLFewShotClassifier(nn.Module):
         :param num_step: An integer indicating the number of the step in the inner loop.
         :return: the crossentropy losses with respect to the given y, the predictions of the base model.
         """
-        preds, feature_map = self.classifier.forward(x=x, params=weights, prompted_params=prompted_weights,
+        preds, feature_map = self.classifier.forward(x=x, params=weights,
                                         training=training,
-                                        backup_running_statistics=backup_running_statistics, num_step=num_step, prepend_prompt=prepend_prompt)
+                                        backup_running_statistics=backup_running_statistics, num_step=num_step)
 
         loss = F.cross_entropy(input=preds, target=y)
 

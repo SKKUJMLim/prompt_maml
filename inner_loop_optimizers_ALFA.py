@@ -68,7 +68,7 @@ class LSLRGradientDescentLearningRule(nn.Module):
     will correspond to a stochastic gradient descent learning rule.
     """
 
-    def __init__(self, args, device, total_num_inner_loop_steps, use_learnable_learning_rates, use_learnable_weight_decay,
+    def __init__(self, device, total_num_inner_loop_steps, use_learnable_learning_rates, use_learnable_weight_decay,
                  alfa, random_init, init_learning_rate=1e-3, init_weight_decay=5e-4):
         """Creates a new learning rule object.
         Args:
@@ -81,7 +81,6 @@ class LSLRGradientDescentLearningRule(nn.Module):
         print(init_learning_rate)
         assert init_learning_rate > 0., 'learning_rate should be positive.'
 
-        self.args = args
         self.alfa = alfa
         self.random_init = random_init
 
@@ -99,14 +98,7 @@ class LSLRGradientDescentLearningRule(nn.Module):
         self.init_weight_decay = torch.ones(1) * init_weight_decay
         self.init_bias_decay = torch.ones(1)
 
-    def initialise(self, names_weights_dict, prompted_weights_dict=None):
-
-        self.prompt_learning_rates_dict = nn.ParameterDict()
-        if self.args.prompter:
-            self.prompt_learning_rates_dict['prompt_weight_learning_rate'] = nn.Parameter(
-                data=torch.ones(self.total_num_inner_loop_steps + 1) * self.init_learning_rate,
-                requires_grad=self.use_learnable_learning_rates)
-
+    def initialise(self, names_weights_dict):
         if self.alfa:
             if self.random_init:
                 self.names_beta_dict_per_param = nn.ParameterDict()
@@ -115,8 +107,6 @@ class LSLRGradientDescentLearningRule(nn.Module):
             self.names_beta_dict = nn.ParameterDict()
 
             for idx, (key, param) in enumerate(names_weights_dict.items()):
-
-                print("key== ", key)
 
                 if self.random_init:
                     # per-param weight decay for random init
@@ -140,7 +130,7 @@ class LSLRGradientDescentLearningRule(nn.Module):
                     requires_grad=self.use_learnable_learning_rates)
 
     def update_params(self, names_weights_dict, names_grads_wrt_params_dict, generated_alpha_params,
-                      generated_beta_params, prompted_weights_dict, prompted_grads_wrt_params_dict, current_iter, training_phase, num_step, tau=0.1):
+                      generated_beta_params, num_step, tau=0.1):
         """Applies a single gradient descent update to all parameters.
         All parameter updates are performed using in-place operations and so
         nothing is returned.
@@ -149,22 +139,11 @@ class LSLRGradientDescentLearningRule(nn.Module):
                 with respect to each of the parameters passed to `initialise`
                 previously, with this list expected to be in the same order.
         """
-        updated_prompt_weights_dict = dict()
         updated_names_weights_dict = dict()
 
-        if self.args.prompter:
-
-            for key in prompted_weights_dict.keys():
-                updated_prompt_weights_dict[key] = (1 - self.prompt_learning_rates_dict['prompt_weight_learning_rate'][
-                    num_step]) * \
-                                                   prompted_weights_dict[key] - \
-                                                   self.prompt_learning_rates_dict['prompt_weight_learning_rate'][
-                                                       num_step] * \
-                                                   prompted_grads_wrt_params_dict[key]
         for key in names_grads_wrt_params_dict.keys():
             # beta = (1 - generated_beta * meta-learned per-step-per-layer bias term)
             # alpha = generated_alpha * meta-learned per-step-per-layer bias term)
-
             if self.alfa:
                 if self.random_init:
                     updated_names_weights_dict[key] = (1 - self.names_beta_dict_per_param[key.replace(".", "-")] *
@@ -183,4 +162,4 @@ class LSLRGradientDescentLearningRule(nn.Module):
                 updated_names_weights_dict[key] = names_weights_dict[key] - self.init_lr_val * \
                                                   names_grads_wrt_params_dict[key]
 
-        return updated_names_weights_dict, updated_prompt_weights_dict
+        return updated_names_weights_dict
