@@ -46,6 +46,9 @@ class MAMLFewShotClassifier(nn.Module):
         self.current_epoch = 0
         self.rng = set_torch_seed(seed=args.seed)
         self.csv_exist = True
+        self.pgd_steps = 5
+        self.adv_epsilon = 0.02
+        self.pgd_alpha = 2 / 255.0
 
         if self.args.backbone == 'ResNet12':
             self.classifier = ResNet12(im_shape=self.im_shape, num_output_classes=self.args.
@@ -368,7 +371,37 @@ class MAMLFewShotClassifier(nn.Module):
 
             for num_step in range(num_steps):
 
-                support_loss, support_preds = self.net_forward(x=x_support_set_task,
+                x_support_set_for_forward = x_support_set_task
+
+                if self.args.eval_noise and self.args.eval_noise_type == "fgsm_attack":
+
+                    x_support_set_for_forward = self.fgsm_attack_helper(
+                        image=x_support_set_task,
+                        labels=y_support_set_task,
+                        model_params=names_weights_copy,
+                        prompted_params=prompted_weights_copy,
+                        adv_epsilon=self.adv_epsilon,
+                        num_step=num_step,
+                        training_mode=False,  # BN 통계 고정
+                        training_phase=training_phase,
+                        epoch=epoch
+                    )
+
+                    # x_support_set_for_forward = self.pgd_attack(
+                    #     image=x_support_set_task,
+                    #     labels=y_support_set_task,
+                    #     model_params=names_weights_copy,
+                    #     prompted_params=prompted_weights_copy,
+                    #     adv_epsilon=self.adv_epsilon,
+                    #     pgd_steps=self.pgd_steps,
+                    #     pgd_alpha=self.pgd_alpha,
+                    #     num_step=num_step,
+                    #     training_mode=False,  # BN 통계 고정,
+                    #     training_phase=training_phase,
+                    #     epoch=epoch
+                    # )
+
+                support_loss, support_preds = self.net_forward(x=x_support_set_for_forward,
                                                                y=y_support_set_task,
                                                                weights=names_weights_copy,
                                                                prompted_weights=prompted_weights_copy,
@@ -403,7 +436,44 @@ class MAMLFewShotClassifier(nn.Module):
                 else:
                     if num_step == (self.args.number_of_training_steps_per_iter - 1):
 
-                        target_loss, target_preds = self.net_forward(x=x_target_set_task,
+                        x_target_set_for_forward = x_target_set_task  # 초기화
+
+                        # ==========================================================
+                        # --- [추가] Evaluation 시 Target Set Inference Attack 적용 ---
+                        # ==========================================================
+                        # Evaluation 단계 (is_evaluation=True)에서 노이즈가 활성화된 경우에만 FGSM 적용
+                        if self.args.eval_noise and self.args.eval_noise_type == "fgsm_attack":
+                            x_target_set_for_forward = self.fgsm_attack_helper(
+                                image=x_target_set_task,
+                                labels=y_target_set_task,
+                                model_params=names_weights_copy,
+                                prompted_params=prompted_weights_copy,
+                                adv_epsilon=self.adv_epsilon,
+                                num_step=num_step,
+                                training_mode=False,  # BN 통계 고정
+                                training_phase=training_phase,
+                                epoch=epoch
+                            )
+
+                            # x_target_set_for_forward = self.pgd_attack(
+                            #     image=x_target_set_task,
+                            #     labels=y_target_set_task,
+                            #     model_params=names_weights_copy,
+                            #     prompted_params=prompted_weights_copy,
+                            #     adv_epsilon=self.adv_epsilon,
+                            #     pgd_steps=self.pgd_steps,
+                            #     pgd_alpha=self.pgd_alpha,
+                            #     num_step=num_step,
+                            #     training_mode=False,  # BN 통계 고정
+                            #     training_phase=training_phase,
+                            #     epoch=epoch
+                            # )
+
+
+                        # ==========================================================
+
+
+                        target_loss, target_preds = self.net_forward(x=x_target_set_for_forward,
                                                                      y=y_target_set_task,
                                                                      weights=names_weights_copy,
                                                                      prompted_weights=prompted_weights_copy,
@@ -839,3 +909,117 @@ class MAMLFewShotClassifier(nn.Module):
         maml_state_dict.update(new_maml_state_dict)
         model_to_load.load_state_dict(maml_state_dict, strict=False)
         print("Pretrained weights successfully loaded to Meta-ResNet12 (Feature Extractor).")
+
+    def pgd_attack(self, image, labels, model_params, prompted_params, adv_epsilon, pgd_steps, pgd_alpha, num_step,
+                   training_mode, training_phase, epoch):
+        """
+        PGD (Projected Gradient Descent) 공격을 수행합니다.
+
+        :param image: 원본 입력 이미지
+        :param labels: 타겟 라벨
+        :param model_params: 현재 내적 루프 스텝의 Task-specific 가중치
+        :param prompted_params: 현재 내적 루프 스텝의 Prompt 가중치
+        :param adv_epsilon: 교란의 최대 범위 (L_inf norm)
+        :param pgd_steps: 반복 횟수
+        :param pgd_alpha: 각 스텝의 이동 크기
+        :param num_step: 현재 Inner-loop 스텝 인덱스
+        :param training_mode: net_forward에 전달할 training 플래그 (BN 통계 고정: False)
+        :return: 적대적 예제 이미지
+        """
+        if adv_epsilon == 0 or pgd_steps == 0:
+            return image.detach()
+
+        # 원본 이미지의 복사본 및 requires_grad 설정
+        original_image = image.detach()
+        # detach된 x_adv에 requires_grad를 활성화하여 메타 파라미터 그래프에 영향을 주지 않음
+        x_adv = original_image.clone().requires_grad_(True)
+
+        for _ in range(pgd_steps):
+
+            # 이전 그래디언트 클리어
+            if x_adv.grad is not None:
+                x_adv.grad.zero_()
+
+            # 현재 Task-specific weights로 loss 계산 (training=False: BN 통계 고정)
+            loss, _ = self.net_forward(x=x_adv,
+                                       y=labels,
+                                       weights=model_params,
+                                       prompted_weights=prompted_params,
+                                       backup_running_statistics=False,
+                                       training=training_mode,
+                                       prepend_prompt=self.args.prompter,
+                                       num_step=num_step,
+                                       training_phase=training_phase,
+                                       epoch=epoch,
+                                       inner_loop=True)
+
+            # 이미지에 대한 그래디언트 계산
+            loss.backward(retain_graph=True)  # PGD가 반복되므로 retain_graph=True
+
+            # PGD 스텝
+            data_grad = x_adv.grad.data.sign()
+
+            # 스텝 이동 (alpha * sign(grad))
+            x_adv.data = x_adv.data + pgd_alpha * data_grad
+
+            # L_inf projection (클리핑)
+            # 1. 원본 이미지 대비 최대 epsilon 범위 내로 클리핑
+            eta = torch.clamp(x_adv.data - original_image.data, -adv_epsilon, adv_epsilon)
+            x_adv.data = original_image.data + eta
+
+            # 2. 유효한 픽셀 범위 [0, 1]로 클리핑 (정규화된 이미지 가정)
+            x_adv.data = torch.clamp(x_adv.data, 0, 1)
+
+        # 최종적으로 requires_grad 비활성화
+        x_adv.requires_grad_(False)
+        return x_adv.detach()
+
+    def fgsm_attack_helper(self, image, labels, model_params, prompted_params, adv_epsilon, num_step, training_mode, training_phase, epoch):
+        """
+        FGSM (Fast Gradient Sign Method) 공격을 수행합니다.
+
+        :param image: 원본 입력 이미지
+        :param labels: 타겟 라벨
+        :param model_params: 현재 내적 루프 스텝의 Task-specific 가중치
+        :param prompted_params: 현재 내적 루프 스텝의 Prompt 가중치
+        :param adv_epsilon: 교란의 최대 범위 (L_inf norm)
+        :param num_step: 현재 Inner-loop 스텝 인덱스
+        :param training_mode: net_forward에 전달할 training 플래그 (BN 통계 고정: False)
+        :return: 적대적 예제 이미지
+        """
+        if adv_epsilon == 0:
+            return image.detach()
+
+        # 원본 이미지의 복사본 및 requires_grad 설정
+        original_image = image.detach()
+        x_adv = original_image.clone().requires_grad_(True)
+
+        # 1. 이전 그래디언트 클리어
+        if x_adv.grad is not None:
+            x_adv.grad.zero_()
+
+        # 2. 현재 Task-specific weights로 loss 계산 (training=False: BN 통계 고정)
+        loss, _ = self.net_forward(x=x_adv,
+                                   y=labels,
+                                   weights=model_params,
+                                   prompted_weights=prompted_params,
+                                   backup_running_statistics=False,
+                                   training=training_mode,
+                                   prepend_prompt=self.args.prompter,
+                                   num_step=num_step,
+                                   training_phase=training_phase,
+                                   epoch=epoch,
+                                   inner_loop=True)
+        # 3. 이미지에 대한 그래디언트 계산
+        loss.backward(retain_graph=True)  # 단일 스텝이므로 retain_graph=False
+
+        # 4. FGSM 스텝 (epsilon * sign(grad))
+        data_grad = x_adv.grad.data.sign()
+        x_adv = x_adv.detach() + adv_epsilon * data_grad.detach()
+
+        # 5. L_inf projection 및 픽셀 범위 [0, 1] 클리핑
+        x_adv = torch.clamp(x_adv, 0, 1).detach()
+
+        # 최종적으로 requires_grad 비활성화
+        x_adv.requires_grad_(False)
+        return x_adv.detach()
