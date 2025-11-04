@@ -53,6 +53,7 @@
 
   "second_order": true,
   "use_multi_step_loss_optimization":false,
+  "backbone": "4-CONV",
   "prompter": true,
   "prompt_engineering": "padding",
   "prompt_size" : 5,
