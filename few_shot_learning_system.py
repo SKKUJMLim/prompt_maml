@@ -401,7 +401,7 @@ class MAMLFewShotClassifier(nn.Module):
                     #     epoch=epoch
                     # )
 
-                support_loss, support_preds = self.net_forward(x=x_support_set_for_forward,
+                support_loss, support_preds, _ = self.net_forward(x=x_support_set_for_forward,
                                                                y=y_support_set_task,
                                                                weights=names_weights_copy,
                                                                prompted_weights=prompted_weights_copy,
@@ -422,7 +422,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                                                          training_phase=training_phase)
 
                 if use_multi_step_loss_optimization and training_phase and epoch < self.args.multi_step_loss_num_epochs:
-                    target_loss, target_preds = self.net_forward(x=x_target_set_task,
+                    target_loss, target_preds, _ = self.net_forward(x=x_target_set_task,
                                                                  y=y_target_set_task,
                                                                  weights=names_weights_copy,
                                                                  prompted_weights=prompted_weights_copy,
@@ -468,12 +468,10 @@ class MAMLFewShotClassifier(nn.Module):
                             #     training_phase=training_phase,
                             #     epoch=epoch
                             # )
-
-
                         # ==========================================================
 
 
-                        target_loss, target_preds = self.net_forward(x=x_target_set_for_forward,
+                        target_loss, target_preds, feature_map_list = self.net_forward(x=x_target_set_for_forward,
                                                                      y=y_target_set_task,
                                                                      weights=names_weights_copy,
                                                                      prompted_weights=prompted_weights_copy,
@@ -483,6 +481,31 @@ class MAMLFewShotClassifier(nn.Module):
                                                                      epoch=epoch,
                                                                      inner_loop=False)
                         task_losses.append(target_loss)
+
+                        # if training_phase:  # MMD 분석은 훈련 태스크를 대상으로 합니다.
+                        #
+                        #     last_layer_feature = feature_map_list[3]
+                        #
+                        #     # 1. 저장 경로 설정
+                        #     feature_dir = os.path.join(
+                        #         self.args.experiment_name,
+                        #         "feature_maps_for_MMD",
+                        #         f"epoch{epoch}"
+                        #     )
+                        #     os.makedirs(feature_dir, exist_ok=True)
+                        #
+                        #     # 2. 고유 인덱스 생성 (기존 grad 저장 방식과 동일)
+                        #     task_idx = f"e{epoch}_i{current_iter}_t{task_id}"
+                        #
+                        #     # 3. 피처맵 저장 (detach 후 CPU 이동)
+                        #     # feature_map_list는 아마도 (Batch_size * Num_shots) x Feature_Dim 형태의 텐서일 것입니다.
+                        #     feature_data = last_layer_feature.detach().cpu()
+                        #
+                        #     save_path = os.path.join(feature_dir, f"{task_idx}_features.pt")
+                        #     torch.save(feature_data, save_path)
+                        # # ==========================================================
+
+
 
                         # Gradient conflict 분석을 위한 gradient 수집
                         if training_phase and self.args.ablation_record:
@@ -573,7 +596,7 @@ class MAMLFewShotClassifier(nn.Module):
                                                           num_step=num_step, prepend_prompt=prepend_prompt)
         loss = F.cross_entropy(preds, y)
 
-        return loss, preds
+        return loss, preds, feature_map_list
 
     def net_forward_feature_extractor(self, x, y, weights, backup_running_statistics, training, num_step, training_phase, epoch,
                     prompted_weights=None, prepend_prompt=True, inner_loop=True):
@@ -941,7 +964,7 @@ class MAMLFewShotClassifier(nn.Module):
                 x_adv.grad.zero_()
 
             # 현재 Task-specific weights로 loss 계산 (training=False: BN 통계 고정)
-            loss, _ = self.net_forward(x=x_adv,
+            loss, _, _ = self.net_forward(x=x_adv,
                                        y=labels,
                                        weights=model_params,
                                        prompted_weights=prompted_params,
@@ -999,7 +1022,7 @@ class MAMLFewShotClassifier(nn.Module):
             x_adv.grad.zero_()
 
         # 2. 현재 Task-specific weights로 loss 계산 (training=False: BN 통계 고정)
-        loss, _ = self.net_forward(x=x_adv,
+        loss, _, _ = self.net_forward(x=x_adv,
                                    y=labels,
                                    weights=model_params,
                                    prompted_weights=prompted_params,
