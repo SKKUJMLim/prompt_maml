@@ -2,9 +2,12 @@ import torch
 import numpy as np
 import os
 from collections import defaultdict
-import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import List, Dict
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
 
 # plt.rcParams['font.family'] = 'Malgun Gothic'
 # plt.rcParams['axes.unicode_minus'] = False
@@ -204,24 +207,93 @@ def plot_kde_comparison(
     print(f"[INFO] KDE Plot saved to: {plot_path}")
 
 
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+from typing import Dict, List
+
+def plot_epochwise_mean_mmd(
+    mmd_maml_dists: Dict[int, List[float]],
+    mmd_dcml_dists: Dict[int, List[float]],
+    target_epochs: List[int],
+    experiment_name: str,
+    save_name: str = "mmd_epochwise_mean_line.png"
+):
+    """
+    epoch별 평균(그리고 표준편차) MMD를 하나의 선 그래프로 시각화.
+    - y축: 평균 MMD
+    - x축: epoch
+    - 각 epoch의 분산 정보를 error bar(표준편차)로 표시
+    """
+    # 정렬된 epoch 리스트 (target_epochs 기준으로 존재하는 epoch만 사용)
+    epochs = [e for e in target_epochs if (e in mmd_maml_dists) or (e in mmd_dcml_dists)]
+    if not epochs:
+        print("[WARN] 사용할 수 있는 epoch 데이터가 없습니다.")
+        return
+
+    # 평균/표준편차 계산 함수
+    def _mean_std(d: Dict[int, List[float]], eps: float = 0.0):
+        means, stds = [], []
+        for e in epochs:
+            arr = np.array(d.get(e, []), dtype=np.float32)
+            if arr.size == 0:
+                means.append(np.nan)
+                stds.append(0.0)
+            else:
+                means.append(float(np.mean(arr)))
+                stds.append(float(np.std(arr) + eps))
+        return np.array(means), np.array(stds)
+
+    maml_mean, maml_std = _mean_std(mmd_maml_dists)
+    dcml_mean, dcml_std = _mean_std(mmd_dcml_dists)
+
+    # 플롯
+    plt.figure(figsize=(9, 6))
+    # MAML
+    plt.errorbar(epochs, maml_mean, yerr=maml_std, fmt='-o', linewidth=2, capsize=3, label='MAML (mean ± std)')
+    # DCML
+    plt.errorbar(epochs, dcml_mean, yerr=dcml_std, fmt='-s', linewidth=2, capsize=3, label='DCML (mean ± std)')
+
+    plt.title("Epoch-wise Mean MMD (Task-pair Feature Distance)")
+    plt.xlabel("Epoch")
+    plt.ylabel("Mean MMD")
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.legend()
+
+    os.makedirs(experiment_name, exist_ok=True)
+    out_path = os.path.join(experiment_name, save_name)
+    plt.savefig(out_path, dpi=200, bbox_inches='tight')
+    plt.show()
+    print(f"[INFO] Line plot saved to: {out_path}")
+
+
+
 if __name__ == '__main__':
 
     os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 
     # --- 최종 실행 예시 ---
     # 이 부분은 실제 데이터를 로드할 경로와 파라미터에 맞게 수정해야 합니다.
-    # EXPERIMENT_NAME = "DCML_ResNet12_KDE_Analysis"
-    # NUM_TASKS_PER_BATCH = 4 # 메타 학습 시 사용한 배치 크기
-    # TARGET_EPOCHS = [0, 25, 50, 99]
-    # SIGMAS = [0.5, 1.0, 2.0, 4.0, 8.0] # MMD 계산을 위한 다중 스케일 가우시안 커널 밴드폭
+    EXPERIMENT_NAME = "ＫDE_Analysis"
+    NUM_TASKS_PER_BATCH = 4 # 메타 학습 시 사용한 배치 크기
+    TARGET_EPOCHS = list(range(0, 22))
+    SIGMAS = [0.5, 1.0, 2.0, 4.0, 8.0] # MMD 계산을 위한 다중 스케일 가우시안 커널 밴드폭
 
-    # # MAML과 DCML의 피처 저장 경로 (예시 경로)
-    # MAML_EXP_PATH = "DCML_padding_5way_5shot_filter128_miniImagenet/feature_maps_for_MMD"
-    # DCML_EXP_PATH = "MAML_5way_5shot_filter128_miniImagenet/feature_maps_for_MMD"
+    # MAML과 DCML의 피처 저장 경로 (예시 경로)
+    MAML_EXP_PATH = "DCML_padding_5way_5shot_filter128_miniImagenet/feature_maps_for_MMD"
+    DCML_EXP_PATH = "MAML_5way_5shot_filter128_miniImagenet/feature_maps_for_MMD"
 
-    # # MMD 분포 계산
-    # mmd_maml_distributions = calculate_epoch_mmd(MAML_EXP_PATH, TARGET_EPOCHS, NUM_TASKS_PER_BATCH, sigma_list=SIGMAS)
-    # mmd_dcml_distributions = calculate_epoch_mmd(DCML_EXP_PATH, TARGET_EPOCHS, NUM_TASKS_PER_BATCH, sigma_list=SIGMAS)
+    # MMD 분포 계산
+    mmd_maml_distributions = calculate_epoch_mmd(MAML_EXP_PATH, TARGET_EPOCHS, NUM_TASKS_PER_BATCH, sigma_list=SIGMAS)
+    mmd_dcml_distributions = calculate_epoch_mmd(DCML_EXP_PATH, TARGET_EPOCHS, NUM_TASKS_PER_BATCH, sigma_list=SIGMAS)
 
-    # # 시각화
-    # plot_kde_comparison(mmd_maml_distributions, mmd_dcml_distributions, TARGET_EPOCHS, EXPERIMENT_NAME)
+    plot_epochwise_mean_mmd(
+        mmd_maml_distributions,
+        mmd_dcml_distributions,
+        TARGET_EPOCHS,
+        EXPERIMENT_NAME,
+        save_name="mmd_epochwise_mean_line.png"
+    )
+
+    # 시각화
+    plot_kde_comparison(mmd_maml_distributions, mmd_dcml_distributions, TARGET_EPOCHS, EXPERIMENT_NAME)
