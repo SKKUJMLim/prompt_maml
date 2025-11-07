@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from meta_neural_network_architectures_CxGrad import VGGReLUNormNetwork
+from meta_neural_network_architectures_CxGrad import VGGReLUNormNetwork, Re
 from inner_loop_optimizers_CxGrad import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 from utils.storage import save_statistics
 
@@ -49,8 +49,14 @@ class MAMLFewShotClassifier(nn.Module):
         self.val_total_max_loss = []
         self.rng = set_torch_seed(seed=args.seed)
 
-        self.classifier = VGGReLUNormNetwork(im_shape=self.im_shape, num_output_classes=self.args.num_classes_per_set,
-                                             args=args, device=device, meta_classifier=True).to(device=self.device)
+        if self.args.backbone == 'ResNet12':
+            self.classifier = ResNet12(im_shape=self.im_shape, num_output_classes=self.args.
+                                       num_classes_per_set,
+                                       args=args, device=device, meta_classifier=True).to(device=self.device)
+        else:
+            self.classifier = VGGReLUNormNetwork(im_shape=self.im_shape, num_output_classes=self.args.
+                                                 num_classes_per_set,
+                                                 args=args, device=device, meta_classifier=True).to(device=self.device)
 
         self.task_learning_rate = args.init_inner_loop_learning_rate
         self.context_params_learning_rate = args.context_params_learning_rate
