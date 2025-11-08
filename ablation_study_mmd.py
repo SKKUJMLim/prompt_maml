@@ -231,6 +231,7 @@ def plot_epochwise_mean_mmd(
     """
     # 정렬된 epoch 리스트 (target_epochs 기준으로 존재하는 epoch만 사용)
     epochs = [e for e in target_epochs if (e in mmd_maml_dists) or (e in mmd_dcml_dists)]
+
     if not epochs:
         print("[WARN] 사용할 수 있는 epoch 데이터가 없습니다.")
         return
@@ -252,17 +253,20 @@ def plot_epochwise_mean_mmd(
     dcml_mean, dcml_std = _mean_std(mmd_dcml_dists)
 
     # 플롯
-    plt.figure(figsize=(9, 6))
+    plt.figure(figsize=(8, 5))
     # MAML
-    plt.errorbar(epochs, maml_mean, yerr=maml_std, fmt='-o', linewidth=2, capsize=3, label='MAML (mean ± std)')
+    plt.errorbar(epochs, maml_mean, yerr=maml_std, fmt='-o', linewidth=2.5, capsize=3, label='MAML (mean ± std)')
     # DCML
-    plt.errorbar(epochs, dcml_mean, yerr=dcml_std, fmt='-s', linewidth=2, capsize=3, label='DCML (mean ± std)')
+    plt.errorbar(epochs, dcml_mean, yerr=dcml_std, fmt='-s', linewidth=2.5, capsize=3, label='DCML (mean ± std)')
 
-    plt.title("Epoch-wise Mean MMD (Task-pair Feature Distance)")
-    plt.xlabel("Epoch")
-    plt.ylabel("Mean MMD")
-    plt.grid(True, linestyle='--', alpha=0.6)
-    plt.legend()
+    # plt.title("Epoch-wise Mean MMD (Task-pair Feature Distance)")
+    plt.xlim(0, 99)
+    plt.xticks(np.arange(0, 100, 20))  # 0, 20, 40, 60, 80, 99 추가하려면:
+    plt.xticks(list(np.arange(0, 100, 10)) + [99])
+    plt.xlabel("Epoch", fontsize=16)
+    plt.ylabel("MMD", fontsize=16)
+    plt.grid(True, linestyle='--', alpha=0.5)
+    plt.legend(fontsize=15)
 
     os.makedirs(experiment_name, exist_ok=True)
     out_path = os.path.join(experiment_name, save_name)
@@ -313,15 +317,15 @@ def plot_kde_comparison_individual(
     # ------------------------------------
 
     for epoch in target_epochs:
-        fig, ax = plt.subplots(figsize=(7, 6))  # 각 에포크마다 새 그림 생성
+        fig, ax = plt.subplots(figsize=(8, 5))  # 각 에포크마다 새 그림 생성
 
         maml_data = mmd_maml_dists.get(epoch, [])
         dcml_data = mmd_dcml_dists.get(epoch, [])
 
         if len(maml_data) < 2 and len(dcml_data) < 2:
-            ax.set_title(f"Epoch {epoch} (No sufficient data)", fontsize=14)
+            #ax.set_title(f"Epoch {epoch} (No sufficient data)", fontsize=14)
             ax.set_xlim(xlim_min, max_dist)
-            ax.grid(True, linestyle='--', alpha=0.6)
+            ax.grid(True, linestyle='--', alpha=0.5)
             plot_path = os.path.join(experiment_name, f"mmd_kde_epoch_{epoch}.png")
             plt.savefig(plot_path, dpi=200, bbox_inches='tight')
             plt.close(fig)  # 그림 닫기
@@ -330,20 +334,20 @@ def plot_kde_comparison_individual(
 
         if len(maml_data) >= 2:
             sns.kdeplot(maml_data, ax=ax, label='MAML (Baseline)', fill=True,
-                        alpha=0.5, color='skyblue', linewidth=1.5, bw_adjust=bw_adjust)
+                        alpha=0.5, color='skyblue', linewidth=2.5, bw_adjust=bw_adjust)
         if len(dcml_data) >= 2:
             sns.kdeplot(dcml_data, ax=ax, label='DCML (Ours)', fill=True,
-                        alpha=0.5, color='coral', linewidth=1.5, bw_adjust=bw_adjust)
+                        alpha=0.5, color='coral', linewidth=2.5, bw_adjust=bw_adjust)
 
-        ax.set_title(f"Epoch {epoch}: Task Pair MMD Distribution (KDE)", fontsize=16)
-        ax.set_xlabel('Feature Distance (MMD)', fontsize=14)
-        ax.set_ylabel('Density', fontsize=14)
+        # ax.set_title(f"Epoch {epoch}: Task Pair MMD Distribution (KDE)", fontsize=16)
+        ax.set_xlabel('Feature Distance (MMD)', fontsize=16)
+        ax.set_ylabel('Density', fontsize=16)
 
         # 수정된 X축 범위 적용
         ax.set_xlim(xlim_min, max_dist)
 
-        ax.grid(True, linestyle='--', alpha=0.6)
-        ax.legend(fontsize=12)
+        ax.grid(True, linestyle='--', alpha=0.5)
+        ax.legend(fontsize=15)
 
         plt.tight_layout()
         plot_path = os.path.join(experiment_name, f"mmd_kde_epoch_{epoch}.png")
