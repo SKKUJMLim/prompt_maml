@@ -337,7 +337,7 @@ if __name__ == '__main__':
     # --- 최종 실행 예시 ---
     # python ablation_study_mmd.py
     # 이 부분은 실제 데이터를 로드할 경로와 파라미터에 맞게 수정해야 합니다.
-    EXPERIMENT_NAME = "ＫDE_Analysis"
+    EXPERIMENT_NAME = "KDE_Analysis"
     NUM_TASKS_PER_BATCH = 4  # 메타 학습 시 사용한 배치 크기
     TARGET_EPOCHS = list(range(0, 80))
     SIGMAS = [0.5, 1.0, 2.0, 4.0, 8.0]  # MMD 계산을 위한 다중 스케일 가우시안 커널 밴드폭
@@ -348,9 +348,9 @@ if __name__ == '__main__':
 
     # MMD 분포 계산
     print("Compute MAML..")
-    mmd_maml_distributions = calculate_epoch_mmd(MAML_EXP_PATH, TARGET_EPOCHS, NUM_TASKS_PER_BATCH, sigma_list=SIGMAS)
+    mmd_maml_distributions = calculate_epoch_mmd(MAML_EXP_PATH, TARGET_EPOCHS, NUM_TASKS_PER_BATCH, sigma_list=SIGMAS, aggregate='mean')
     print("Compute DCML..")
-    mmd_dcml_distributions = calculate_epoch_mmd(DCML_EXP_PATH, TARGET_EPOCHS, NUM_TASKS_PER_BATCH, sigma_list=SIGMAS)
+    mmd_dcml_distributions = calculate_epoch_mmd(DCML_EXP_PATH, TARGET_EPOCHS, NUM_TASKS_PER_BATCH, sigma_list=SIGMAS, aggregate='mean')
 
     plot_epochwise_mean_mmd(
         mmd_maml_distributions,
