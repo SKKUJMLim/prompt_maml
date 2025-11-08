@@ -27,11 +27,11 @@ def gaussian_kernel(x, y, sigma_list: List[float]) -> torch.Tensor:
     x = _ensure_2d(x).float()
     y = _ensure_2d(y).float()
 
-    xx = (x * x).sum(dim=1, keepdim=True)        # [m,1]
-    yy = (y * y).sum(dim=1, keepdim=True)        # [n,1]
-    xy = x @ y.t()                                # [m,n]
+    xx = (x * x).sum(dim=1, keepdim=True)  # [m,1]
+    yy = (y * y).sum(dim=1, keepdim=True)  # [n,1]
+    xy = x @ y.t()  # [m,n]
 
-    D2 = xx - 2 * xy + yy.t()                     # [m,n]
+    D2 = xx - 2 * xy + yy.t()  # [m,n]
     D2 = torch.clamp(D2, min=0.0)
 
     K = torch.zeros_like(D2)
@@ -70,11 +70,11 @@ def mmd_rbf(x, y, sigma_list: List[float] = None) -> torch.Tensor:
 
 
 def calculate_epoch_mmd(
-    base_dir: str,
-    epoch_list: List[int],
-    num_tasks_per_batch: int,
-    sigma_list: List[float],
-    aggregate: str = "first",  # "first" or "mean"
+        base_dir: str,
+        epoch_list: List[int],
+        num_tasks_per_batch: int,
+        sigma_list: List[float],
+        aggregate: str = "first",  # "first" or "mean"
 ) -> Dict[int, List[float]]:
     """
     에포크별로 (메타 배치 내) 모든 태스크 쌍의 MMD 값 리스트를 수집.
@@ -84,7 +84,7 @@ def calculate_epoch_mmd(
 
     for epoch in epoch_list:
 
-        print("epoch == ",epoch)
+        print("epoch == ", epoch)
 
         epoch_dir = os.path.join(base_dir, f"epoch{epoch}")
         if not os.path.exists(epoch_dir):
@@ -122,7 +122,7 @@ def calculate_epoch_mmd(
             if not feat_list:
                 continue
             if aggregate == "first":
-                rep = feat_list[0]                 # [N,D]
+                rep = feat_list[0]  # [N,D]
             elif aggregate == "mean":
                 # 여러 텐서의 평균을 대표로 사용
                 rep = torch.stack([f.mean(dim=0) for f in feat_list], dim=0).mean(dim=0, keepdim=True)
@@ -154,11 +154,11 @@ def calculate_epoch_mmd(
 
 
 def plot_kde_comparison(
-    mmd_maml_dists: Dict[int, List[float]],
-    mmd_dcml_dists: Dict[int, List[float]],
-    target_epochs: List[int],
-    experiment_name: str,
-    bw_adjust: float = 0.8
+        mmd_maml_dists: Dict[int, List[float]],
+        mmd_dcml_dists: Dict[int, List[float]],
+        target_epochs: List[int],
+        experiment_name: str,
+        bw_adjust: float = 0.8
 ):
     """선택한 에폭에 대해 MAML vs DCML의 MMD 분포(KDE)를 비교."""
     fig, axes = plt.subplots(2, 2, figsize=(14, 12))
@@ -215,12 +215,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import Dict, List
 
+
 def plot_epochwise_mean_mmd(
-    mmd_maml_dists: Dict[int, List[float]],
-    mmd_dcml_dists: Dict[int, List[float]],
-    target_epochs: List[int],
-    experiment_name: str,
-    save_name: str = "mmd_epochwise_mean_line.png"
+        mmd_maml_dists: Dict[int, List[float]],
+        mmd_dcml_dists: Dict[int, List[float]],
+        target_epochs: List[int],
+        experiment_name: str,
+        save_name: str = "mmd_epochwise_mean_line.png"
 ):
     """
     epoch별 평균(그리고 표준편차) MMD를 하나의 선 그래프로 시각화.
@@ -269,19 +270,77 @@ def plot_epochwise_mean_mmd(
     plt.show()
     print(f"[INFO] Line plot saved to: {out_path}")
 
+def plot_kde_comparison_individual(
+    mmd_maml_dists: Dict[int, List[float]],
+    mmd_dcml_dists: Dict[int, List[float]],
+    target_epochs: List[int],
+    experiment_name: str,
+    bw_adjust: float = 0.8
+):
+    """선택한 에폭에 대해 MAML vs DCML의 MMD 분포(KDE)를 비교하고 개별 이미지로 저장."""
+    os.makedirs(experiment_name, exist_ok=True)
+
+    # 공통 xlim 산정 (95% 분위수 기반)
+    all_dists: List[float] = []
+    for dist_list in mmd_maml_dists.values():
+        all_dists.extend(dist_list)
+    for dist_list in mmd_dcml_dists.values():
+        all_dists.extend(dist_list)
+    if all_dists:
+        max_dist = float(np.percentile(all_dists, 95) * 1.2)
+        if max_dist == 0: # 모든 값이 0인 경우를 대비
+            max_dist = 0.5
+    else:
+        max_dist = 0.5
+
+
+    for epoch in target_epochs:
+        fig, ax = plt.subplots(figsize=(7, 6)) # 각 에포크마다 새 그림 생성
+
+        maml_data = mmd_maml_dists.get(epoch, [])
+        dcml_data = mmd_dcml_dists.get(epoch, [])
+
+        if len(maml_data) < 2 and len(dcml_data) < 2:
+            ax.set_title(f"Epoch {epoch} (No sufficient data)", fontsize=14)
+            ax.set_xlim(0, max_dist)
+            ax.grid(True, linestyle='--', alpha=0.6)
+            plot_path = os.path.join(experiment_name, f"mmd_kde_epoch_{epoch}.png")
+            plt.savefig(plot_path, dpi=200, bbox_inches='tight')
+            plt.close(fig) # 그림 닫기
+            print(f"[INFO] KDE Plot saved to: {plot_path}")
+            continue
+
+        if len(maml_data) >= 2:
+            sns.kdeplot(maml_data, ax=ax, label='MAML (Baseline)', fill=True,
+                        alpha=0.5, color='skyblue', linewidth=1.5, bw_adjust=bw_adjust)
+        if len(dcml_data) >= 2:
+            sns.kdeplot(dcml_data, ax=ax, label='DCML (Ours)', fill=True,
+                        alpha=0.5, color='coral', linewidth=1.5, bw_adjust=bw_adjust)
+
+        ax.set_title(f"Epoch {epoch}: Task Pair MMD Distribution (KDE)", fontsize=16)
+        ax.set_xlabel('Feature Distance (MMD)', fontsize=14)
+        ax.set_ylabel('Density', fontsize=14)
+        ax.set_xlim(0, max_dist)
+        ax.grid(True, linestyle='--', alpha=0.6)
+        ax.legend(fontsize=12)
+
+        plt.tight_layout()
+        plot_path = os.path.join(experiment_name, f"mmd_kde_epoch_{epoch}.png")
+        plt.savefig(plot_path, dpi=200, bbox_inches='tight')
+        plt.close(fig) # 그림 닫기
+        print(f"[INFO] KDE Plot saved to: {plot_path}")
 
 
 if __name__ == '__main__':
-
     os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 
     # --- 최종 실행 예시 ---
     # python ablation_study_mmd.py
     # 이 부분은 실제 데이터를 로드할 경로와 파라미터에 맞게 수정해야 합니다.
     EXPERIMENT_NAME = "ＫDE_Analysis"
-    NUM_TASKS_PER_BATCH = 4 # 메타 학습 시 사용한 배치 크기
-    TARGET_EPOCHS = list(range(0, 22))
-    SIGMAS = [0.5, 1.0, 2.0, 4.0, 8.0] # MMD 계산을 위한 다중 스케일 가우시안 커널 밴드폭
+    NUM_TASKS_PER_BATCH = 4  # 메타 학습 시 사용한 배치 크기
+    TARGET_EPOCHS = list(range(0, 80))
+    SIGMAS = [0.5, 1.0, 2.0, 4.0, 8.0]  # MMD 계산을 위한 다중 스케일 가우시안 커널 밴드폭
 
     # MAML과 DCML의 피처 저장 경로 (예시 경로)
     MAML_EXP_PATH = "MMD_MAML_5way_5shot_filter128_miniImagenet/feature_maps_for_MMD"
@@ -302,4 +361,4 @@ if __name__ == '__main__':
     )
 
     # 시각화
-    plot_kde_comparison(mmd_maml_distributions, mmd_dcml_distributions, TARGET_EPOCHS, EXPERIMENT_NAME)
+    plot_kde_comparison_individual(mmd_maml_distributions, mmd_dcml_distributions, TARGET_EPOCHS, EXPERIMENT_NAME)
