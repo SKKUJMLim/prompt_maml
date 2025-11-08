@@ -273,6 +273,7 @@ if __name__ == '__main__':
     os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 
     # --- 최종 실행 예시 ---
+    # python ablation_study_mmd.py
     # 이 부분은 실제 데이터를 로드할 경로와 파라미터에 맞게 수정해야 합니다.
     EXPERIMENT_NAME = "ＫDE_Analysis"
     NUM_TASKS_PER_BATCH = 4 # 메타 학습 시 사용한 배치 크기
