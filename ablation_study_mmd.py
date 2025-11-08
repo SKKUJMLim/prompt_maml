@@ -83,6 +83,9 @@ def calculate_epoch_mmd(
     epoch_mmd_results: Dict[int, List[float]] = {}
 
     for epoch in epoch_list:
+
+        print("epoch == ",epoch)
+
         epoch_dir = os.path.join(base_dir, f"epoch{epoch}")
         if not os.path.exists(epoch_dir):
             continue
@@ -285,7 +288,9 @@ if __name__ == '__main__':
     DCML_EXP_PATH = "MAML_5way_5shot_filter128_miniImagenet/feature_maps_for_MMD"
 
     # MMD 분포 계산
+    print("Compute MAML..")
     mmd_maml_distributions = calculate_epoch_mmd(MAML_EXP_PATH, TARGET_EPOCHS, NUM_TASKS_PER_BATCH, sigma_list=SIGMAS)
+    print("Compute DCML..")
     mmd_dcml_distributions = calculate_epoch_mmd(DCML_EXP_PATH, TARGET_EPOCHS, NUM_TASKS_PER_BATCH, sigma_list=SIGMAS)
 
     plot_epochwise_mean_mmd(
