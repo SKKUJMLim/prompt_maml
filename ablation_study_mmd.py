@@ -270,12 +270,13 @@ def plot_epochwise_mean_mmd(
     plt.show()
     print(f"[INFO] Line plot saved to: {out_path}")
 
+
 def plot_kde_comparison_individual(
-    mmd_maml_dists: Dict[int, List[float]],
-    mmd_dcml_dists: Dict[int, List[float]],
-    target_epochs: List[int],
-    experiment_name: str,
-    bw_adjust: float = 0.8
+        mmd_maml_dists: Dict[int, List[float]],
+        mmd_dcml_dists: Dict[int, List[float]],
+        target_epochs: List[int],
+        experiment_name: str,
+        bw_adjust: float = 0.8
 ):
     """선택한 에폭에 대해 MAML vs DCML의 MMD 분포(KDE)를 비교하고 개별 이미지로 저장."""
     os.makedirs(experiment_name, exist_ok=True)
@@ -286,27 +287,44 @@ def plot_kde_comparison_individual(
         all_dists.extend(dist_list)
     for dist_list in mmd_dcml_dists.values():
         all_dists.extend(dist_list)
-    if all_dists:
-        max_dist = float(np.percentile(all_dists, 95) * 1.2)
-        if max_dist == 0: # 모든 값이 0인 경우를 대비
-            max_dist = 0.5
-    else:
-        max_dist = 0.5
 
+    # --- X축 범위 동적 계산 로직 수정 ---
+    if all_dists:
+        # 최대값: 95% 분위수 * 1.2 (기존 로직 유지)
+        max_dist = float(np.percentile(all_dists, 95) * 1.2)
+
+        # 최소값: 5% 분위수를 기준으로 설정 (새로운 로직)
+        min_dist_raw = float(np.percentile(all_dists, 5))
+        # 5% 분위수보다 약간 작은 값으로 설정하고, 음수가 되지 않도록 0에서 클램프
+        min_dist = max(0.0, min_dist_raw * 0.95 - 0.05)
+
+        if max_dist == 0:
+            max_dist = 0.5
+
+        # 데이터가 0에 너무 가깝다면 최소값은 0으로 유지
+        if min_dist > 0.1 and min_dist < max_dist:
+            xlim_min = min_dist
+        else:
+            xlim_min = 0.0
+
+    else:
+        xlim_min = 0.0
+        max_dist = 0.5
+    # ------------------------------------
 
     for epoch in target_epochs:
-        fig, ax = plt.subplots(figsize=(7, 6)) # 각 에포크마다 새 그림 생성
+        fig, ax = plt.subplots(figsize=(7, 6))  # 각 에포크마다 새 그림 생성
 
         maml_data = mmd_maml_dists.get(epoch, [])
         dcml_data = mmd_dcml_dists.get(epoch, [])
 
         if len(maml_data) < 2 and len(dcml_data) < 2:
             ax.set_title(f"Epoch {epoch} (No sufficient data)", fontsize=14)
-            ax.set_xlim(0, max_dist)
+            ax.set_xlim(xlim_min, max_dist)
             ax.grid(True, linestyle='--', alpha=0.6)
             plot_path = os.path.join(experiment_name, f"mmd_kde_epoch_{epoch}.png")
             plt.savefig(plot_path, dpi=200, bbox_inches='tight')
-            plt.close(fig) # 그림 닫기
+            plt.close(fig)  # 그림 닫기
             print(f"[INFO] KDE Plot saved to: {plot_path}")
             continue
 
@@ -320,14 +338,17 @@ def plot_kde_comparison_individual(
         ax.set_title(f"Epoch {epoch}: Task Pair MMD Distribution (KDE)", fontsize=16)
         ax.set_xlabel('Feature Distance (MMD)', fontsize=14)
         ax.set_ylabel('Density', fontsize=14)
-        ax.set_xlim(0, max_dist)
+
+        # 수정된 X축 범위 적용
+        ax.set_xlim(xlim_min, max_dist)
+
         ax.grid(True, linestyle='--', alpha=0.6)
         ax.legend(fontsize=12)
 
         plt.tight_layout()
         plot_path = os.path.join(experiment_name, f"mmd_kde_epoch_{epoch}.png")
         plt.savefig(plot_path, dpi=200, bbox_inches='tight')
-        plt.close(fig) # 그림 닫기
+        plt.close(fig)  # 그림 닫기
         print(f"[INFO] KDE Plot saved to: {plot_path}")
 
 
@@ -338,8 +359,8 @@ if __name__ == '__main__':
     # python ablation_study_mmd.py
     # 이 부분은 실제 데이터를 로드할 경로와 파라미터에 맞게 수정해야 합니다.
     EXPERIMENT_NAME = "KDE_Analysis"
-    NUM_TASKS_PER_BATCH = 4  # 메타 학습 시 사용한 배치 크기
-    TARGET_EPOCHS = list(range(0, 80))
+    NUM_TASKS_PER_BATCH = 2  # 메타 학습 시 사용한 배치 크기
+    TARGET_EPOCHS = list(range(0, 99))
     SIGMAS = [0.5, 1.0, 2.0, 4.0, 8.0]  # MMD 계산을 위한 다중 스케일 가우시안 커널 밴드폭
 
     # MAML과 DCML의 피처 저장 경로 (예시 경로)
