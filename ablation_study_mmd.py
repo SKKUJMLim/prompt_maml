@@ -333,7 +333,7 @@ def plot_kde_comparison_individual(
             continue
 
         if len(maml_data) >= 2:
-            sns.kdeplot(maml_data, ax=ax, label='MAML (Baseline)', fill=True,
+            sns.kdeplot(maml_data, ax=ax, label='MAML', fill=True,
                         alpha=0.5, color='skyblue', linewidth=2.5, bw_adjust=bw_adjust)
         if len(dcml_data) >= 2:
             sns.kdeplot(dcml_data, ax=ax, label='DCML (Ours)', fill=True,
