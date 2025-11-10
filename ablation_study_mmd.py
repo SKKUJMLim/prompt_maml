@@ -369,7 +369,7 @@ if __name__ == '__main__':
 
     # MAML과 DCML의 피처 저장 경로 (예시 경로)
     MAML_EXP_PATH = "MMD_MAML_5way_5shot_filter128_miniImagenet/feature_maps_for_MMD"
-    DCML_EXP_PATH = "DCML_padding_5way_5shot_filter128_miniImagenet/feature_maps_for_MMD"
+    DCML_EXP_PATH = "MMD_DCML_padding_5way_5shot_filter128_miniImagenet/feature_maps_for_MMD"
 
     # MMD 분포 계산
     print("Compute MAML..")
