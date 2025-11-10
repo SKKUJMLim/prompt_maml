@@ -395,7 +395,7 @@ class MAMLFewShotClassifier(nn.Module):
         :param num_step: An integer indicating the number of the step in the inner loop.
         :return: the crossentropy losses with respect to the given y, the predictions of the base model.
         """
-        preds, _ = self.classifier.forward(x=x,
+        preds = self.classifier.forward(x=x,
                                         params=weights,
                                         training=training,
                                         backup_running_statistics=backup_running_statistics,
