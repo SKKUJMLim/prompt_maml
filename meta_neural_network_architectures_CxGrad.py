@@ -1135,14 +1135,10 @@ class ResNet12(nn.Module):
             prompted_image = self.prompt(x=out, prompted_params=prompted_params)
             out = prompted_image
 
-        feature_list = []
-
         for i in range(self.num_stages):
             out = self.layer_dict['layer{}'.format(i)](out, params=param_dict['layer{}'.format(i)], training=training,
                                                        backup_running_statistics=backup_running_statistics,
                                                        num_step=num_step)
-            feature_list.append(out)
-
         # shortcut = self.mapper(prompted_image)
         # out = out + shortcut
 
@@ -1157,7 +1153,7 @@ class ResNet12(nn.Module):
         out = out.view(out.size(0), -1)
         out = self.layer_dict['linear'](out, param_dict['linear'])
 
-        return out, feature_list
+        return out
 
     def zero_grad(self, params=None):
         if params is None:
