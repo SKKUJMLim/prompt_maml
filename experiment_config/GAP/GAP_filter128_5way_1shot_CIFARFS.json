@@ -9,7 +9,7 @@
   "dataset_name":"CIFAR_FS",
   "dataset_path":"CIFAR_FS",
   "reset_stored_paths":false,
-  "experiment_name":"GAP_filter128_5way_5shot_miniImagenet_CIFARFS",
+  "experiment_name":"GAP_filter128_5way_1shot_CIFARFS",
   "train_seed": 0, "val_seed": 0,
   "indexes_of_folders_indicating_class": [-3, -2],
   "sets_are_pre_split": true,
