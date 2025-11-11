@@ -1,12 +1,10 @@
 import torch
-import numpy as np
-import os
 from collections import defaultdict
 import seaborn as sns
-from typing import List, Dict
+import os
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
+from typing import Dict, List
 
 
 # plt.rcParams['font.family'] = 'Malgun Gothic'
@@ -194,7 +192,7 @@ def plot_kde_comparison(
                         alpha=0.5, color='coral', linewidth=1.5, bw_adjust=bw_adjust)
 
         ax.set_title(f"Epoch {epoch}: Task Pair MMD Distribution (KDE)", fontsize=16)
-        ax.set_xlabel('Feature Distance (MMD)', fontsize=14)
+        ax.set_xlabel('Feature Distance', fontsize=14)
         ax.set_ylabel('Density', fontsize=14)
         ax.set_xlim(0, max_dist)
         ax.grid(True, linestyle='--', alpha=0.6)
@@ -208,12 +206,6 @@ def plot_kde_comparison(
     plt.savefig(plot_path, dpi=200)
     plt.show()
     print(f"[INFO] KDE Plot saved to: {plot_path}")
-
-
-import os
-import numpy as np
-import matplotlib.pyplot as plt
-from typing import Dict, List
 
 
 def plot_epochwise_mean_mmd(
@@ -340,7 +332,7 @@ def plot_kde_comparison_individual(
                         alpha=0.5, color='coral', linewidth=2.5, bw_adjust=bw_adjust)
 
         # ax.set_title(f"Epoch {epoch}: Task Pair MMD Distribution (KDE)", fontsize=16)
-        ax.set_xlabel('Feature Distance (MMD)', fontsize=16)
+        ax.set_xlabel('Feature Distance', fontsize=16)
         ax.set_ylabel('Density', fontsize=16)
 
         # 수정된 X축 범위 적용
