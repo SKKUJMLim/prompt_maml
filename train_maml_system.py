@@ -12,7 +12,9 @@ if __name__ == '__main__':
     # Combines the arguments, model, data and experiment builders to run an experiment
     args, device = get_args()
 
-    if any(tag in args.experiment_name for tag in ('DCML', 'MAML', 'ANIL', 'BOIL')):
+    if any(tag in args.experiment_name for tag in ('FEATURE', 'FSP', 'FEAT_PROMPT', 'FEATURE_SPACE')):
+        from few_shot_learning_system_feature_space_prompt import MAMLFewShotClassifier
+    elif any(tag in args.experiment_name for tag in ('DCML', 'MAML', 'ANIL', 'BOIL')):
         from few_shot_learning_system import MAMLFewShotClassifier
     elif any(tag in args.experiment_name for tag in ('ALFA', 'L2F')):
         from few_shot_learning_system_ALFA import MAMLFewShotClassifier
