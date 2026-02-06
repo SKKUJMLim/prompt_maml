@@ -61,16 +61,15 @@
   "use_multi_step_loss_optimization": false,
   "backbone": "4-CONV",
 
-  "prompter": false,
-  "prompt_engineering": "padding",
-  "prompt_size": 5,
+  "prompter": true,
+  "prompt_engineering": "feature_prompt",
+  "feature_prompter": true,
+  "feature_prompt_layers": [2],
+  "prompt_size": null,
   "image_size": 84,
   "prompt_random_init": false,
   "outer_prompt_learning_rate": 0.001,
   "inner_prompt_learning_rate": 0.01,
-
-  "feature_prompter": true,
-  "feature_prompt_layers": [1],
 
   "data_aug": "not_mixup",
   "ablation_record": false,

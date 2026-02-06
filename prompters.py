@@ -140,19 +140,20 @@ class RandomPatchPrompter(nn.Module):
 
 class FeatureSpacePrompter(nn.Module):
     def __init__(self, args):
+
         super().__init__()
         self.args = args
-        # 예: args.feature_prompt_layers = [1] 처럼 stage index 리스트
-        self.feature_prompt_layers = getattr(args, "feature_prompt_layers", [0])
+        self.feature_prompt_layers = self.args.feature_prompt_layers
         self.prompt_dict = nn.ParameterDict()
         self._built = False
 
     def _build_if_needed(self, feature_shapes):
+
         # feature_shapes: {layer_idx: (C,H,W)}
         for k, (c,h,w) in feature_shapes.items():
             key = f"feat_prompt_{k}"
             if key not in self.prompt_dict:
-                self.prompt_dict[key] = nn.Parameter(torch.randn(1, c, h, w) * 0.02)
+                self.prompt_dict[key] = nn.Parameter(torch.randn(c, h, w) * 0.02)
         self._built = True
 
     def forward(self, feat, layer_idx, prompted_params=None):
@@ -160,10 +161,9 @@ class FeatureSpacePrompter(nn.Module):
         if prompted_params is not None:
             param_dict = extract_top_level_dict(prompted_params)
             p = param_dict[f"feat_prompt_{layer_idx}"]
+            # print("feat.shape===", feat.shape, "p.shape===", p.shape)
         else:
             p = self.prompt_dict[f"feat_prompt_{layer_idx}"]
-
-        # broadcast to B
         return feat + p
 
 

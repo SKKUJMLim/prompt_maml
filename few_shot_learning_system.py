@@ -670,7 +670,6 @@ class MAMLFewShotClassifier(nn.Module):
 
         self.optimizer.step()
 
-
     def run_train_iter(self, data_batch, epoch, current_iter):
         """
         Runs an outer loop update step on the meta-model's parameters.

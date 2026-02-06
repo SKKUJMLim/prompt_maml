@@ -55,6 +55,7 @@
   "use_multi_step_loss_optimization":false,
   "backbone": "4-CONV",
   "prompter": true,
+  "feature_prompter": false,
   "prompt_engineering": "padding",
   "prompt_size" : 5,
   "image_size" : 84,

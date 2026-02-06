@@ -870,12 +870,15 @@ class VGGReLUNormNetwork(nn.Module):
             self.conv_stride = 2
         self.meta_classifier = meta_classifier
 
-        self.build_network()
 
         if self.args.prompter:
             self.prompt = prompters.__dict__[args.prompt_engineering](args).to(device)
+            if self.args.feature_prompter:
+                self.feature_prompt_layers = self.args.feature_prompt_layers  # args.feature_prompt_layers = None 이면 전 stage에 적용한다고 가정
 
-        print("meta network params")
+        self.build_network()
+
+        # print("meta network params")
         # for name, param in self.named_parameters():
         #     print(name, param.shape)
 
@@ -887,7 +890,8 @@ class VGGReLUNormNetwork(nn.Module):
         """
         x = torch.zeros(self.input_shape)
 
-        identity = x
+        # (NEW) feature prompt shapes를 미리 수집해서 prompt 파라미터를 build
+        feature_shapes = {}
 
         out = x
         self.layer_dict = nn.ModuleDict()
@@ -905,23 +909,21 @@ class VGGReLUNormNetwork(nn.Module):
                                                                         device=self.device)
             out = self.layer_dict['conv{}'.format(i)](out, training=True, num_step=0)
 
+            # (NEW) prompting을 적용할 layer의 shape 기록
+            if self.args.feature_prompter:
+                layers = self.args.feature_prompt_layers  # None이면 all
+                if (layers is None) or (i in layers):
+                    feature_shapes[i] = (out.shape[1], out.shape[2], out.shape[3])
+
             if self.args.max_pooling:
                 out = F.max_pool2d(input=out, kernel_size=(2, 2), stride=2, padding=0)
 
+        # (NEW) 이제 shape를 알았으니 prompt 파라미터 생성
+        if self.args.feature_prompter:
+            self.prompt._build_if_needed(feature_shapes)
+
         if not self.args.max_pooling:
             out = F.avg_pool2d(out, out.shape[2])
-
-        # if self.args.prompter:
-        #     self.layer_dict['skip_connection_conv'] = MetaConv2dLayer(in_channels=identity.shape[1],
-        #                                                               out_channels=out.shape[1],
-        #                                                               kernel_size=1,
-        #                                                               stride=1, padding=0, use_bias=True)
-        #
-        #     shortcut = self.layer_dict['skip_connection_conv'](identity)
-        #     shortcut = F.relu(shortcut)
-        #     shortcut = F.adaptive_avg_pool2d(shortcut, out.shape[2])
-        #     out = out + shortcut
-
 
         self.encoder_features_shape = list(out.shape)
         out = out.view(out.shape[0], -1)
@@ -960,7 +962,7 @@ class VGGReLUNormNetwork(nn.Module):
         out = x
 
         prompted_image = None
-        if self.args.prompter and prepend_prompt:
+        if self.args.prompter and self.args.feature_prompter is False:
             # get_task_embeddings을 통해 호출될때는 prompt를 추가하지 않는다
             prompted_image = self.prompt(x=out, prompted_params=prompted_params)
             out = prompted_image
@@ -971,6 +973,13 @@ class VGGReLUNormNetwork(nn.Module):
             out = self.layer_dict['conv{}'.format(i)](out, params=param_dict['conv{}'.format(i)], training=training,
                                                       backup_running_statistics=backup_running_statistics,
                                                       num_step=num_step)
+
+            # (NEW) feature-space prompt injection
+            if self.args.feature_prompter:
+                layers = self.feature_prompt_layers
+                if (layers is None) or (i in layers):
+                    out = self.prompt(out, layer_idx=i, prompted_params=prompted_params)
+
             if self.args.max_pooling:
                 out = F.max_pool2d(input=out, kernel_size=(2, 2), stride=2, padding=0)
 
@@ -978,12 +987,6 @@ class VGGReLUNormNetwork(nn.Module):
 
         if not self.args.max_pooling:
             out = F.avg_pool2d(out, out.shape[2])
-
-        # if self.args.prompter:
-        #     shortcut = self.layer_dict['skip_connection_conv'](prompted_image, param_dict['skip_connection_conv'])
-        #     shortcut = F.relu(shortcut)
-        #     shortcut = F.adaptive_avg_pool2d(shortcut, out.shape[2])
-        #     out = out + shortcut
 
         out = out.view(out.size(0), -1)
         out = self.layer_dict['linear'](out, param_dict['linear'])
