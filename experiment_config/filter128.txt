@@ -1,0 +1,109 @@
+''' MAML experiment'''
+## python train_maml_system.py --name_of_args_json_file experiment_config/MAML/MAML_5way_5shot_filter48_miniImagenet.json --gpu_to_use 0
+
+## python train_maml_system.py --name_of_args_json_file experiment_config/MAML/MAML_5way_1shot_filter64_miniImagenet.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/MAML/MAML_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/MAML/MAML_5way_5shot_filter128_miniImagenet.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/MAML/MAML_5way_5shot_Resnet_miniImagenet.json --gpu_to_use 0
+
+## python train_maml_system.py --name_of_args_json_file experiment_config/MAML/MAML_5way_5shot_filter64_tieredImagenet.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/MAML/MAML_5way_5shot_filter64_CIFAR_FS.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/MAML/MAML_5way_5shot_filter64_FC100.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/MAML/Noisy_MAML_5way_5shot_filter128_miniImagenet.json --gpu_to_use 0
+
+"''' ANIL experiment'''
+## python train_maml_system.py --name_of_args_json_file experiment_config/ANIL/ANIL_5way_1shot_filter64_miniImagenet.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/ANIL/ANIL_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
+
+## python train_maml_system.py --name_of_args_json_file experiment_config/ANIL/ANIL_5way_1shot_filter64_CIFAR_FS.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/ANIL/ANIL_5way_5shot_filter64_CIFAR_FS.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/ANIL/ANIL_5way_5shot_filter64_FC100.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/ANIL/ANIL_5way_5shot_filter64_FC100.json --gpu_to_use 0
+
+## python train_maml_system.py --name_of_args_json_file experiment_config/ANIL/ANIL_5way_1shot_Resnet_miniImagenet.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/ANIL/ANIL_5way_5shot_Resnet_miniImagenet.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/ANIL/ANIL_5way_1shot_Resnet_tieredImagenet.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/ANIL/ANIL_5way_5shot_Resnet_tieredImagenet.json --gpu_to_use 0
+
+## python train_maml_system.py --name_of_args_json_file experiment_config/ANIL/ANIL_5way_1shot_Resnet_CIFARFS.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/ANIL/ANIL_5way_5shot_Resnet_CIFARFS.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/ANIL/ANIL_5way_1shot_Resnet_FC100.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/ANIL/ANIL_5way_5shot_Resnet_FC100.json --gpu_to_use 0
+
+"''' BOIL experiment'''
+## python train_maml_system.py --name_of_args_json_file experiment_config/BOIL/BOIL_5way_5shot_filter64_miniImagenet.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/BOIL/BOIL_5way_1shot_Resnet_miniImagenet.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/BOIL/BOIL_5way_5shot_Resnet_miniImagenet.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/BOIL/BOIL_5way_1shot_Resnet_tieredImagenet.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/BOIL/BOIL_5way_5shot_Resnet_tieredImagenet.json --gpu_to_use 0
+
+## python train_maml_system.py --name_of_args_json_file experiment_config/BOIL/BOIL_5way_1shot_Resnet_CIFARFS.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/BOIL/BOIL_5way_5shot_Resnet_CIFARFS.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/BOIL/BOIL_5way_1shot_Resnet_FC100.json --gpu_to_use 0
+## python train_maml_system.py --name_of_args_json_file experiment_config/BOIL/BOIL_5way_5shot_Resnet_FC100.json --gpu_to_use 0
+
+
+'''DCML experiment'''
+# python train_maml_system.py --name_of_args_json_file experiment_config/DCML/filter128/padding/DCML_padding_5way_1shot_filter128_miniImagenet.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/DCML/filter128/padding/DCML_padding_5way_5shot_filter128_miniImagenet.json --gpu_to_use 0
+
+# python train_maml_system.py --name_of_args_json_file experiment_config/DCML/Resnet12/padding/DCML_padding_5way_5shot_Resnet12_miniImagenet.json --gpu_to_use 0
+
+# python train_maml_system.py --name_of_args_json_file experiment_config/DCML/filter128/padding/DCML_padding_5way_1shot_filter128_cifar_fs.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/DCML/filter128/padding/DCML_padding_5way_5shot_filter128_cifar_fs.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/DCML/filter128/padding/DCML_padding_5way_1shot_filter128_fc100.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/DCML/filter128/padding/DCML_padding_5way_5shot_filter128_fc100.json --gpu_to_use 0
+
+
+# python train_maml_system.py --name_of_args_json_file experiment_config/DCML/filter128/fixed_patch/DCML_fixed_patch_5way_1shot_filter128_miniImagenet.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/DCML/filter128/fixed_patch/DCML_fixed_patch_5way_5shot_filter128_miniImagenet.json --gpu_to_use 0
+# python train_maml_system.py --name_of_args_json_file experiment_config/DCML/filter128/random_patch/DCML_random_patch_5way_1shot_filter128_miniImagenet.json --gpu_to_use 0
+
+
+# python train_maml_system.py --name_of_args_json_file experiment_config/DCML/filter128/feature_space/DCML_feature_space_L1_5way_5shot_filter128_miniImagenet.json
+# python train_maml_system.py --name_of_args_json_file experiment_config/DCML/filter128/feature_space/DCML_feature_space_L2_5way_5shot_filter128_miniImagenet.json
+# python train_maml_system.py --name_of_args_json_file experiment_config/DCML/filter128/feature_space/DCML_feature_space_L3_5way_5shot_filter128_miniImagenet.json
+# python train_maml_system.py --name_of_args_json_file experiment_config/DCML/filter128/feature_space/DCML_feature_space_L4_5way_5shot_filter128_miniImagenet.json
+
+
+'''GAP experiment'''
+python train_maml_system.py --name_of_args_json_file experiment_config/GAP/GAP_filter128_5way_1shot_miniImagenet.json
+python train_maml_system.py --name_of_args_json_file experiment_config/GAP/GAP_filter128_5way_5shot_miniImagenet.json
+
+python train_maml_system.py --name_of_args_json_file experiment_config/GAP/GAP_filter128_5way_1shot_CIFARFS.json
+python train_maml_system.py --name_of_args_json_file experiment_config/GAP/GAP_filter128_5way_5shot_CIFARFS.json
+
+python train_maml_system.py --name_of_args_json_file experiment_config/GAP/GAP_filter128_5way_1shot_FC100.json
+python train_maml_system.py --name_of_args_json_file experiment_config/GAP/GAP_filter128_5way_5shot_FC100.json
+
+
+python train_maml_system.py --name_of_args_json_file experiment_config/GAP/GAP_Resnet_5way_5shot_miniImagenet.json
+
+
+'''CxGrad experiment'''
+python train_maml_system.py --name_of_args_json_file experiment_config/CxGrad/CxGrad_5way_5shot_miniImagenet.json
+
+python train_maml_system.py --name_of_args_json_file experiment_config/CxGrad/CxGrad_5way_1shot_CIFARFS.json
+python train_maml_system.py --name_of_args_json_file experiment_config/CxGrad/CxGrad_5way_5shot_CIFARFS.json
+python train_maml_system.py --name_of_args_json_file experiment_config/CxGrad/CxGrad_5way_1shot_FC100.json
+python train_maml_system.py --name_of_args_json_file experiment_config/CxGrad/CxGrad_5way_5shot_FC100.json
+
+python train_maml_system.py --name_of_args_json_file experiment_config/CxGrad/CxGrad_5way_5shot_Resnet_miniImagenet.json
+
+
+'''MetaAdaM experiment'''
+python train_maml_system.py --name_of_args_json_file experiment_config/Meta_AdaM_5way_5shot_miniImagenet.json
+
+'''MeTAL experiment'''
+python train_maml_system.py --name_of_args_json_file experiment_config/MeTAL/MeTAL_5way_5shot_miniImagenet.json
+python train_maml_system.py --name_of_args_json_file experiment_config/MeTAL/MeTAL_5way_5shot_Resnet_miniImagenet.json
+
+''' ALFA experiment'''
+python train_maml_system.py --name_of_args_json_file experiment_config/ALFA/ALFA_5way_5shot_miniImagenet.json
+python train_maml_system.py --name_of_args_json_file experiment_config/ALFA/ALFA_5way_5shot_Resnet_miniImagenet.json
+
+''' L2F experiment'''
+python train_maml_system.py --name_of_args_json_file experiment_config/L2F/L2F_5way_1shot_miniImagenet.json
+python train_maml_system.py --name_of_args_json_file experiment_config/L2F/L2F_5way_5shot_miniImagenet.json
+python train_maml_system.py --name_of_args_json_file experiment_config/L2F/L2F_5way_5shot_Resnet_miniImagenet.json
+
