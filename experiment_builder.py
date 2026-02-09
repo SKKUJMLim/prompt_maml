@@ -277,12 +277,9 @@ class ExperimentBuilder(object):
                 self.model.load_model(model_save_dir=self.saved_models_filepath, model_name="train_model",
                                       model_idx=model_idx + 1)
 
+            # torch.cuda.reset_peak_memory_stats()
             # torch.cuda.synchronize()
-            # start = time.time()
-
-            torch.cuda.reset_peak_memory_stats()
-            torch.cuda.synchronize()
-            start_time = time.time()
+            # start_time = time.time()
 
             with tqdm.tqdm(total=int(self.args.num_evaluation_tasks / self.args.batch_size)) as pbar_test:
                 for sample_idx, test_sample in enumerate(
@@ -303,12 +300,12 @@ class ExperimentBuilder(object):
             per_task_ms = (total_time / self.args.num_evaluation_tasks) * 1000
             peak_mem_gb = torch.cuda.max_memory_allocated() / (1024 ** 3)
 
-            print("=" * 60)
-            print("[Meta-Test Runtime Analysis]")
-            print(f"Total adaptation time: {total_time:.2f} seconds")
-            print(f"Per-task adaptation time: {per_task_ms:.2f} ms/task")
-            print(f"Peak GPU memory usage: {peak_mem_gb:.2f} GB")
-            print("=" * 60)
+            # print("=" * 60)
+            # print("[Meta-Test Runtime Analysis]")
+            # print(f"Total adaptation time: {total_time:.2f} seconds")
+            # print(f"Per-task adaptation time: {per_task_ms:.2f} ms/task")
+            # print(f"Peak GPU memory usage: {peak_mem_gb:.2f} GB")
+            # print("=" * 60)
 
         # torch.cuda.synchronize()
         # end = time.time()
