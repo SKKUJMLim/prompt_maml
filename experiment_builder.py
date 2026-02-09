@@ -293,13 +293,11 @@ class ExperimentBuilder(object):
                                                                                per_model_per_batch_preds=per_model_per_batch_preds,
                                                                                pbar_test=pbar_test)
 
-            torch.cuda.synchronize()
-            end_time = time.time()
-
-            total_time = end_time - start_time
-            per_task_ms = (total_time / self.args.num_evaluation_tasks) * 1000
-            peak_mem_gb = torch.cuda.max_memory_allocated() / (1024 ** 3)
-
+            # torch.cuda.synchronize()
+            # end_time = time.time()
+            # total_time = end_time - start_time
+            # per_task_ms = (total_time / self.args.num_evaluation_tasks) * 1000
+            # peak_mem_gb = torch.cuda.max_memory_allocated() / (1024 ** 3)
             # print("=" * 60)
             # print("[Meta-Test Runtime Analysis]")
             # print(f"Total adaptation time: {total_time:.2f} seconds")
