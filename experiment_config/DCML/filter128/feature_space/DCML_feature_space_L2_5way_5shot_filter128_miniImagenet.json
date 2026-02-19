@@ -71,7 +71,7 @@
   "outer_prompt_learning_rate": 0.001,
   "inner_prompt_learning_rate": 0.01,
 
-  "data_aug": "not_mixup",
+  "data_aug": null,
   "ablation_record": false,
   "random_prompt_init": false,
 
