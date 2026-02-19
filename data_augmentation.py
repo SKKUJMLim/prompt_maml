@@ -15,7 +15,7 @@ def random_flip_like_torchvision(x):
 
 
 def random_flip_batchwise(x):
-    x = x.clone() # 추가
+    # x = x.clone() # 추가
     B = x.size(0)  # x: [B, C, H, W]
     for i in range(B):
         if torch.rand(1) < 0.5:
