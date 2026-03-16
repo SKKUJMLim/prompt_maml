@@ -5,7 +5,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Dict, List
-
+from matplotlib.ticker import MultipleLocator
 
 # plt.rcParams['font.family'] = 'Malgun Gothic'
 # plt.rcParams['axes.unicode_minus'] = False
@@ -336,6 +336,7 @@ def plot_kde_comparison_individual(
         ax.set_xlabel('Feature Distance', fontsize=16)
         ax.set_ylabel('Density', fontsize=16)
         ax.tick_params(axis='both', labelsize=15)
+        ax.yaxis.set_major_locator(MultipleLocator(1))
 
         # 수정된 X축 범위 적용
         ax.set_xlim(xlim_min, max_dist)
