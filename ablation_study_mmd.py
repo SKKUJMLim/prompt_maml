@@ -203,7 +203,7 @@ def plot_kde_comparison(
 
     os.makedirs(experiment_name, exist_ok=True)
     plot_path = os.path.join(experiment_name, "mmd_kde_comparison_epochs.png")
-    plt.savefig(plot_path, dpi=200)
+    plt.savefig(plot_path, dpi=300)
     plt.show()
     print(f"[INFO] KDE Plot saved to: {plot_path}")
 
@@ -254,7 +254,8 @@ def plot_epochwise_mean_mmd(
     # plt.title("Epoch-wise Mean MMD (Task-pair Feature Distance)")
     plt.xlim(0, 99)
     plt.xticks(np.arange(0, 100, 20))  # 0, 20, 40, 60, 80, 99 추가하려면:
-    plt.xticks(list(np.arange(0, 100, 10)) + [99])
+    plt.xticks(list(np.arange(0, 100, 10)) + [99], fontsize=15)
+    plt.yticks(fontsize=15)
     plt.xlabel("Epoch", fontsize=16)
     plt.ylabel("MMD", fontsize=16)
     plt.grid(True, linestyle='--', alpha=0.5)
@@ -262,7 +263,7 @@ def plot_epochwise_mean_mmd(
 
     os.makedirs(experiment_name, exist_ok=True)
     out_path = os.path.join(experiment_name, save_name)
-    plt.savefig(out_path, dpi=200, bbox_inches='tight')
+    plt.savefig(out_path, dpi=300, bbox_inches='tight')
     plt.show()
     print(f"[INFO] Line plot saved to: {out_path}")
 
@@ -319,7 +320,7 @@ def plot_kde_comparison_individual(
             ax.set_xlim(xlim_min, max_dist)
             ax.grid(True, linestyle='--', alpha=0.5)
             plot_path = os.path.join(experiment_name, f"mmd_kde_epoch_{epoch}.png")
-            plt.savefig(plot_path, dpi=200, bbox_inches='tight')
+            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
             plt.close(fig)  # 그림 닫기
             print(f"[INFO] KDE Plot saved to: {plot_path}")
             continue
@@ -334,6 +335,7 @@ def plot_kde_comparison_individual(
         # ax.set_title(f"Epoch {epoch}: Task Pair MMD Distribution (KDE)", fontsize=16)
         ax.set_xlabel('Feature Distance', fontsize=16)
         ax.set_ylabel('Density', fontsize=16)
+        ax.tick_params(axis='both', labelsize=15)
 
         # 수정된 X축 범위 적용
         ax.set_xlim(xlim_min, max_dist)
@@ -343,7 +345,7 @@ def plot_kde_comparison_individual(
 
         plt.tight_layout()
         plot_path = os.path.join(experiment_name, f"mmd_kde_epoch_{epoch}.png")
-        plt.savefig(plot_path, dpi=200, bbox_inches='tight')
+        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
         plt.close(fig)  # 그림 닫기
         print(f"[INFO] KDE Plot saved to: {plot_path}")
 
