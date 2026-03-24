@@ -288,23 +288,7 @@ class MAMLFewShotClassifier(nn.Module):
 
             for num_step in range(num_steps):
 
-                x_support_set_for_forward = x_support_set_task
-
-                if self.args.eval_noise and self.args.eval_noise_type == "fgsm_attack":
-
-                    x_support_set_for_forward = self.fgsm_attack_helper(
-                        image=x_support_set_task,
-                        labels=y_support_set_task,
-                        model_params=names_weights_copy,
-                        prompted_params=prompted_weights_copy,
-                        adv_epsilon=self.adv_epsilon,
-                        num_step=num_step,
-                        training_mode=False,  # BN 통계 고정
-                        training_phase=training_phase,
-                        epoch=epoch
-                    )
-
-                support_loss, support_preds, _ = self.net_forward(x=x_support_set_for_forward,
+                support_loss, support_preds, _ = self.net_forward(x=x_support_set_task,
                                                                y=y_support_set_task,
                                                                weights=names_weights_copy,
                                                                prompted_weights=prompted_weights_copy,
