@@ -76,5 +76,4 @@
   "train_with_label_noise":false,
   "label_corruption_rate" : null,
   "test_with_label_noise":false
-
 }
