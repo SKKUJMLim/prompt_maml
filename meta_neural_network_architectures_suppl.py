@@ -873,8 +873,6 @@ class VGGReLUNormNetwork(nn.Module):
 
         if self.args.prompter:
             self.prompt = prompters.__dict__[args.prompt_engineering](args).to(device)
-            if self.args.feature_prompter:
-                self.feature_prompt_layers = self.args.feature_prompt_layers
 
         self.build_network()
 
@@ -907,16 +905,8 @@ class VGGReLUNormNetwork(nn.Module):
                                                                         device=self.device)
             out = self.layer_dict['conv{}'.format(i)](out, training=True, num_step=0)
 
-            if self.args.feature_prompter:
-                layers = self.args.feature_prompt_layers  # None이면 all
-                if (layers is None) or (i in layers):
-                    feature_shapes[i] = (out.shape[1], out.shape[2], out.shape[3])
-
             if self.args.max_pooling:
                 out = F.max_pool2d(input=out, kernel_size=(2, 2), stride=2, padding=0)
-
-        if self.args.feature_prompter:
-            self.prompt._build_if_needed(feature_shapes)
 
         if not self.args.max_pooling:
             out = F.avg_pool2d(out, out.shape[2])
@@ -958,8 +948,7 @@ class VGGReLUNormNetwork(nn.Module):
         out = x
 
         prompted_image = None
-        if self.args.prompter and self.args.feature_prompter is False:
-            # get_task_embeddings을 통해 호출될때는 prompt를 추가하지 않는다
+        if self.args.prompter:
             prompted_image = self.prompt(x=out, prompted_params=prompted_params)
             out = prompted_image
 
@@ -969,12 +958,6 @@ class VGGReLUNormNetwork(nn.Module):
             out = self.layer_dict['conv{}'.format(i)](out, params=param_dict['conv{}'.format(i)], training=training,
                                                       backup_running_statistics=backup_running_statistics,
                                                       num_step=num_step)
-
-            # (NEW) feature-space prompt injection
-            if self.args.feature_prompter:
-                layers = self.feature_prompt_layers
-                if (layers is None) or (i in layers):
-                    out = self.prompt(out, layer_idx=i, prompted_params=prompted_params)
 
             if self.args.max_pooling:
                 out = F.max_pool2d(input=out, kernel_size=(2, 2), stride=2, padding=0)
