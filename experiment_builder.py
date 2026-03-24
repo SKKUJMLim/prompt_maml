@@ -123,9 +123,6 @@ class ExperimentBuilder(object):
         """
         x_support_set, x_target_set, y_support_set, y_target_set, seed = train_sample
 
-        # ==========================================================
-        # --- [추가] Data_augmentation 적용 ---
-        # ==========================================================
         if self.args.data_aug is not None:
             x_support_set = random_flip_taskwise(x_support_set)
             x_target_set = random_flip_taskwise(x_target_set)
