@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torch
 import numpy as np
 
-import prompters
+import prompters_suppl
 
 
 def extract_top_level_dict(current_dict):
@@ -872,7 +872,7 @@ class VGGReLUNormNetwork(nn.Module):
 
 
         if self.args.prompter:
-            self.prompt = prompters.__dict__[args.prompt_engineering](args).to(device)
+            self.prompt = prompters_suppl.__dict__[args.prompt_engineering](args).to(device)
 
         self.build_network()
 
