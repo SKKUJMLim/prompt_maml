@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from meta_neural_network_architectures import VGGReLUNormNetwork
-from inner_loop_optimizers_weightdecay import GradientDescentLearningRule, LSLRGradientDescentLearningRule
+from meta_neural_network_architectures_suppl import VGGReLUNormNetwork
+from inner_loop_optimizers_suppl import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 
 
 def set_torch_seed(seed):
@@ -541,3 +541,18 @@ class MAMLFewShotClassifier(nn.Module):
         """
         state['network'] = self.state_dict()
         torch.save(state, f=model_save_dir)
+
+    def load_model(self, model_save_dir, model_name, model_idx):
+        """
+        Load checkpoint and return the state dictionary containing the network state params and experiment state.
+        :param model_save_dir: The directory from which to load the files.
+        :param model_name: The model_name to be loaded from the direcotry.
+        :param model_idx: The index of the model (i.e. epoch number or 'latest' for the latest saved model of the current
+        experiment)
+        :return: A dictionary containing the experiment state and the saved model parameters.
+        """
+        filepath = os.path.join(model_save_dir, "{}_{}".format(model_name, model_idx))
+        state = torch.load(filepath)
+        state_dict_loaded = state['network']
+        self.load_state_dict(state_dict=state_dict_loaded)
+        return state

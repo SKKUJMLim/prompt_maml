@@ -133,42 +133,40 @@ def get_transforms_for_dataset(dataset_name, args, k):
 
     elif 'imagenet' in dataset_name:
 
-        IMAGENET_MEAN = (0.485, 0.456, 0.406)
-        IMAGENET_STD = (0.229, 0.224, 0.225)
+        # IMAGENET_MEAN = (0.485, 0.456, 0.406)
+        # IMAGENET_STD = (0.229, 0.224, 0.225)
 
-        # 학습용 트랜스폼
-        transform_train = [build_transform(
-            args= args,
-            train_phase=True,
-            noise_on=args.train_noise,
-            noise_type=args.train_noise_type,
-            noise_param=args.train_noise_param,
-            mean=IMAGENET_MEAN,
-            std=IMAGENET_STD
-        )]
-
-        # 평가용 트랜스폼
-        transform_evaluate = [build_transform(
-            args=args,
-            train_phase=False,
-            noise_on=args.eval_noise,
-            noise_type=args.eval_noise_type,
-            noise_param=args.eval_noise_param,
-            mean=IMAGENET_MEAN,
-            std=IMAGENET_STD
-        )]
-
-        # transform_train = [transforms.Compose([
-        #     # transforms.RandomVerticalFlip(),
-        #     # transforms.RandomVerticalFlip,
-        #     transforms.ToTensor(),
-        #     transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])]
+        # # 학습용 트랜스폼
+        # transform_train = [build_transform(
+        #     args= args,
+        #     train_phase=True,
+        #     noise_on=args.train_noise,
+        #     noise_type=args.train_noise_type,
+        #     noise_param=args.train_noise_param,
+        #     mean=IMAGENET_MEAN,
+        #     std=IMAGENET_STD
+        # )]
         #
-        # transform_evaluate = [transforms.Compose([
-        #     transforms.ToTensor(),
-        #     SelectCorruption("gaussian_noise", std=0.05),
-        #     transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
-        # ])]
+        # # 평가용 트랜스폼
+        # transform_evaluate = [build_transform(
+        #     args=args,
+        #     train_phase=False,
+        #     noise_on=args.eval_noise,
+        #     noise_type=args.eval_noise_type,
+        #     noise_param=args.eval_noise_param,
+        #     mean=IMAGENET_MEAN,
+        #     std=IMAGENET_STD
+        # )]
+
+        transform_train = [transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])]
+
+        transform_evaluate = [transforms.Compose([
+            transforms.ToTensor(),
+            SelectCorruption("gaussian_noise", std=0.05),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        ])]
 
     elif 'CUB' in dataset_name:
         transform_train = [transforms.Compose([
