@@ -3,8 +3,8 @@ import os
 import numpy as np
 import sys
 from utils.storage import build_experiment_folder, save_statistics, save_to_json
-import time
 from utils.data_augmentation import random_flip_taskwise
+import time
 
 class ExperimentBuilder(object):
     def __init__(self, args, data, model, device):
