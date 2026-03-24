@@ -47,6 +47,8 @@
 # python train_maml_system.py --name_of_args_json_file experiment_config/DCML/filter128/padding/DCML_padding_5way_1shot_filter128_miniImagenet.json --gpu_to_use 0
 # python train_maml_system.py --name_of_args_json_file experiment_config/DCML/filter128/padding/DCML_padding_5way_5shot_filter128_miniImagenet.json --gpu_to_use 0
 
+## python train_maml_system_suppl.py --name_of_args_json_file experiment_config/DCML/filter128/padding/DCML_suppl.json --gpu_to_use 0
+
 # python train_maml_system.py --name_of_args_json_file experiment_config/DCML/Resnet12/padding/DCML_padding_5way_5shot_Resnet12_miniImagenet.json --gpu_to_use 0
 
 # python train_maml_system.py --name_of_args_json_file experiment_config/DCML/filter128/padding/DCML_padding_5way_1shot_filter128_cifar_fs.json --gpu_to_use 0
