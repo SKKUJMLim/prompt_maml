@@ -8,7 +8,6 @@ import torch.optim as optim
 
 from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 from inner_loop_optimizers_GAP import LSLRGradientDescentLearningRule, GradientDescentLearningRule
-from data_augmentation import random_flip_batchwise
 from corruption import corrupt_labels_task_wise
 
 

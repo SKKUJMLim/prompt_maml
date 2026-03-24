@@ -4,8 +4,7 @@ import numpy as np
 import sys
 from utils.storage import build_experiment_folder, save_statistics, save_to_json
 import time
-import torch
-
+from utils.data_augmentation import random_flip_taskwise
 
 class ExperimentBuilder(object):
     def __init__(self, args, data, model, device):
@@ -123,6 +122,14 @@ class ExperimentBuilder(object):
         :return: Updates total_losses, train_losses, current_iter
         """
         x_support_set, x_target_set, y_support_set, y_target_set, seed = train_sample
+
+        # ==========================================================
+        # --- [추가] Data_augmentation 적용 ---
+        # ==========================================================
+        if self.args.data_aug is not None:
+            x_support_set = random_flip_taskwise(x_support_set)
+            x_target_set = random_flip_taskwise(x_target_set)
+
         data_batch = (x_support_set, x_target_set, y_support_set, y_target_set)
 
         if sample_idx == 0:

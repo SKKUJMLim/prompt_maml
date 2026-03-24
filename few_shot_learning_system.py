@@ -5,15 +5,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from collections import defaultdict
 
 from meta_neural_network_architectures import VGGReLUNormNetwork, ResNet12
 # from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 from inner_loop_optimizers_weightdecay import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 
-from data_augmentation import random_flip_batchwise
-from corruption import corrupt_labels_batch_wise, corrupt_labels_task_wise
-from utils.basic import count_params_by_key
+from corruption import corrupt_labels_task_wise
 
 
 def set_torch_seed(seed):
@@ -361,9 +358,9 @@ class MAMLFewShotClassifier(nn.Module):
             x_target_set_task = x_target_set_task.view(-1, c, h, w)
             y_target_set_task = y_target_set_task.view(-1)
 
-            if training_phase is True and self.args.data_aug is not None:
-                x_support_set_task = random_flip_batchwise(x_support_set_task)
-                x_target_set_task = random_flip_batchwise(x_target_set_task)
+            # if training_phase is True and self.args.data_aug is not None:
+            #     x_support_set_task = random_flip_batchwise(x_support_set_task)
+            #     x_target_set_task = random_flip_batchwise(x_target_set_task)
 
 
             if self.args.test_with_label_noise:

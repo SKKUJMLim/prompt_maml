@@ -6,6 +6,20 @@ import torch.nn.functional as F
 def random_flip(x):
     return torch.flip(x, dims=[3]) if torch.rand(1) < 0.5 else torch.flip(x, dims=[2])
 
+def random_flip_taskwise(x):
+    # x: [meta_batch, n_way, n_samples, c, h, w]
+    mb, n_way, n_samples, c, h, w = x.shape
+    x = x.clone().view(-1, c, h, w)
+
+    for i in range(x.size(0)):
+        if torch.rand(1, device=x.device) < 0.5:
+            x[i] = torch.flip(x[i], dims=[1])  # H
+        if torch.rand(1, device=x.device) < 0.5:
+            x[i] = torch.flip(x[i], dims=[2])  # W
+
+    return x.view(mb, n_way, n_samples, c, h, w)
+
+
 def random_flip_like_torchvision(x):
     if torch.rand(1) < 0.5:
         x = torch.flip(x, dims=[3])  # Horizontal Flip
@@ -23,7 +37,6 @@ def random_flip_batchwise(x):
         if torch.rand(1) < 0.5:
             x[i] = torch.flip(x[i], dims=[2])  # Horizontal flip (W)
     return x
-
 
 
 def random_brightness(x, min_val=0.8, max_val=1.2):
