@@ -81,40 +81,12 @@ def augment_image(image, k, channels, augment_bool, args, dataset_name):
 
 
 
-def build_transform(train_phase, args, noise_on, noise_type, noise_param, mean, std):
+def build_transform(args, noise_on, noise_type, noise_param, mean, std):
+
     steps = []
-
     steps.append(transforms.ToTensor())
-
-    if train_phase and any(tag in args.experiment_name for tag in ('GAP',)):
-        steps.append(transforms.RandomHorizontalFlip())
-        steps.append(transforms.RandomVerticalFlip())
-        # steps.append(SelectCorruption("gaussian_noise", std=0.1))
-        # steps.append(transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4))
-
-    if noise_on and noise_type:
-        if noise_type == "gaussian_noise":
-            steps.append(SelectCorruption("gaussian_noise", std=noise_param or 0.05))
-        elif noise_type == "uniform_noise":
-            steps.append(SelectCorruption("uniform_noise", std=noise_param or 0.05))
-        elif noise_type == "shot_noise":
-            steps.append(SelectCorruption("shot_noise", scale=noise_param or 0.05))
-        elif noise_type == "impulse_noise":
-            steps.append(SelectCorruption("impulse_noise", severity=noise_param or 1))
-        elif noise_type == "jpeg_compression":
-            steps.append(SelectCorruption("jpeg_compression", quality=noise_param or 60))
-        elif noise_type == "motion_blur":
-            steps.append(SelectCorruption("motion_blur", kernel_size=noise_param or 9))
-        elif noise_type == "random_block_masking":
-            # noise_param이 size 비율 (0.1 ~ 0.5 등)을 의미한다고 가정
-            steps.append(SelectCorruption("random_block_masking", size=noise_param or 0.2, fill_value=0.0))
-        elif noise_type == "speckle_noise":
-            steps.append(SelectCorruption("speckle_noise", std=noise_param or 0.05))
-        # noise_type이 None 또는 알 수 없는 값이면 아무것도 안 추가
-
     steps.append(transforms.Normalize(mean, std))
     return transforms.Compose(steps)
-
 
 def get_transforms_for_dataset(dataset_name, args, k):
 
@@ -136,10 +108,8 @@ def get_transforms_for_dataset(dataset_name, args, k):
         IMAGENET_MEAN = (0.485, 0.456, 0.406)
         IMAGENET_STD = (0.229, 0.224, 0.225)
 
-        # 학습용 트랜스폼
         transform_train = [build_transform(
             args= args,
-            train_phase=True,
             noise_on=args.train_noise,
             noise_type=args.train_noise_type,
             noise_param=args.train_noise_param,
@@ -147,10 +117,8 @@ def get_transforms_for_dataset(dataset_name, args, k):
             std=IMAGENET_STD
         )]
 
-        # 평가용 트랜스폼
         transform_evaluate = [build_transform(
             args=args,
-            train_phase=False,
             noise_on=args.eval_noise,
             noise_type=args.eval_noise_type,
             noise_param=args.eval_noise_param,
@@ -158,17 +126,6 @@ def get_transforms_for_dataset(dataset_name, args, k):
             std=IMAGENET_STD
         )]
 
-        # transform_train = [transforms.Compose([
-        #     # transforms.RandomVerticalFlip(),
-        #     # transforms.RandomVerticalFlip,
-        #     transforms.ToTensor(),
-        #     transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])]
-        #
-        # transform_evaluate = [transforms.Compose([
-        #     transforms.ToTensor(),
-        #     SelectCorruption("gaussian_noise", std=0.05),
-        #     transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
-        # ])]
 
     elif 'CUB' in dataset_name:
         transform_train = [transforms.Compose([

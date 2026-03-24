@@ -1,6 +1,6 @@
 from data_suppl import MetaLearningSystemDataLoader
 
-from experiment_builder import ExperimentBuilder
+from experiment_builder_suppl import ExperimentBuilder
 from few_shot_learning_system_suppl import MAMLFewShotClassifier
 
 from utils.parser_utils import get_args
